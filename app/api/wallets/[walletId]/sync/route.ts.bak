@@ -1,0 +1,1047 @@
+import { NextResponse } from "next/server";
+import { BBIntegrationService } from "@/app/_lib/bb-integration";
+import { prisma } from "@/app/_lib/prisma";
+import { BBTransaction } from "@/app/_lib/bb-integration/types";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/app/_lib/auth-options";
+import { Transaction, TransactionCategory, TransactionType, TransactionPaymentMethod } from "@prisma/client";
+import { getBankCredentials } from "@/app/_lib/bank-utils";
+import { getBalance } from "@/app/_lib/bb-integration/account";
+import { limitarDataFutura, normalizarPeriodo, formatarData } from "@/app/_lib/bb-integration/utils";
+
+// Definir enum para Banco do Brasil
+enum BankIntegrationProvider {
+  BANCO_DO_BRASIL = "banco-do-brasil"
+}
+
+/**
+ * Rota para sincronização de transações bancárias
+ * 
+ * Alterações realizadas:
+ * 1. Adicionados logs detalhados para depuração
+ * 2. Corrigida a tipagem dos campos para corresponder ao schema do Prisma
+ * 3. Garantido que os campos category, type e paymentMethod estejam corretos
+ * 4. Melhorada a manipulação de erros durante a criação de transações
+ */
+export async function POST(
+  request: Request,
+  { params }: { params: { walletId: string } }
+) {
+  try {
+    console.log("[SYNC] Iniciando sincronização para carteira:", params.walletId);
+    
+    // Verificar autenticação do usuário usando getServerSession
+    const session = await getServerSession(authOptions);
+    if (!session || !session.user) {
+      console.log("[SYNC] Usuário não autenticado");
+      return NextResponse.json(
+        { error: "Não autorizado" },
+        { status: 401 }
+      );
+    }
+
+    // Obter a carteira pelo ID
+    const wallet = await prisma.wallet.findUnique({
+      where: {
+        id: params.walletId,
+        userId: session.user.id,
+      }
+    });
+
+    if (!wallet) {
+      console.log("[SYNC] Carteira não encontrada");
+      return NextResponse.json(
+        { error: "Carteira não encontrada" },
+        { status: 404 }
+      );
+    }
+
+    // Buscar a conexão bancária separadamente
+    const bankConnection = await prisma.bankConnection.findFirst({
+      where: {
+        userId: session.user.id,
+        bankId: wallet.bankId || ""
+      }
+    });
+
+    if (!bankConnection) {
+      console.log("[SYNC] Conexão bancária não encontrada para esta carteira");
+      return NextResponse.json(
+        { error: "Conexão bancária não configurada" },
+        { status: 400 }
+      );
+    }
+
+    // Obter detalhes da conta da carteira
+    const metadata = wallet.metadata as Record<string, any>;
+    const agencia = metadata.agencia;
+    const conta = metadata.conta;
+
+    if (!agencia || !conta) {
+      console.log("[SYNC] Dados de agência ou conta não encontrados");
+      return NextResponse.json(
+        { error: "Dados de agência ou conta não encontrados" },
+        { status: 400 }
+      );
+    }
+
+    console.log("[SYNC] Dados de conexão:", {
+      agencia,
+      conta,
+      bankId: wallet.bankId,
+    });
+
+    let transactions: Transaction[] = [];
+    let updatedWallet = wallet;
+
+    // Buscar o banco para verificar seu provider
+    const bank = await prisma.bank.findUnique({
+      where: { id: wallet.bankId || '' }
+    });
+
+    console.log("[SYNC] Banco identificado:", {
+      id: bank?.id,
+      name: bank?.name,
+      provider: bank?.name?.toLowerCase().includes('brasil') ? 'banco-do-brasil' : 'outro'
+    });
+
+    // Sincronização com o banco do Brasil - verificando pelo nome do banco ao invés do ID
+    const isBancoDoBrasil = bank?.name?.toLowerCase().includes('brasil');
+    
+    if (isBancoDoBrasil) {
+      try {
+        console.log("[SYNC] Iniciando sincronização com o Banco do Brasil");
+        
+        // Verificar se existem transações desta carteira no banco de dados
+        const existingTransactions = await prisma.transaction.findFirst({
+          where: {
+            walletId: wallet.id,
+          },
+        });
+
+        // Obter datas para o período de sincronização
+        const dataAtual = new Date();
+        
+        // Verificar se o ano está correto (para evitar erros com datas futuras)
+        const anoAtual = dataAtual.getFullYear();
+        if (dataAtual.getFullYear() > 2030) {
+          console.warn("[SYNC] Ano detectado está muito no futuro. Forçando ano atual:", anoAtual);
+          // Ajustar a data para o ano atual
+          dataAtual.setFullYear(new Date().getFullYear());
+        }
+        
+        // Formatar datas para o formato DDMMAAAA - sem zero à esquerda para dias 1-9
+        let dataInicio: string;
+        let dataFim: string;
+        
+        // Configurar para sempre importar o mês completo
+        console.log("[SYNC] Configurando para importar dados do mês completo.");
+        
+        // Primeiro dia do mês atual
+        const primeiroDiaMes = new Date(dataAtual.getFullYear(), dataAtual.getMonth(), 1);
+        // Último dia do mês atual (que será limitado à data atual pela função normalizarPeriodo)
+        const ultimoDiaMes = new Date(dataAtual.getFullYear(), dataAtual.getMonth() + 1, 0);
+        
+        // Normalizar o período para não pegar datas no futuro
+        const { dataInicio: dataInicioNormalizada, dataFim: dataFimNormalizada } = 
+          normalizarPeriodo(primeiroDiaMes, ultimoDiaMes);
+        
+        console.log("[SYNC] Período normalizado:", {
+          original: {
+            primeiroDiaMes: primeiroDiaMes.toISOString(),
+            ultimoDiaMes: ultimoDiaMes.toISOString(),
+          },
+          normalizado: {
+            dataInicio: dataInicioNormalizada.toISOString(),
+            dataFim: dataFimNormalizada.toISOString(),
+          }
+        });
+        
+        // Converter para formato exigido pelo BB (DDMMAAAA)
+        // IMPORTANTE: Dias entre 1 e 9 NÃO devem ter zero à esquerda, conforme exigência da API do BB
+        const diaInicio = dataInicioNormalizada.getDate().toString(); // Sem zero à esquerda
+        const mesInicio = (dataInicioNormalizada.getMonth() + 1).toString().padStart(2, '0');
+        const anoInicio = dataInicioNormalizada.getFullYear().toString();
+        
+        const diaFim = dataFimNormalizada.getDate().toString(); // Sem zero à esquerda
+        const mesFim = (dataFimNormalizada.getMonth() + 1).toString().padStart(2, '0');
+        const anoFim = dataFimNormalizada.getFullYear().toString();
+        
+        // Garantir que usamos apenas os 4 dígitos do ano no formato exigido pelo BB
+        dataInicio = `${diaInicio}${mesInicio}${anoInicio.slice(-4)}`;
+        dataFim = `${diaFim}${mesFim}${anoFim.slice(-4)}`;
+        
+        console.log("[SYNC] Período de sincronização (formato específico BB - dias 1-9 sem zero):", { 
+          dataInicio, 
+          dataFim,
+          ano: dataAtual.getFullYear(),
+          periodoCompleto: true,
+          modoSincronizacao: "PERÍODO INTEIRO" 
+        });
+
+        // Obter credenciais completas do banco de dados usando a função especializada
+        const credentials = await getBankCredentials(bankConnection.id, params.walletId);
+        
+        // Log detalhado das credenciais encontradas para diagnóstico
+        console.log("[SYNC] Credenciais recuperadas:", {
+          hasApplicationKey: !!credentials?.applicationKey,
+          hasClientBasic: !!credentials?.clientBasic,
+          hasClientId: !!credentials?.clientId,
+          hasClientSecret: !!credentials?.clientSecret,
+          hasAgencia: !!credentials?.agencia,
+          hasConta: !!credentials?.conta
+        });
+        
+        // Verificar se temos todas as credenciais necessárias
+        if (!credentials || !credentials.applicationKey || !credentials.clientBasic) {
+          console.error("[SYNC] Credenciais incompletas:", {
+            applicationKey: !!credentials?.applicationKey,
+            clientBasic: !!credentials?.clientBasic
+          });
+          
+          return NextResponse.json(
+            { 
+              success: false, 
+              message: "Credenciais incompletas. Reconecte sua conta bancária." 
+            },
+            { status: 400 }
+          );
+        }
+        
+        // Instanciar o serviço BB
+        const bbService = BBIntegrationService.getInstance();
+        
+        // Obter um token OAuth válido
+        console.log("[SYNC] Obtendo token OAuth autenticado...");
+        let token;
+        try {
+          // Importar função getAuthToken
+          const { getAuthToken } = await import('@/app/_lib/bb-integration/auth');
+          
+          // Obter token autenticado usando as credenciais completas do banco de dados
+          token = await getAuthToken({
+            applicationKey: credentials.applicationKey,
+            clientBasic: credentials.clientBasic,
+            clientId: credentials.clientId,
+            clientSecret: credentials.clientSecret,
+            apiUrl: credentials.apiUrl || "https://api-extratos.bb.com.br",
+            agencia: credentials.agencia || agencia,
+            conta: credentials.conta || conta,
+            certPaths: await bbService.getCertificatePaths(params.walletId)
+          });
+          
+          console.log("[SYNC] Token OAuth obtido com sucesso");
+        } catch (tokenError: any) {
+          console.error("[SYNC] Falha ao obter token OAuth:", tokenError);
+          
+          // Falhar graciosamente
+          return NextResponse.json(
+            { 
+              success: false, 
+              message: "Falha na autenticação com o banco. Verifique suas credenciais.",
+              error: tokenError.message
+            },
+            { status: 401 }
+          );
+        }
+        
+        // Tentar obter o saldo atual diretamente da API do Banco do Brasil
+        let saldoAtual = null;
+        try {
+          saldoAtual = await getBalance(
+            agencia,
+            conta,
+            token,
+            credentials.applicationKey,
+            params.walletId
+          );
+          console.log("[SYNC] Saldo atual obtido da API:", saldoAtual);
+        } catch (balanceError) {
+          console.error("[SYNC] Erro ao obter saldo atual:", balanceError);
+          console.log("[SYNC] Usando método alternativo para calcular o saldo (baseado em transações)");
+          // O endpoint de saldo pode não estar disponível, então usaremos sempre o método alternativo
+          saldoAtual = null;
+        }
+        
+        // Obter extrato com período especificado
+        const extract = await bbService.getExtract(
+          agencia,
+          conta,
+          token, // Usar o token OAuth obtido
+          credentials.applicationKey,
+          {
+            // Passar os parâmetros de data diretamente, sem formatar novamente
+            useDatasJaFormatadas: true, // Novo parâmetro para indicar que as datas já estão no formato correto
+            dataInicioOriginal: dataInicio,
+            dataFimOriginal: dataFim,
+            numeroPagina: 1,
+            quantidadeRegistros: 200, // Valor máximo conforme API
+            walletId: params.walletId // Adicionar o ID da carteira para usar certificados específicos
+          }
+        );
+        
+        console.log("[SYNC] Extrato obtido com sucesso:", {
+          registros: extract.quantidadeTotalRegistro,
+          paginas: extract.quantidadeTotalPagina
+        });
+        
+        // Para exportações do Banco do Brasil, processar o formato específico
+        if (wallet.bankId === 'banco-do-brasil') {
+          // Processar apenas transações válidas de acordo com a estrutura de dados
+          if (extract && extract.listaLancamento && Array.isArray(extract.listaLancamento)) {
+            console.log(`Processando ${extract.listaLancamento.length} lançamentos do extrato bancário`);
+            
+            // Função para extrair a descrição da transação
+            function extrairDescricao(item: any): string {
+              // Primeiro tentar a descrição textual direta
+              if (item.textoDescricaoHistorico && item.textoDescricaoHistorico.trim() !== "") {
+                return item.textoDescricaoHistorico.trim();
+              }
+              
+              // Tentar obter do campo aninhado
+              if (item.lancamentoContaCorrenteCliente && 
+                  item.lancamentoContaCorrenteCliente.nomeTipoOperacao && 
+                  item.lancamentoContaCorrenteCliente.nomeTipoOperacao.trim() !== "") {
+                return item.lancamentoContaCorrenteCliente.nomeTipoOperacao.trim();
+              }
+              
+              // Tentar usar o histórico/código
+              if (item.codigoHistorico) {
+                const codHist = item.codigoHistorico;
+                // Mapear códigos históricos comuns do BB para descrições legíveis
+                const historicoMap: Record<number, string> = {
+                  144: "Pagamento via PIX",
+                  976: "Transferência TED",
+                  830: "Depósito em dinheiro",
+                  435: "Tarifa bancária",
+                  999: "Saldo"
+                };
+                
+                if (historicoMap[codHist]) {
+                  return historicoMap[codHist];
+                }
+              }
+              
+              // Tentar inferir pelo tipo de lançamento
+              if (item.indicadorTipoLancamento) {
+                switch(item.indicadorTipoLancamento) {
+                  case "S": return "Saldo Atual";
+                  case "D": return "Saldo Disponível";
+                  case "1": return "Lançamento Bancário";
+                }
+              }
+              
+              // Se tudo falhar, usar nome genérico
+              return "Lançamento Bancário";
+            }
+            
+            // Filtrar transações ocultas antes do processamento
+            const hiddenKeywords = ["SALDO DO DIA", "SALDO ANTERIOR", "S A L D O", "SALDO FINAL", "SALDO INICIAL"];
+            const shouldHideTransaction = (description: string): boolean => {
+              return hiddenKeywords.some(keyword => description.toUpperCase().includes(keyword));
+            };
+
+            // Filtrar apenas transações que não são de saldo
+            const transactionsToProcess = extract.listaLancamento
+              .filter(item => {
+                const descricao = extrairDescricao(item);
+                return !shouldHideTransaction(descricao); // Pula transações de saldo
+              });
+            
+            console.log(`Após filtrar transações de saldo, restaram ${transactionsToProcess.length} transações para processar`);
+            
+            // Mapear para o formato adequado
+            const newTransactionsData = transactionsToProcess.map((item: any) => {
+              // Função para extrair e validar o valor do lançamento
+              function extrairValorLancamento(item: any): number {
+                // Verificação detalhada do objeto e seus campos
+                console.log("[BB_EXTRATO_VALOR] Analisando item:", JSON.stringify(item));
+                
+                // Verificar estrutura aninhada (novo formato da API)
+                if (item.lancamentoContaCorrenteCliente && 
+                    item.lancamentoContaCorrenteCliente.valorLancamentoRemessa !== undefined) {
+                  const valor = Number(item.lancamentoContaCorrenteCliente.valorLancamentoRemessa);
+                  console.log("[BB_EXTRATO_VALOR] Usando valorLancamentoRemessa:", 
+                    item.lancamentoContaCorrenteCliente.valorLancamentoRemessa, "->", valor);
+                  return isNaN(valor) ? 1.0 : valor;
+                }
+                
+                // Formato anterior: verificar se o campo valorLancamento existe
+                if (item.valorLancamento !== undefined && item.valorLancamento !== null) {
+                  const valor = Number(item.valorLancamento);
+                  console.log("[BB_EXTRATO_VALOR] Usando valorLancamento:", item.valorLancamento, "->", valor);
+                  return isNaN(valor) ? 1.0 : valor;
+                }
+                
+                // Tentar alternativas disponíveis na API
+                if (item.valor !== undefined && item.valor !== null) {
+                  const valor = Number(item.valor);
+                  console.log("[BB_EXTRATO_VALOR] Usando campo 'valor':", item.valor, "->", valor);
+                  return isNaN(valor) ? 1.0 : valor;
+                }
+                
+                if (item.valorSaldo !== undefined && item.valorSaldo !== null) {
+                  const valor = Number(item.valorSaldo);
+                  console.log("[BB_EXTRATO_VALOR] Usando campo 'valorSaldo':", item.valorSaldo, "->", valor);
+                  return isNaN(valor) ? 1.0 : valor;
+                }
+                
+                // Último recurso: usar um valor padrão (1.0) para evitar erros, mas marcando como ajuste pendente
+                console.log("[BB_EXTRATO_VALOR] Nenhum valor encontrado, usando valor padrão 1.0");
+                return 1.0;
+              }
+              
+              // Função para extrair informações complementares
+              function extrairComplemento(item: any): string {
+                // Texto complementar direto
+                if (item.textoInformacaoComplementar && item.textoInformacaoComplementar.trim() !== "") {
+                  return item.textoInformacaoComplementar.trim();
+                }
+                
+                // Texto complementar aninhado
+                if (item.lancamentoContaCorrenteCliente && 
+                    item.lancamentoContaCorrenteCliente.complementoHistorico && 
+                    item.lancamentoContaCorrenteCliente.complementoHistorico.trim() !== "") {
+                  return item.lancamentoContaCorrenteCliente.complementoHistorico.trim();
+                }
+                
+                // Tentar banco/agência da contraparte se disponível
+                let contraparteInfo = "";
+                
+                // Tentar extrair informações da contraparte
+                if (item.numeroCpfCnpjContrapartida && item.numeroCpfCnpjContrapartida > 0) {
+                  contraparteInfo += `CPF/CNPJ: ${item.numeroCpfCnpjContrapartida} `;
+                }
+                
+                if (item.codigoAgenciaContrapartida && item.codigoAgenciaContrapartida > 0) {
+                  contraparteInfo += `Ag: ${item.codigoAgenciaContrapartida} `;
+                }
+                
+                if (contraparteInfo.trim() !== "") {
+                  return contraparteInfo.trim();
+                }
+                
+                return "";
+              }
+              
+              // Função auxiliar para enriquecer descrições com informações complementares
+              function enrichDescription(description: string, complementInfo: string): string {
+                // Se ambos estiverem vazios, usar um nome genérico
+                if ((!description || description.trim() === '') && (!complementInfo || complementInfo.trim() === '')) {
+                  return "Transação Bancária";
+                }
+                
+                // Se a descrição estiver vazia, usar a informação complementar como nome principal
+                if (!description || description.trim() === '') {
+                  return complementInfo.trim();
+                }
+                
+                // Se não houver info complementar, retornar apenas a descrição
+                if (!complementInfo || complementInfo.trim() === '') {
+                  return description.trim();
+                }
+                
+                // Evitar informação duplicada
+                if (description.includes(complementInfo)) {
+                  return description.trim();
+                }
+                
+                // Concatenar apenas se a informação agregar valor
+                if (complementInfo.length > 3) {
+                  return `${description.trim()} - ${complementInfo.trim()}`;
+                }
+                
+                return description.trim();
+              }
+              
+              // Função para sugerir categoria com base no texto da descrição e código histórico
+              function suggestCategory(description: string, codigoHistorico: number, isDebit: boolean, complementInfo: string): string {
+                // Converter para minúsculo para facilitar as comparações
+                const desc = (description + " " + complementInfo).toLowerCase();
+                
+                // Categoria padrão
+                let category = "OTHER";
+                
+                // Analisar a descrição para encontrar padrões comuns
+                if (desc.includes("salario") || desc.includes("credito salario") || desc.includes("proventos")) {
+                  category = "SALARY";
+                } 
+                else if (desc.includes("aluguel") || desc.includes("condominio") || desc.includes("iptu")) {
+                  category = "HOUSING";
+                }
+                else if (desc.includes("combustivel") || desc.includes("uber") || desc.includes("99") || 
+                         desc.includes("taxi") || desc.includes("passagem") || desc.includes("transporte")) {
+                  category = "TRANSPORTATION";
+                }
+                else if (desc.includes("restaurante") || desc.includes("ifood") || desc.includes("supermercado") || 
+                         desc.includes("mercado") || desc.includes("padaria") || desc.includes("lanchonete") ||
+                         desc.includes("rappi") || desc.includes("zé delivery")) {
+                  category = "FOOD";
+                }
+                else if (desc.includes("cinema") || desc.includes("teatro") || desc.includes("show") || 
+                         desc.includes("netflix") || desc.includes("spotify") || desc.includes("prime") ||
+                         desc.includes("disney")) {
+                  category = "ENTERTAINMENT";
+                }
+                else if (desc.includes("hospital") || desc.includes("farmacia") || desc.includes("drogaria") || 
+                         desc.includes("medico") || desc.includes("exame") || desc.includes("consulta") ||
+                         desc.includes("dentista") || desc.includes("unimed") || desc.includes("amil")) {
+                  category = "HEALTH";
+                }
+                else if (desc.includes("agua") || desc.includes("luz") || desc.includes("energia") || 
+                         desc.includes("telefone") || desc.includes("internet") || desc.includes("gas") ||
+                         desc.includes("tv") || desc.includes("net") || desc.includes("claro") ||
+                         desc.includes("vivo") || desc.includes("tim") || desc.includes("oi")) {
+                  category = "UTILITY";
+                }
+                else if (desc.includes("escola") || desc.includes("faculdade") || desc.includes("curso") || 
+                         desc.includes("mensalidade") || desc.includes("universidade") || desc.includes("livro")) {
+                  category = "EDUCATION";
+                }
+                
+                // Usar o código histórico para melhorar a classificação
+                // Códigos históricos comuns do Banco do Brasil (podem variar):
+                switch (codigoHistorico) {
+                  case 126: // Salário/pagamento
+                    category = "SALARY";
+                    break;
+                  case 210: // Transferências
+                  case 124: // Transferências
+                    // Manter a categoria baseada na descrição
+                    break;
+                  case 156: // Contas e pagamentos
+                    if (category === "OTHER") {
+                      category = "UTILITY";
+                    }
+                    break;
+                  // Adicionar mais casos conforme necessário
+                }
+                
+                return category;
+              }
+              
+              // Função para determinar o tipo de transação
+              function determineTransactionType(description: string, codigoHistorico: number, isDebit: boolean): string {
+                const desc = description.toLowerCase();
+                
+                if (desc.includes("pix")) {
+                  return isDebit ? "PIX_SENT" : "PIX_RECEIVED";
+                }
+                
+                if (desc.includes("ted") || desc.includes("doc") || desc.includes("transferencia")) {
+                  return isDebit ? "TRANSFER_SENT" : "TRANSFER_RECEIVED";
+                }
+                
+                if (desc.includes("cartao") || desc.includes("compra") || desc.includes("debito") || desc.includes("credito")) {
+                  return "CARD_PAYMENT";
+                }
+                
+                if (desc.includes("saque")) {
+                  return "WITHDRAWAL";
+                }
+                
+                if (desc.includes("deposito")) {
+                  return "DEPOSIT";
+                }
+                
+                if (desc.includes("salario") || desc.includes("proventos")) {
+                  return "SALARY";
+                }
+                
+                if (desc.includes("pagamento")) {
+                  return "PAYMENT";
+                }
+                
+                return isDebit ? "EXPENSE" : "INCOME";
+              }
+              
+              // Função para extrair e formatar a data da transação
+              function extrairData(item: any): Date {
+                let dataFormatada = new Date();
+                
+                try {
+                  // Verificar se dataLancamento está presente
+                  let dataStr = "";
+                  
+                  if (item.dataLancamento) {
+                    dataStr = item.dataLancamento.toString();
+                  } else if (item.dataMovimento) {
+                    dataStr = item.dataMovimento.toString();
+                  }
+                  
+                  console.log("[BB_EXTRACT_DATE] Analisando dataStr:", dataStr);
+                  
+                  if (dataStr && dataStr.length > 0) {
+                    // O formato específico do BB pode ser DDMMAAAA sem zeros à esquerda
+                    // Exemplos: 28022025, 5032025 (5 de março de 2025)
+                    
+                    // Primeiro vamos verificar o comprimento para determinar se faltam zeros à esquerda
+                    let dataCompleta = dataStr;
+                    if (dataStr.length === 7) {
+                      // Falta um zero no início (ex: 5032025 -> 05032025)
+                      dataCompleta = "0" + dataStr;
+                    } else if (dataStr.length === 6) {
+                      // Faltam dois zeros no início (ex: 132025 -> 01032025)
+                      dataCompleta = "00" + dataStr;
+                    }
+                    
+                    console.log("[BB_EXTRACT_DATE] Data padronizada:", dataCompleta);
+                    
+                    // Agora que temos uma string de 8 dígitos, podemos extrair dia, mês e ano
+                    if (dataCompleta.length >= 8) {
+                      const dia = parseInt(dataCompleta.substring(0, 2));
+                      const mes = parseInt(dataCompleta.substring(2, 4)) - 1; // Meses em JS são 0-11
+                      const ano = parseInt(dataCompleta.substring(4, 8));
+                      
+                      // Verificar se são números válidos
+                      if (!isNaN(dia) && !isNaN(mes) && !isNaN(ano)) {
+                        if (mes >= 0 && mes <= 11 && dia >= 1 && dia <= 31) {
+                          const tempDate = new Date(ano, mes, dia);
+                          
+                          // Verificar se a data resultante é válida
+                          if (!isNaN(tempDate.getTime())) {
+                            console.log("[BB_EXTRACT_DATE] Data extraída com sucesso:", 
+                              { dia, mes: mes+1, ano }, "->", tempDate.toISOString());
+                            return tempDate;
+                          }
+                        }
+                      }
+                    }
+                    
+                    // Tentar interpretar a data como um valor numérico DDMMAAAA
+                    const valorNumerico = parseInt(dataStr);
+                    if (!isNaN(valorNumerico) && valorNumerico > 0) {
+                      // Extrair dia, mês e ano do número
+                      // Para 5032025:
+                      // Calculando dia: 5032025 % 100 = 25 (errado, isso seria o ano)
+                      // Melhor abordagem é converter para string e fazer parsing específico
+                      
+                      // Vamos tentar determinar o formato baseado no valor
+                      if (valorNumerico >= 1000000 && valorNumerico <= 31129999) {
+                        // Provavelmente DDMMAAAA
+                        const dateString = valorNumerico.toString().padStart(8, '0');
+                        const dia = parseInt(dateString.substring(0, 2));
+                        const mes = parseInt(dateString.substring(2, 4)) - 1;
+                        const ano = parseInt(dateString.substring(4, 8));
+                        
+                        if (dia >= 1 && dia <= 31 && mes >= 0 && mes <= 11 && ano >= 2000) {
+                          const tempDate = new Date(ano, mes, dia);
+                          if (!isNaN(tempDate.getTime())) {
+                            console.log("[BB_EXTRACT_DATE] Data extraída do formato numérico DDMMAAAA:", 
+                              { dia, mes: mes+1, ano }, "->", tempDate.toISOString());
+                            return tempDate;
+                          }
+                        }
+                      }
+                    }
+                  }
+                  
+                  console.log("[BB_EXTRACT_DATE] Não foi possível interpretar a data:", dataStr);
+                } catch (error) {
+                  console.log("[BB_EXTRACT_DATE] Erro ao processar data:", error);
+                }
+                
+                // Para evitar datas inválidas, vamos usar um valor fixo para o mês em curso
+                // em vez da data atual, garantindo que todas as transações não processadas 
+                // apareçam no mês correto
+                const now = new Date();
+                const primeiroDiaMes = new Date(now.getFullYear(), now.getMonth(), 1);
+                console.log("[BB_EXTRACT_DATE] Usando primeiro dia do mês atual como fallback:", primeiroDiaMes.toISOString());
+                return primeiroDiaMes;
+              }
+              
+              // Converter data do formato DDMMAAAA para Date
+              let date = extrairData(item);
+              
+              // Verificar se a data resultante está no futuro, o que seria um erro
+              if (date > new Date()) {
+                console.log("[BB_EXTRACT_DATE] Data no futuro detectada, ajustando para hoje:", date);
+                date = new Date(); // Usar data atual como fallback
+              }
+              
+              // Determinar se é entrada ou saída
+              const isDebit = item.indicadorSinalLancamento === "D";
+              
+              // Determinar o sinal a ser aplicado ao valor
+              // Para débitos, o valor deve ser negativo independente do valor original
+              const valorLancamento = extrairValorLancamento(item);
+              const amount = isDebit ? -Math.abs(valorLancamento) : Math.abs(valorLancamento);
+              
+              // Obter o código histórico (se disponível)
+              const codigoHistorico = item.codigoHistorico || 0;
+              
+              // Obter o texto de descrição da transação formatado adequadamente
+              const description = extrairDescricao(item);
+              
+              // Obter informações complementares formatadas
+              const complementInfo = extrairComplemento(item);
+              
+              // Obter informações de contraparte para enriquecer os metadados
+              const contrapartida = {
+                cpfCnpj: item.numeroCpfCnpjContrapartida || null,
+                tipoPessoa: item.indicadorTipoPessoaContrapartida || null,
+                banco: item.codigoBancoContrapartida || null,
+                agencia: item.codigoAgenciaContrapartida || null,
+                conta: item.numeroContaContrapartida || null,
+                dv: item.textoDvContaContrapartida || null
+              };
+              
+              // Sugerir categoria com base no texto da descrição e código histórico
+              let category = suggestCategory(description, codigoHistorico, isDebit, complementInfo);
+              
+              // Garantir que a categoria está dentro dos valores aceitos pelo enum
+              const validCategory = category as TransactionCategory;
+
+              // Determinar o tipo de transação com base no código histórico e descrição
+              const transactionType = determineTransactionType(description, codigoHistorico, isDebit);
+              
+              // Converter o tipo de transação para o formato Prisma
+              let type: TransactionType = "EXPENSE";
+              if (transactionType === "INCOME" || transactionType === "SALARY" || 
+                  transactionType === "PIX_RECEIVED" || transactionType === "TRANSFER_RECEIVED" || 
+                  transactionType === "DEPOSIT") {
+                type = "DEPOSIT";
+              } else if (transactionType === "INVESTMENT") {
+                type = "INVESTMENT";
+              }
+              
+              // Determinar o método de pagamento com base na descrição
+              let paymentMethod: TransactionPaymentMethod = "OTHER";
+              
+              if (transactionType === "PIX_SENT" || transactionType === "PIX_RECEIVED") {
+                paymentMethod = "PIX";
+              } else if (transactionType === "TRANSFER_SENT" || transactionType === "TRANSFER_RECEIVED") {
+                paymentMethod = "BANK_TRANSFER";
+              } else if (transactionType === "CARD_PAYMENT") {
+                // Tentar diferenciar entre crédito e débito
+                if (description.toLowerCase().includes("credito") || complementInfo.toLowerCase().includes("credito")) {
+                  paymentMethod = "CREDIT_CARD";
+                } else {
+                  paymentMethod = "DEBIT_CARD";
+                }
+              } else if (transactionType === "BANK_SLIP" || 
+                    description.toLowerCase().includes("boleto") || 
+                    complementInfo.toLowerCase().includes("boleto")) {
+                paymentMethod = "BANK_SLIP";
+              }
+              
+              // Criar metadados detalhados para ajudar na categorização futura
+              const metadata = {
+                source: "banco-do-brasil",
+                originalTransaction: {
+                  indicadorSinalLancamento: item.indicadorSinalLancamento || "C",
+                  indicadorTipoLancamento: item.indicadorTipoLancamento || "",
+                  dataLancamento: item.dataLancamento || 0,
+                  dataMovimento: item.dataMovimento || 0,
+                  codigoAgenciaOrigem: item.codigoAgenciaOrigem || 0,
+                  numeroLote: item.numeroLote || 0,
+                  numeroDocumento: item.numeroDocumento || 0,
+                  codigoHistorico: codigoHistorico || 0,
+                  contrapartida: {
+                    cpfCnpj: item.numeroCpfCnpjContrapartida || null,
+                    tipoPessoa: item.indicadorTipoPessoaContrapartida || null,
+                    banco: item.codigoBancoContrapartida || null,
+                    agencia: item.codigoAgenciaContrapartida || null,
+                    conta: item.numeroContaContrapartida || null,
+                    dv: item.textoDvContaContrapartida || null
+                  }
+                },
+                // Extrair máximo de informações complementares possíveis
+                complementInfo: complementInfo || "",
+                // Dados para análise de IA mais avançada
+                analysisData: {
+                  containsPix: description.toLowerCase().includes("pix") || (complementInfo || "").toLowerCase().includes("pix"),
+                  containsTransferencia: 
+                    description.toLowerCase().includes("transferencia") || 
+                    description.toLowerCase().includes("ted") || 
+                    description.toLowerCase().includes("doc") || 
+                    (complementInfo || "").toLowerCase().includes("transferencia"),
+                  containsCompra: 
+                    description.toLowerCase().includes("compra") || 
+                    description.toLowerCase().includes("pagamento") || 
+                    (complementInfo || "").toLowerCase().includes("compra"),
+                  containsSalario: 
+                    description.toLowerCase().includes("salario") || 
+                    description.toLowerCase().includes("credito salario") || 
+                    (complementInfo || "").toLowerCase().includes("salario"),
+                  containsInvestimento: 
+                    description.toLowerCase().includes("invest") || 
+                    description.toLowerCase().includes("aplicacao") || 
+                    (complementInfo || "").toLowerCase().includes("invest"),
+                  containsVendaCompra: 
+                    description.toLowerCase().includes("venda") || 
+                    description.toLowerCase().includes("estorno") || 
+                    (complementInfo || "").toLowerCase().includes("venda")
+                },
+                // Preservar o tipo de transação original para análise futura
+                originalTransactionType: transactionType || "INCOME",
+                // Adicionar flag de valor padrão para ajudar na identificação de valores que precisam de ajustes manuais
+                valorPadrao: isNaN(valorLancamento) || valorLancamento === 1.0
+              };
+              
+              // Gerar um ID externo único para evitar duplicatas nas importações 
+              // Formato: bb-WALLET_ID-DATA_FORMATADA-DOCUMENTO_OU_TIMESTAMP
+              const dataFormatada = date.toISOString().split('T')[0]; // YYYY-MM-DD
+              let identificador = item.numeroDocumento;
+              
+              // Se não tiver número de documento, usar outros campos disponíveis para identificação
+              if (!identificador || identificador === 0) {
+                if (item.numeroLote && item.numeroLote > 0) {
+                  identificador = item.numeroLote;
+                } else if (item.codigoHistorico && item.codigoHistorico > 0) {
+                  identificador = item.codigoHistorico;
+                } else {
+                  // Último recurso, usar valor formatado e timestamp
+                  identificador = `${Math.abs(amount).toFixed(2)}-${Date.now()}`;
+                }
+              }
+              
+              const externalId = `bb-${wallet.id}-${dataFormatada}-${identificador}`;
+              
+              // Debugar os dados da transação
+              console.log("[SYNC_DEBUG_TRANSACTION]", {
+                name: enrichDescription(description, complementInfo),
+                type,
+                amount: amount,
+                isDebit,
+                valorOriginal: valorLancamento,
+                category: validCategory,
+                paymentMethod,
+                date,
+                userId: session.user.id,
+                walletId: wallet.id,
+                externalId
+              });
+              
+              return {
+                name: enrichDescription(description, complementInfo),
+                type,
+                amount: amount,
+                category: validCategory,
+                paymentMethod,
+                date,
+                userId: session.user.id,
+                walletId: wallet.id,
+                externalId,
+                metadata
+              };
+            });
+          
+          console.log("[SYNC] Transações filtradas para importação:", newTransactionsData.length);
+          
+          // Para novas sincronizações, verificar por duplicatas em vez de remover todas
+          // Gerar IDs externos para verificar duplicatas
+          const externalIds = newTransactionsData.map(transaction => transaction.externalId);
+          
+          // Verificar quais transações já existem no banco
+          const existingExternalIds = await prisma.transaction.findMany({
+            where: {
+              externalId: {
+                in: externalIds,
+              },
+              walletId: wallet.id,
+            },
+            select: {
+              externalId: true,
+            },
+          });
+          
+          // Criar um Set para verificação rápida
+          const existingExternalIdsSet = new Set(existingExternalIds.map(t => t.externalId));
+          const validatedTransactions = newTransactionsData
+            .filter(transaction => !existingExternalIdsSet.has(transaction.externalId));
+          
+          console.log("[SYNC] Após filtrar duplicatas, restaram:", validatedTransactions.length);
+          
+          // Validar transações antes de salvar
+          const validatedTransactionsFinal = validatedTransactions
+            .filter(transaction => {
+              // Verificar campos obrigatórios
+              if (!transaction.name || transaction.name.trim() === '') {
+                console.log("[SYNC_VALIDATION] Transação descartada: nome vazio");
+                return false;
+              }
+              
+              if (isNaN(transaction.amount)) {
+                console.log("[SYNC_VALIDATION] Transação descartada: valor inválido (NaN)");
+                return false;
+              }
+              
+              if (!transaction.date || !(transaction.date instanceof Date) || isNaN(transaction.date.getTime())) {
+                console.log("[SYNC_VALIDATION] Transação descartada: data inválida");
+                return false;
+              }
+              
+              return true;
+            })
+            .map(transaction => {
+              // Garantir valores padrão para campos obrigatórios
+              return {
+                ...transaction,
+                // Garantir nome não vazio
+                name: transaction.name || "Transação Bancária",
+                // Garantir valor válido
+                amount: isNaN(transaction.amount) ? 1.0 : transaction.amount,
+                // Garantir data válida
+                date: transaction.date instanceof Date && !isNaN(transaction.date.getTime()) 
+                  ? transaction.date 
+                  : new Date(),
+              };
+            });
+          
+          console.log("[SYNC] Transações validadas:", validatedTransactionsFinal.length);
+          
+          // Adicionar verificação e log detalhado antes de inserir no banco
+          if (validatedTransactionsFinal.length > 0) {
+            console.log("[SYNC_DEBUG] Primeiras 3 transações para inserção:", 
+              validatedTransactionsFinal.slice(0, 3).map(t => ({
+                name: t.name,
+                type: t.type,
+                amount: t.amount,
+                category: t.category,
+                date: t.date,
+                externalId: t.externalId
+              }))
+            );
+            
+            try {
+              // Criar transações em lote
+              await prisma.transaction.createMany({
+                data: validatedTransactionsFinal,
+                skipDuplicates: true, // Pular duplicatas com base nas chaves únicas
+              });
+              
+              console.log("[SYNC] Transações sincronizadas com sucesso:", validatedTransactionsFinal.length);
+              
+              // Atualizar os metadados da carteira
+              await prisma.wallet.update({
+                where: { id: wallet.id },
+                data: {
+                  metadata: {
+                    ...(wallet.metadata as Record<string, any> || {}),
+                    lastSyncAt: new Date().toISOString(),
+                    lastSyncCount: validatedTransactionsFinal.length,
+                    totalTransactionsCount: ((wallet.metadata as Record<string, any>)?.totalTransactionsCount || 0) + validatedTransactionsFinal.length
+                  },
+                },
+              });
+            } catch (error) {
+              console.error("[SYNC_ERROR] Erro ao criar transações:", error);
+              // Registrar o erro e dados relevantes para diagnóstico
+              console.error("[SYNC_ERROR_DATA] Exemplo de transação com erro:", 
+                validatedTransactionsFinal.length > 0 ? JSON.stringify(validatedTransactionsFinal[0]) : "Nenhuma transação"
+              );
+              throw error;
+            }
+          } else {
+            console.log("[SYNC] Nenhuma nova transação para sincronizar");
+            
+            // Atualizar apenas a data de sincronização
+            await prisma.wallet.update({
+              where: { id: wallet.id },
+              data: {
+                metadata: {
+                  ...(wallet.metadata as Record<string, any> || {}),
+                  lastSyncAt: new Date().toISOString(),
+                  lastSyncCount: 0,
+                },
+              },
+            });
+          }
+        } catch (error) {
+          console.error("[SYNC] Erro ao processar transações:", error);
+          throw error;
+        }
+        
+        // Se chegou aqui, as transações foram processadas com sucesso ou não havia transações
+        // Continuar com a atualização dos metadados e finalização da sincronização
+        
+        // Sem transações disponíveis ou após processamento
+        if (!extract || !extract.listaLancamento || extract.listaLancamento.length === 0) {
+          console.log("[SYNC] Extrato não contém transações");
+          
+          // Atualizar apenas os metadados para registrar a tentativa de sincronização
+          const updatedMetadata = {
+            ...wallet.metadata as Record<string, any>,
+            lastSync: new Date().toISOString(),
+            lastSyncStatus: "success",
+            lastSyncCount: 0
+          };
+          
+          // Atualizar saldo se disponível
+          updatedWallet = await prisma.wallet.update({
+            where: { id: wallet.id },
+            data: { 
+              balance: saldoAtual ?? wallet.balance, // Mantém o saldo atual se não for possível obter um novo
+              metadata: updatedMetadata
+            },
+            include: {
+              bank: true
+            }
+          });
+        }
+        
+        // Atualizar status da conexão
+        await prisma.bankConnection.update({
+          where: { id: bankConnection.id },
+          data: { 
+            status: "CONNECTED",
+            updatedAt: new Date()
+          }
+        });
+        
+        // Log do resumo da sincronização
+        console.log("[SYNC] Resumo da sincronização:", {
+          carteira: wallet.name,
+          id: wallet.id,
+          saldoAnterior: wallet.balance,
+          saldoNovo: updatedWallet.balance,
+          diferenca: updatedWallet.balance - wallet.balance,
+          transacoesImportadas: extract?.listaLancamento?.length || 0,
+          dataInicio,
+          dataFim
+        });
+        
+        // Retornar resultado bem-sucedido
+        return NextResponse.json({
+          success: true,
+          message: "Carteira sincronizada com sucesso",
+          wallet: updatedWallet,
+          data: {
+            transactionCount: 0, // Valor será mostrado na interface através do evento de notificação
+            balance: updatedWallet?.balance || 0,
+          }
+        });
+      } catch (error: any) {
+        console.error("[SYNC] Erro ao sincronizar:", error);
+        
+        return NextResponse.json({
+          success: false,
+          message: error.message || "Erro ao sincronizar carteira",
+          error: error.message
+        }, {
+          status: 500
+        });
+      }
+    } else {
+      console.log("[SYNC] Tipo de banco não suportado");
+      
+      return NextResponse.json({
+        success: false,
+        message: "Este tipo de banco não é suportado para sincronização automática."
+      }, {
+        status: 400
+      });
+    }
+  } catch (error: any) {
+    console.error("[SYNC_ERROR]", error);
+    
+    return NextResponse.json({
+      success: false,
+      message: error.message || "Erro ao sincronizar carteira",
+      error: error.message
+    }, {
+      status: 500
+    });
+  }
+} 

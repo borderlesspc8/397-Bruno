@@ -1,0 +1,15 @@
+[2025-04-17T16:51:48.531Z] [INFO] [APP] Usando configuração padrão do Gestão Click a partir de variáveis de ambiente
+[2025-04-17T16:51:48.535Z] [INFO] [APP] Usando configuração padrão do Gestão Click a partir de variáveis de ambiente
+[2025-04-17T18:49:22.993Z] [INFO] [APP] Usando configuração padrão do Gestão Click a partir de variáveis de ambiente
+[2025-04-17T18:49:23.018Z] [INFO] [APP] Usando configuração padrão do Gestão Click a partir de variáveis de ambiente
+[2025-04-17T18:49:25.819Z] [INFO] [APP] Usando configuração padrão do Gestão Click a partir de variáveis de ambiente
+[2025-04-17T18:49:25.890Z] [INFO] [APP] Usando configuração padrão do Gestão Click a partir de variáveis de ambiente
+[2025-04-17T18:51:02.745Z] [INFO] [APP] Usando configuração padrão do Gestão Click a partir de variáveis de ambiente
+[2025-04-17T18:51:02.748Z] [INFO] [APP] Usando configuração padrão do Gestão Click a partir de variáveis de ambiente
+[2025-04-17T19:44:11.174Z] [INFO] [APP] Usando configuração padrão do Gestão Click a partir de variáveis de ambiente
+[2025-04-17T19:44:11.178Z] [INFO] [APP] Usando configuração padrão do Gestão Click a partir de variáveis de ambiente
+[2025-04-17T19:57:53.834Z] [ERRO] [APP] Erro ao processar dashboard de atendimentos: {"description":"Route /api/dashboard/atendimentos couldn't be rendered statically because it used `request.url`. See more info here: https://nextjs.org/docs/messages/dynamic-server-error","digest":"DYNAMIC_SERVER_USAGE"}
+[2025-04-17T21:31:27.504Z] [INFO] [APP] Usando configuração padrão do Gestão Click a partir de variáveis de ambiente
+[2025-04-17T21:31:27.519Z] [INFO] [APP] Usando configuração padrão do Gestão Click a partir de variáveis de ambiente
+[2025-04-17T21:34:53.781Z] [INFO] [APP] Usando configuração padrão do Gestão Click a partir de variáveis de ambiente
+[2025-04-17T21:34:53.789Z] [INFO] [APP] Usando configuração padrão do Gestão Click a partir de variáveis de ambiente
