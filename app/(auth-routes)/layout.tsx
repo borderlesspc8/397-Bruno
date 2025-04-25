@@ -1,17 +1,8 @@
-"use client";
-
-import { ProtectedLayout } from "@/app/_components/protected-layout";
-import Navbar from "@/app/_components/navbar";
-import { Sidebar } from "@/app/_components/sidebar";
-import { Toaster } from "sonner";
-import { useState, useEffect } from "react";
-import { Menu, X } from "lucide-react";
-import { Button } from "@/app/_components/ui/button";
-import NotificationAlert from "@/app/_components/notifications/notification-alert";
 import { redirect } from "next/navigation";
 import { getAuthSession } from "@/app/_lib/auth";
-import { SidebarNav } from "@/app/_components/sidebar-nav";
+import AuthLayoutClient from "./layout-client";
 
+// Componente do lado do servidor para verificação de autenticação
 export default async function AuthRoutesLayout({ children }: { children: React.ReactNode }) {
   const { user } = await getAuthSession();
 
@@ -48,14 +39,5 @@ export default async function AuthRoutesLayout({ children }: { children: React.R
     }
   ];
 
-  return (
-    <div className="flex min-h-screen flex-col">
-      <div className="flex flex-1">
-        <aside className="hidden w-64 shrink-0 border-r bg-muted/40 lg:block">
-          <SidebarNav items={menuItems} />
-        </aside>
-        <main className="flex-1">{children}</main>
-      </div>
-    </div>
-  );
+  return <AuthLayoutClient menuItems={menuItems}>{children}</AuthLayoutClient>;
 } 

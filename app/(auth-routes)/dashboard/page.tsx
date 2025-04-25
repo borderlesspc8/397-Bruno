@@ -4,16 +4,15 @@ import Link from "next/link";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/app/_components/ui/card";
 import { Button } from "@/app/_components/ui/button";
 import { BarChart, Users, LineChart, MousePointerClick, ArrowRight } from "lucide-react";
+import { DashboardHeader } from "./_components/DashboardHeader";
 
 export default function DashboardPage() {
   return (
     <div className="container mx-auto p-4 md:p-6">
-      <div className="flex flex-col gap-2 mb-8">
-        <h1 className="text-3xl font-bold">Dashboard</h1>
-        <p className="text-muted-foreground">
-          Bem-vindo ao seu painel de controle. Visualize indicadores importantes para o seu negócio.
-        </p>
-      </div>
+      <DashboardHeader 
+        title="Dashboard" 
+        description="Bem-vindo ao seu painel de controle. Visualize indicadores importantes para o seu negócio."
+      />
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         <Card className="border-2 border-primary/20 hover:border-primary/50 transition-colors">

@@ -73,6 +73,7 @@ export const config = {
     "/auth",
     "/auth/reset-password",
     "/dashboard/:path*",
+    "/dashboards",
     "/images/:path*"
   ],
 };
