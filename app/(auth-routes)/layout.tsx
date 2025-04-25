@@ -8,95 +8,54 @@ import { useState, useEffect } from "react";
 import { Menu, X } from "lucide-react";
 import { Button } from "@/app/_components/ui/button";
 import NotificationAlert from "@/app/_components/notifications/notification-alert";
+import { redirect } from "next/navigation";
+import { getAuthSession } from "@/app/_lib/auth";
+import { SidebarNav } from "@/app/_components/sidebar-nav";
 
-export default function AuthLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  const [isMobile, setIsMobile] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-  
-  // Detectar tamanho da tela e ajustar sidebar conforme necessário
-  useEffect(() => {
-    const handleResize = () => {
-      const mobile = window.innerWidth < 1024;
-      setIsMobile(mobile);
-      
-      // Em dispositivos móveis, a sidebar começa fechada
-      if (mobile && sidebarOpen) {
-        setSidebarOpen(false);
-      } else if (!mobile && !sidebarOpen) {
-        setSidebarOpen(true);
-      }
-    };
-    
-    // Executar uma vez na montagem do componente
-    handleResize();
-    
-    // Adicionar listener para redimensionamento
-    window.addEventListener('resize', handleResize);
-    
-    // Cleanup
-    return () => window.removeEventListener('resize', handleResize);
-  }, [sidebarOpen]);
-  
-  const toggleSidebar = () => {
-    setSidebarOpen(!sidebarOpen);
-  };
+export default async function AuthRoutesLayout({ children }: { children: React.ReactNode }) {
+  const { user } = await getAuthSession();
+
+  if (!user) {
+    redirect("/auth");
+  }
+
+  // Menu simplificado apenas com Dashboard para o primeiro lançamento
+  const menuItems = [
+    {
+      href: "/dashboard",
+      title: "Visão Geral",
+      icon: "dashboard",
+    },
+    {
+      href: "/dashboard/vendas",
+      title: "Vendas",
+      icon: "chart",
+    },
+    {
+      href: "/dashboard/vendedores",
+      title: "Vendedores",
+      icon: "users",
+    },
+    {
+      href: "/dashboard/consultores",
+      title: "Consultores",
+      icon: "user",
+    },
+    {
+      href: "/dashboard/atendimentos",
+      title: "Atendimentos",
+      icon: "headset",
+    }
+  ];
 
   return (
-    <ProtectedLayout>
-      <div className="flex h-screen overflow-hidden bg-background">
-        {/* Navbar fixo no topo */}
-        <div className="fixed top-0 left-0 right-0 z-40 h-14 border-b bg-background/95 backdrop-blur">
-          <Navbar />
-        </div>
-        
-        {/* Container principal abaixo do navbar */}
-        <div className="flex w-full mt-14 h-[calc(100vh-3.5rem)]">
-          {/* Sidebar */}
-          <div 
-            className={`fixed lg:relative z-30 h-full transition-all duration-300 ease-in-out
-              ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0 lg:w-20'}`}
-          >
-            <Sidebar />
-          </div>
-          
-          {/* Overlay para dispositivos móveis */}
-          {sidebarOpen && isMobile && (
-            <div 
-              className="fixed inset-0 z-20 bg-black/50 lg:hidden"
-              onClick={toggleSidebar}
-            />
-          )}
-          
-          {/* Botão de toggle para dispositivos móveis */}
-          <button
-            className="fixed top-16 left-4 z-40 lg:hidden rounded-full p-2 bg-background/80 backdrop-blur-sm border shadow-sm"
-            onClick={toggleSidebar}
-            aria-label={sidebarOpen ? "Fechar menu" : "Abrir menu"}
-          >
-            {sidebarOpen ? <X size={18} /> : <Menu size={18} />}
-          </button>
-          
-          {/* Conteúdo principal - reduzindo padding */}
-          <main 
-            className={`flex-1 overflow-y-auto p-2 transition-all duration-300`}
-          >
-            {children}
-          </main>
-        </div>
-        
-        {/* Componentes globais */}
-        <Toaster position="top-right" richColors />
-        <NotificationAlert 
-          position="bottom-right"
-          priorities={['HIGH', 'MEDIUM']}
-          types={['TRANSACTION']}
-          autoHide={false}
-        />
+    <div className="flex min-h-screen flex-col">
+      <div className="flex flex-1">
+        <aside className="hidden w-64 shrink-0 border-r bg-muted/40 lg:block">
+          <SidebarNav items={menuItems} />
+        </aside>
+        <main className="flex-1">{children}</main>
       </div>
-    </ProtectedLayout>
+    </div>
   );
 } 

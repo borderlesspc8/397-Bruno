@@ -7,7 +7,8 @@ export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
   const isAdminRoute = pathname.startsWith("/admin");
   const isAuthRoute = pathname.startsWith("/auth");
-  const isDashboardRoute = pathname.startsWith("/dashboard") || pathname.startsWith("/painel");
+  const isDashboardRoute = pathname.startsWith("/dashboard");
+  const isMarketingDashboardRoute = pathname === "/dashboards";
   const isLoginRoute = pathname === "/auth";
   const isResetPasswordRoute = pathname === "/auth/reset-password";
   
@@ -54,7 +55,7 @@ export async function middleware(request: NextRequest) {
 
   // Redirecionar usuários logados para fora de /auth (exceto reset-password que precisa ser acessível)
   if (isAuthRoute && isAuthenticated && !isResetPasswordRoute) {
-    return NextResponse.redirect(new URL("/painel", request.url));
+    return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 
   // Interceptar requisições para a imagem de avatar padrão não encontrada
@@ -72,7 +73,6 @@ export const config = {
     "/auth",
     "/auth/reset-password",
     "/dashboard/:path*",
-    "/painel/:path*",
     "/images/:path*"
   ],
 };

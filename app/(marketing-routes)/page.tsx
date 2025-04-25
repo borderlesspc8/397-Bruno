@@ -30,6 +30,9 @@ export default function LandingPage() {
             <Link href="#recursos" className="text-md font-medium text-primary/80 hover:text-primary transition-colors">
               Recursos
             </Link>
+            <Link href="/dashboards" className="text-md font-medium text-primary/80 hover:text-primary transition-colors">
+              Dashboards
+            </Link>
             <Link href="#planos" className="text-md font-medium text-primary/80 hover:text-primary transition-colors">
               Planos
             </Link>
@@ -122,12 +125,14 @@ export default function LandingPage() {
                 {
                   icon: <BarChart className="h-8 w-8 text-primary" />,
                   title: "Gestão de Transações",
-                  description: "Registre e categorize suas receitas e despesas com facilidade e precisão."
+                  description: "Registre e categorize suas receitas e despesas com facilidade e precisão.",
+                  link: "/dashboards"
                 },
                 {
                   icon: <PieChart className="h-8 w-8 text-primary" />,
-                  title: "Relatórios Detalhados",
-                  description: "Visualize gráficos e análises completas sobre seus gastos e investimentos."
+                  title: "Dashboards Inteligentes",
+                  description: "Visualize e analise dados de vendas, produtos e vendedores em tempo real.",
+                  link: "/dashboards"
                 },
                 {
                   icon: <CreditCard className="h-8 w-8 text-primary" />,
@@ -146,6 +151,11 @@ export default function LandingPage() {
                   </div>
                   <h3 className="text-xl font-semibold mb-2">{feature.title}</h3>
                   <p className="text-muted-foreground">{feature.description}</p>
+                  {feature.link && (
+                    <Link href={feature.link} className="inline-flex items-center mt-4 text-primary hover:underline">
+                      Saiba mais <ArrowRight className="ml-1 h-4 w-4" />
+                    </Link>
+                  )}
                 </div>
               ))}
             </div>

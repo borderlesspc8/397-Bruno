@@ -159,13 +159,16 @@ Esta decisão simplifica a arquitetura do sistema e foca nos recursos principais
 
 #### Adicionado
 - Implementação da rota principal de dashboard com indicadores
-- Indicadores de vendas totais
-- Indicadores de desempenho por vendedor
-- Ranking de produtos mais vendidos
-- Métricas de conversão de atendimentos
-- Configuração de CI/CD através do GitHub Actions
-- Estrutura de branches baseada no modelo GitFlow
-- Scripts para facilitar a inicialização do projeto
+- Página pública de apresentação dos dashboards (/dashboards)
+- Página autenticada com visão geral dos dashboards disponíveis
+- Preservação do código existente em branch de backup
+- Documentação específica para o primeiro lançamento
+
+#### Modificado
+- Simplificação do layout da área autenticada
+- Atualização do middleware para proteger apenas rotas necessárias
+- Foco específico nas rotas de dashboards
+- Remoção temporária de funcionalidades não essenciais para o primeiro lançamento
 
 #### Melhorado
 - Refatoração de código com foco em princípios SOLID
