@@ -308,3 +308,76 @@ if (resultado.temDadosSuficientes) {
 Quando uma venda não possui informação de custo (nem na venda nem em seus itens), ela é excluída do cálculo de lucro, em vez de usar uma estimativa que poderia distorcer o resultado.
 
 Se nenhuma venda no período tiver informação de custo, o sistema indica que não há dados suficientes para calcular o lucro.
+
+## GitHub Actions e CI/CD
+
+O ContaRápida utiliza GitHub Actions para automação de fluxos de trabalho de CI/CD (Integração Contínua e Entrega Contínua), garantindo qualidade de código e implantações consistentes.
+
+### Workflows Configurados
+
+#### Testes Automatizados
+
+O workflow `run-tests.yml` executa verificações de qualidade de código a cada push ou pull request para as branches `main` e `develop`:
+
+- **Verificação de tipos TypeScript**
+- **Linting de código**
+- **Testes unitários e de integração**
+- **Testes end-to-end** (apenas para merges na branch `main`)
+- **Publicação de relatórios de cobertura**
+
+Para executar os testes localmente:
+```bash
+npm run test:all
+```
+
+#### Deploy em Staging
+
+O workflow `deploy-staging.yml` realiza a implantação automática no ambiente de staging quando há pushes para a branch `develop`:
+
+- **Build e verificação de código**
+- **Deploy para ambiente de preview na Vercel**
+- **Notificações de status no Slack**
+
+#### Deploy em Produção
+
+O workflow `deploy-production.yml` gerencia implantações em produção quando há pushes para a branch `main`:
+
+- **Testes completos antes do deploy**
+- **Build otimizado para produção**
+- **Deploy para ambiente de produção na Vercel**
+- **Criação automática de tags e releases no GitHub**
+- **Notificações de status no Slack**
+
+#### Revisão de Pull Requests
+
+O workflow `pr-review.yml` auxilia na revisão de código em pull requests:
+
+- **Verificações de qualidade de código**
+- **Execução de testes para os arquivos modificados**
+- **Comentários automatizados com resumo da análise**
+
+#### Mesclagem Automática de PRs
+
+O workflow `main.yml` automatiza a mesclagem de pull requests aprovados:
+
+- **Mesclagem automática quando todos os requisitos são atendidos**
+- **Exige pelo menos uma aprovação de revisão**
+- **Respeita etiquetas como "automerge" e "work in progress"**
+
+### Configuração de Secrets
+
+Para o funcionamento completo dos workflows, configure as seguintes secrets no GitHub:
+
+- **VERCEL_TOKEN**: Token de API da Vercel
+- **VERCEL_ORG_ID**: ID da organização na Vercel
+- **VERCEL_PROJECT_ID**: ID do projeto na Vercel
+- **CODECOV_TOKEN**: Token para publicação de relatórios de cobertura
+- **SLACK_WEBHOOK_URL**: URL do webhook para notificações no Slack
+
+### Convenções de Branches
+
+- **main**: Código em produção
+- **develop**: Código pronto para a próxima release
+- **feature/***: Novas funcionalidades
+- **bugfix/***: Correções de bugs
+- **hotfix/***: Correções urgentes para produção

@@ -55,6 +55,9 @@ Este índice foi criado para facilitar a navegação pelos documentos de desenvo
 - [Análise do Fluxo de Importação do Gestão Click](./reports/analise-importacao-gestao-click.md) - ## Visão Geral O sistema realiza a importação de dados do Gestão Click...
 - [Recomendações Finais para Ajuste do Fluxo de Integração](./reports/recomendacoes-finais.md) - ## Resumo da Integração Atual com Gestão Click  A integração atual com...
 
+### Técnicos
+- [GitHub Actions - CI/CD](./tecnicos/github-actions.md) - Esta documentação detalha os workflows de CI/CD (Integração Contínua e Entrega Contínua) implementados com GitHub Actions no projeto ContaRápida.
+
 ## Documentação na Aplicação
 
 Além da documentação principal, existem README.md específicos em diversos diretórios da aplicação:
