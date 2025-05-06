@@ -57,6 +57,7 @@ Este índice foi criado para facilitar a navegação pelos documentos de desenvo
 
 ### Técnicos
 - [GitHub Actions - CI/CD](./tecnicos/github-actions.md) - Esta documentação detalha os workflows de CI/CD (Integração Contínua e Entrega Contínua) implementados com GitHub Actions no projeto ContaRápida.
+- [Guia de Implantação com Docker](./tecnicos/DEPLOY_DOCKER.md) - Este documento descreve o processo de implantação do ContaRápida em um servidor VPS utilizando Docker, Portainer e Traefik.
 
 ## Documentação na Aplicação
 
