@@ -14,15 +14,51 @@ Este guia explica como implantar o ContaRapida em um servidor VPS usando Docker,
 
 A configuração Docker inclui os seguintes arquivos:
 
-- `docker-compose.yml` - Configuração dos serviços
+- `docker-compose.yml` - Configuração dos serviços para desenvolvimento/implantação simples
+- `docker-stack.yml` - Configuração para implantação em Docker Swarm (produção)
 - `.env` - Variáveis de ambiente
 - `Dockerfile` - Configuração da imagem da aplicação
 - `scripts/entrypoint.sh` - Script de inicialização
-- `deploy-docker.sh` - Script de implantação automatizada
+- `deploy-docker.sh` - Script de implantação com Docker Compose
+- `deploy-swarm.sh` - Script de implantação com Docker Swarm
 
-## Instalação Rápida
+## Modos de Implantação
 
-Para uma implantação rápida, execute:
+Existem dois modos de implantação disponíveis:
+
+### 1. Docker Compose (Desenvolvimento/Servidor Único)
+
+Ideal para ambiente de desenvolvimento ou servidor único. Usa o arquivo `docker-compose.yml`.
+
+```bash
+# Execução rápida
+chmod +x deploy-docker.sh
+./deploy-docker.sh
+```
+
+### 2. Docker Swarm (Produção)
+
+Recomendado para ambiente de produção com alta disponibilidade. Usa o arquivo `docker-stack.yml`.
+
+```bash
+# Execução rápida
+chmod +x deploy-swarm.sh
+./deploy-swarm.sh
+```
+
+#### Principais diferenças:
+
+| Característica | Docker Compose | Docker Swarm |
+|----------------|---------------|-------------|
+| Escalabilidade | Servidor único | Múltiplos nós |
+| Formato da configuração | `container_name`, `build`, `restart` | `deploy`, `replicas`, `placement` |
+| Tipo de rede | bridge | overlay |
+| Implantação | `docker-compose up` | `docker stack deploy` |
+| Arquivos | docker-compose.yml | docker-stack.yml |
+
+## Instalação Rápida (Compose)
+
+Para uma implantação rápida com Docker Compose:
 
 ```bash
 # Dê permissão de execução ao script de implantação
@@ -37,6 +73,24 @@ O script vai:
 2. Configurar o arquivo `.env` se necessário
 3. Construir e iniciar os containers
 4. Exibir os logs da aplicação
+
+## Instalação Rápida (Swarm)
+
+Para uma implantação em produção com Docker Swarm:
+
+```bash
+# Dê permissão de execução ao script de implantação
+chmod +x deploy-swarm.sh
+
+# Execute o script
+./deploy-swarm.sh
+```
+
+O script vai:
+1. Verificar a presença do Docker e configurar o Swarm se necessário
+2. Construir a imagem Docker localmente
+3. Criar a rede overlay e volumes
+4. Implantar a stack no Swarm
 
 ## Configuração Manual
 
@@ -55,8 +109,9 @@ Importante editar:
 - `POSTGRES_PASSWORD` - Senha segura para o PostgreSQL
 - `NEXTAUTH_SECRET` - Chave secreta para autenticação
 
-### 2. Construa e inicie os containers
+### 2. Escolha o modo de implantação
 
+#### Para Docker Compose:
 ```bash
 # Construir imagens
 docker compose build
@@ -65,14 +120,39 @@ docker compose build
 docker compose up -d
 ```
 
+#### Para Docker Swarm:
+```bash
+# Iniciar o modo Swarm se ainda não estiver ativo
+docker swarm init
+
+# Construir a imagem localmente
+docker build -t contarapida:latest .
+
+# Criar rede overlay
+docker network create --driver overlay --attachable contarapida-network
+
+# Implantar a stack
+docker stack deploy -c docker-stack.yml contarapida
+```
+
 ### 3. Verificar o status
 
+#### Para Docker Compose:
 ```bash
 # Verificar status dos containers
 docker compose ps
 
 # Verificar logs da aplicação
 docker compose logs -f app
+```
+
+#### Para Docker Swarm:
+```bash
+# Verificar status dos serviços
+docker stack services contarapida
+
+# Verificar logs da aplicação
+docker service logs contarapida_app
 ```
 
 ## Serviços Incluídos
@@ -84,7 +164,7 @@ docker compose logs -f app
 
 ## Gerenciamento
 
-### Gerenciando os serviços
+### Gerenciando os serviços (Docker Compose)
 
 ```bash
 # Parar todos os serviços
@@ -98,8 +178,25 @@ docker compose logs -f app
 docker compose logs -f postgres
 ```
 
+### Gerenciando os serviços (Docker Swarm)
+
+```bash
+# Atualizar um serviço
+docker service update --image contarapida:latest contarapida_app
+
+# Escalar um serviço
+docker service scale contarapida_app=2
+
+# Visualizar logs
+docker service logs contarapida_app
+
+# Remover stack
+docker stack rm contarapida
+```
+
 ### Atualizando a aplicação
 
+#### Para Docker Compose:
 ```bash
 # Puxar as últimas alterações do repositório
 git pull
@@ -107,6 +204,18 @@ git pull
 # Reconstruir e reiniciar o container da aplicação
 docker compose build app
 docker compose up -d app
+```
+
+#### Para Docker Swarm:
+```bash
+# Puxar as últimas alterações do repositório
+git pull
+
+# Reconstruir a imagem
+docker build -t contarapida:latest .
+
+# Atualizar o serviço (mantém o mesmo número de réplicas)
+docker service update --image contarapida:latest contarapida_app
 ```
 
 ### Backup do banco de dados
@@ -129,27 +238,26 @@ cat backup_file.sql | docker compose exec -T postgres psql -U postgres contarapi
 ### Verificando logs
 
 ```bash
-# Ver todos os logs
+# Docker Compose
 docker compose logs
 
-# Ver logs de um serviço específico com acompanhamento
-docker compose logs -f app
+# Docker Swarm
+docker service logs contarapida_app
 ```
 
 ### Verificar status de saúde
 
 ```bash
-# Ver status dos containers
-docker compose ps
+# Docker Compose
+./scripts/check-health.sh
 
-# Verificar saúde da aplicação
-curl -k https://localhost/api/health
+# Docker Swarm
+docker stack ps contarapida
 ```
 
 ### Reiniciar completamente
 
-Se encontrar problemas persistentes:
-
+#### Para Docker Compose:
 ```bash
 # Parar todos os serviços
 docker compose down
@@ -161,6 +269,18 @@ docker compose down -v
 docker compose up -d
 ```
 
+#### Para Docker Swarm:
+```bash
+# Remover stack
+docker stack rm contarapida
+
+# Esperar um pouco
+sleep 10
+
+# Implantar novamente
+docker stack deploy -c docker-stack.yml contarapida
+```
+
 ## Personalização
 
 ### Configurando o Traefik
@@ -170,18 +290,18 @@ O Traefik está configurado para:
 - Emitir certificados SSL automaticamente
 - Proteger seu dashboard com autenticação básica
 
-Para personalizar, edite as seções do Traefik no arquivo `docker-compose.yml`.
+Para personalizar, edite as seções do Traefik no arquivo correspondente ao seu modo de implantação.
 
 ### Escalando a aplicação
 
-Para implantar em um cluster Docker Swarm:
+Para escalar a aplicação no Swarm:
 
 ```bash
-# Inicialize o swarm
-docker swarm init
+# Aumentar para 3 réplicas
+docker service scale contarapida_app=3
 
-# Implante a pilha
-docker stack deploy -c docker-compose.yml contarapida
+# Verificar status
+docker service ls
 ```
 
 ## Segurança

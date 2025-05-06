@@ -1,0 +1,138 @@
+# Configuração Docker Stack para ContaRapida (Modo Swarm)
+# Otimizado para implantação com 'docker stack deploy'
+
+version: '3.8'
+
+services:
+  # Traefik - Proxy reverso e gerenciador HTTPS
+  traefik:
+    image: traefik:v2.10
+    command:
+      - "--api.insecure=false"
+      - "--api.dashboard=true"
+      - "--providers.docker=true"
+      - "--providers.docker.swarmMode=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--certificatesresolvers.letsencryptresolver.acme.tlschallenge=true"
+      - "--certificatesresolvers.letsencryptresolver.acme.email=${ACME_EMAIL:-admin@contarapida.com}"
+      - "--certificatesresolvers.letsencryptresolver.acme.storage=/letsencrypt/acme.json"
+      - "--log.level=INFO"
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+      - traefik-certificates:/letsencrypt
+    networks:
+      - contarapida-network
+    deploy:
+      placement:
+        constraints:
+          - node.role == manager
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.traefik-dashboard.rule=Host(`traefik.${DOMAIN:-localhost}`)"
+        - "traefik.http.routers.traefik-dashboard.service=api@internal"
+        - "traefik.http.routers.traefik-dashboard.entrypoints=websecure"
+        - "traefik.http.routers.traefik-dashboard.tls.certresolver=letsencryptresolver"
+        - "traefik.http.routers.traefik-dashboard.middlewares=traefik-auth"
+        - "traefik.http.middlewares.traefik-auth.basicauth.users=${TRAEFIK_BASIC_AUTH:-admin:$$apr1$$talBPKvT$$zT3sAYOwMXXPx2jAlfMTQ1}"
+
+  # Aplicação principal ContaRapida
+  app:
+    image: contarapida:latest
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - contarapida-network
+    environment:
+      - NODE_ENV=production
+      - NEXT_TELEMETRY_DISABLED=1
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL}
+      - NEXTAUTH_URL=${NEXTAUTH_URL:-https://${DOMAIN}}
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:-suachavesecretaforte}
+      - DOMAIN=${DOMAIN:-contarapida.example.com}
+      - RESEND_API_KEY=${RESEND_API_KEY:-re_dummy_key}
+      - GROQ_API_KEY=${GROQ_API_KEY:-gsk_dummy_key}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-sk_dummy_key}
+      - GESTAO_CLICK_ACCESS_TOKEN=${GESTAO_CLICK_ACCESS_TOKEN:-dummy_token}
+      - GESTAO_CLICK_SECRET_ACCESS_TOKEN=${GESTAO_CLICK_SECRET_ACCESS_TOKEN:-dummy_secret}
+    volumes:
+      - app-logs:/app/logs
+      - app-uploads:/app/public/uploads
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+        max_attempts: 3
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.contarapida.rule=Host(`${DOMAIN:-localhost}`)"
+        - "traefik.http.routers.contarapida.entrypoints=websecure"
+        - "traefik.http.routers.contarapida.tls.certresolver=letsencryptresolver"
+        - "traefik.http.services.contarapida.loadbalancer.server.port=3000"
+        - "traefik.http.services.contarapida.loadbalancer.passHostHeader=true"
+        - "traefik.docker.network=contarapida-network"
+
+  # PostgreSQL
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
+      - POSTGRES_DB=${POSTGRES_DB:-contarapida}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - contarapida-network
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      restart_policy:
+        condition: on-failure
+      resources:
+        limits:
+          cpus: '0.3'
+          memory: 256M
+
+  # Redis
+  redis:
+    image: redis:7-alpine
+    command: redis-server --appendonly yes
+    volumes:
+      - redis-data:/data
+    networks:
+      - contarapida-network
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      restart_policy:
+        condition: on-failure
+      resources:
+        limits:
+          cpus: '0.2'
+          memory: 128M
+
+networks:
+  contarapida-network:
+    driver: overlay
+    attachable: true
+
+volumes:
+  traefik-certificates:
+  postgres-data:
+  redis-data:
+  app-logs:
+  app-uploads: 
