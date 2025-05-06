@@ -1,5 +1,6 @@
 # Configuração Docker Stack para ContaRapida (Modo Swarm)
-# Otimizado para implantação com 'docker stack deploy'
+# Otimizado para implantação com 'docker stack deploy' ou via Portainer
+# Versão autônoma - não requer scripts externos
 
 version: '3.8'
 
@@ -10,13 +11,20 @@ services:
     networks:
       - AcceleraNet
     environment:
+      # Configurações essenciais da aplicação
       - NODE_ENV=production
       - NEXT_TELEMETRY_DISABLED=1
+      
+      # Conexões de banco de dados e cache
       - DATABASE_URL=${DATABASE_URL}
       - REDIS_URL=${REDIS_URL}
+      
+      # Autenticação e domínio
       - NEXTAUTH_URL=${NEXTAUTH_URL:-https://${DOMAIN}}
       - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:-suachavesecretaforte}
       - DOMAIN=${DOMAIN:-contarapida.example.com}
+      
+      # APIs externas
       - RESEND_API_KEY=${RESEND_API_KEY:-re_dummy_key}
       - GROQ_API_KEY=${GROQ_API_KEY:-gsk_dummy_key}
       - OPENAI_API_KEY=${OPENAI_API_KEY:-sk_dummy_key}
@@ -27,14 +35,24 @@ services:
       - app-uploads:/app/public/uploads
     deploy:
       replicas: 1
+      update_config:
+        parallelism: 1
+        delay: 10s
+        order: start-first
+        failure_action: rollback
       restart_policy:
         condition: on-failure
         max_attempts: 3
+        delay: 5s
       resources:
         limits:
           cpus: '0.5'
           memory: 512M
+        reservations:
+          cpus: '0.1'
+          memory: 128M
       labels:
+        # Traefik configuração
         - "traefik.enable=true"
         - "traefik.http.routers.contarapida.rule=Host(`${DOMAIN:-localhost}`)"
         - "traefik.http.routers.contarapida.entrypoints=websecure"
@@ -42,11 +60,59 @@ services:
         - "traefik.http.services.contarapida.loadbalancer.server.port=3000"
         - "traefik.http.services.contarapida.loadbalancer.passHostHeader=true"
         - "traefik.docker.network=AcceleraNet"
+        
+        # Health check para monitoramento
+        - "traefik.http.middlewares.contarapida-retry.retry.attempts=3"
+        - "traefik.http.middlewares.contarapida-retry.retry.initialInterval=100ms"
+        
+        # Labels para Portainer (opcional, mas útil)
+        - "com.docker.stack.namespace=dashboard_personalprime"
+        - "com.docker.stack.image=mkadev/dashboard_personalprime:latest"
+
+  # Opcional: Traefik - descomente se não estiver usando o Traefik global
+  # traefik:
+  #   image: traefik:v2.10
+  #   networks:
+  #     - AcceleraNet
+  #   ports:
+  #     - "80:80"
+  #     - "443:443"
+  #   volumes:
+  #     - /var/run/docker.sock:/var/run/docker.sock:ro
+  #     - traefik-data:/letsencrypt
+  #   command:
+  #     - "--api.insecure=false"
+  #     - "--providers.docker=true"
+  #     - "--providers.docker.swarmMode=true"
+  #     - "--providers.docker.exposedbydefault=false"
+  #     - "--entrypoints.web.address=:80"
+  #     - "--entrypoints.websecure.address=:443"
+  #     - "--certificatesresolvers.letsencryptresolver.acme.tlschallenge=true"
+  #     - "--certificatesresolvers.letsencryptresolver.acme.email=${ACME_EMAIL:-admin@domain.com}"
+  #     - "--certificatesresolvers.letsencryptresolver.acme.storage=/letsencrypt/acme.json"
+  #   deploy:
+  #     placement:
+  #       constraints:
+  #         - node.role == manager
+  #     labels:
+  #       - "traefik.enable=true"
+  #       - "traefik.http.routers.traefik-dashboard.rule=Host(`traefik.${DOMAIN:-localhost}`)"
+  #       - "traefik.http.routers.traefik-dashboard.service=api@internal"
+  #       - "traefik.http.routers.traefik-dashboard.entrypoints=websecure"
+  #       - "traefik.http.routers.traefik-dashboard.tls.certresolver=letsencryptresolver"
 
 networks:
   AcceleraNet:
     external: true
+    # Se você preferir não depender de rede externa, altere para:
+    # driver: overlay
+    # attachable: true
+    # external: false
 
 volumes:
   app-logs:
-  app-uploads: 
+    driver: local
+  app-uploads:
+    driver: local
+  # traefik-data:
+  #   driver: local 

@@ -1,5 +1,6 @@
 # Configuração Docker Compose para ContaRapida
-# Nota: A partir do Docker Compose v2, o atributo 'version' não é mais necessário
+# Versão otimizada para Portainer ou implantação direta
+# Autônoma - não requer scripts externos
 
 version: '3.8'
 
@@ -8,12 +9,15 @@ services:
   traefik:
     image: traefik:v2.10
     container_name: traefik
+    restart: unless-stopped
     command:
       - "--api.insecure=false"
       - "--api.dashboard=true"
       - "--providers.docker=true"
       - "--providers.docker.exposedbydefault=false"
       - "--entrypoints.web.address=:80"
+      - "--entrypoints.web.http.redirections.entryPoint.to=websecure"
+      - "--entrypoints.web.http.redirections.entryPoint.scheme=https"
       - "--entrypoints.websecure.address=:443"
       - "--certificatesresolvers.letsencryptresolver.acme.tlschallenge=true"
       - "--certificatesresolvers.letsencryptresolver.acme.email=${ACME_EMAIL:-admin@contarapida.com}"
@@ -27,7 +31,6 @@ services:
       - "traefik-certificates:/letsencrypt"
     networks:
       - contarapida-network
-    restart: unless-stopped
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.traefik-dashboard.rule=Host(`traefik.${DOMAIN:-localhost}`)"
@@ -39,19 +42,24 @@ services:
 
   # Aplicação principal ContaRapida
   app:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: mkadev/dashboard_personalprime:latest
     container_name: contarapida-app
     restart: unless-stopped
     environment:
+      # Configurações do ambiente
       - NODE_ENV=production
       - NEXT_TELEMETRY_DISABLED=1
+      
+      # Conexões com serviços externos
       - DATABASE_URL=${DATABASE_URL}
       - REDIS_URL=${REDIS_URL}
+      
+      # Configuração de autenticação
       - NEXTAUTH_URL=${NEXTAUTH_URL:-https://${DOMAIN}}
       - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:-suachavesecretaforte}
       - DOMAIN=${DOMAIN:-contarapida.example.com}
+      
+      # API keys para serviços externos
       - RESEND_API_KEY=${RESEND_API_KEY:-re_dummy_key}
       - GROQ_API_KEY=${GROQ_API_KEY:-gsk_dummy_key}
       - OPENAI_API_KEY=${OPENAI_API_KEY:-sk_dummy_key}
@@ -61,8 +69,10 @@ services:
       - app-logs:/app/logs
       - app-uploads:/app/public/uploads
     depends_on:
-      - postgres
-      - redis
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     networks:
       - contarapida-network
     healthcheck:
@@ -79,6 +89,10 @@ services:
       - "traefik.http.services.contarapida.loadbalancer.server.port=3000"
       - "traefik.http.services.contarapida.loadbalancer.passHostHeader=true"
       - "traefik.docker.network=contarapida-network"
+      # Retry middleware para otimizar a experiência do usuário durante restarts
+      - "traefik.http.middlewares.app-retry.retry.attempts=3"
+      - "traefik.http.middlewares.app-retry.retry.initialInterval=100ms"
+      - "traefik.http.routers.contarapida.middlewares=app-retry"
 
   # PostgreSQL
   postgres:
@@ -88,6 +102,9 @@ services:
       - POSTGRES_USER=${POSTGRES_USER:-postgres}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
       - POSTGRES_DB=${POSTGRES_DB:-contarapida}
+      # Otimizar para produção
+      - POSTGRES_HOST_AUTH_METHOD=scram-sha-256
+      - POSTGRES_INITDB_ARGS=--auth-host=scram-sha-256
     volumes:
       - postgres-data:/var/lib/postgresql/data
     restart: unless-stopped
@@ -99,19 +116,21 @@ services:
       timeout: 5s
       retries: 5
       start_period: 10s
+    # Configurações recomendadas para produção
+    command: ["postgres", "-c", "max_connections=100", "-c", "shared_buffers=256MB", "-c", "work_mem=16MB"]
 
   # Redis
   redis:
     image: redis:7-alpine
     container_name: contarapida-redis
-    command: redis-server --appendonly yes
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-redispassword}
     volumes:
       - redis-data:/data
     restart: unless-stopped
     networks:
       - contarapida-network
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-redispassword}", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -123,7 +142,12 @@ networks:
 
 volumes:
   traefik-certificates:
+    driver: local
   postgres-data:
+    driver: local
   redis-data:
+    driver: local
   app-logs:
+    driver: local
   app-uploads:
+    driver: local
