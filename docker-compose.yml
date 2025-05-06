@@ -61,10 +61,8 @@ services:
       - app-logs:/app/logs
       - app-uploads:/app/public/uploads
     depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+      - postgres
+      - redis
     networks:
       - contarapida-network
     healthcheck:
