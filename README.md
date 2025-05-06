@@ -335,7 +335,8 @@ npm run test:all
 O workflow `deploy-staging.yml` realiza a implantação automática no ambiente de staging quando há pushes para a branch `develop`:
 
 - **Build e verificação de código**
-- **Deploy para ambiente de preview na Vercel**
+- **Criação e publicação de imagem Docker**
+- **Deploy automático via SSH para a VPS de staging**
 - **Notificações de status no Slack**
 
 #### Deploy em Produção
@@ -344,7 +345,8 @@ O workflow `deploy-production.yml` gerencia implantações em produção quando 
 
 - **Testes completos antes do deploy**
 - **Build otimizado para produção**
-- **Deploy para ambiente de produção na Vercel**
+- **Criação e publicação de imagem Docker**
+- **Deploy automático via SSH para a VPS de produção**
 - **Criação automática de tags e releases no GitHub**
 - **Notificações de status no Slack**
 
@@ -368,9 +370,16 @@ O workflow `main.yml` automatiza a mesclagem de pull requests aprovados:
 
 Para o funcionamento completo dos workflows, configure as seguintes secrets no GitHub:
 
-- **VERCEL_TOKEN**: Token de API da Vercel
-- **VERCEL_ORG_ID**: ID da organização na Vercel
-- **VERCEL_PROJECT_ID**: ID do projeto na Vercel
+- **DOCKER_USERNAME**: Usuário do Docker Hub
+- **DOCKER_PASSWORD**: Senha ou token do Docker Hub
+- **VPS_HOST**: Endereço IP ou hostname da VPS (staging)
+- **VPS_USERNAME**: Usuário SSH para acesso à VPS (staging)
+- **VPS_SSH_KEY**: Chave SSH privada (staging)
+- **VPS_PORT**: Porta SSH (staging)
+- **VPS_HOST_PROD**: Endereço IP ou hostname da VPS (produção)
+- **VPS_USERNAME_PROD**: Usuário SSH para acesso à VPS (produção)
+- **VPS_SSH_KEY_PROD**: Chave SSH privada (produção)
+- **VPS_PORT_PROD**: Porta SSH (produção)
 - **CODECOV_TOKEN**: Token para publicação de relatórios de cobertura
 - **SLACK_WEBHOOK_URL**: URL do webhook para notificações no Slack
 

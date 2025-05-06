@@ -60,18 +60,22 @@ steps:
   - Cache de dependências
   - Instalação de dependências
   - Geração do cliente Prisma
-  - Instalação da Vercel CLI
-  - Pull das configurações do ambiente de preview
-  - Build do projeto
-  - Deploy para ambiente de preview
+  - Build da aplicação
+  - Login no Docker Hub
+  - Configuração do Docker Buildx
+  - Build e Push da imagem Docker
+  - Deploy na VPS via SSH
   - Notificação no Slack
 ```
 
 **Variáveis de ambiente necessárias:**
-- `VERCEL_ORG_ID`
-- `VERCEL_PROJECT_ID`
-- `VERCEL_TOKEN`
-- `SLACK_WEBHOOK_URL`
+- `DOCKER_USERNAME`: Usuário do Docker Hub
+- `DOCKER_PASSWORD`: Senha do Docker Hub
+- `VPS_HOST`: Endereço IP ou hostname da VPS
+- `VPS_USERNAME`: Usuário SSH da VPS
+- `VPS_SSH_KEY`: Chave SSH privada para acesso à VPS
+- `VPS_PORT`: Porta SSH (geralmente 22)
+- `SLACK_WEBHOOK_URL`: URL para notificações no Slack
 
 ### 3. Deploy em Produção (`deploy-production.yml`)
 
@@ -83,7 +87,7 @@ Este workflow gerencia o deploy completo para o ambiente de produção, incluind
 
 **Jobs:**
 1. **Testes e Validação**: Executa todos os testes
-2. **Build e Deploy**: Realiza o deploy em produção
+2. **Build e Deploy**: Realiza o build da imagem Docker e deploy na VPS
 
 **Etapas principais do job de deploy:**
 ```yaml
@@ -93,10 +97,11 @@ steps:
   - Cache de dependências
   - Instalação de dependências
   - Geração do cliente Prisma
-  - Instalação da Vercel CLI
-  - Pull das configurações do ambiente de produção
-  - Build do projeto (modo produção)
-  - Deploy para ambiente de produção
+  - Build da aplicação
+  - Login no Docker Hub
+  - Configuração do Docker Buildx
+  - Build e Push da imagem Docker
+  - Deploy na VPS via SSH
   - Criação de tag de release
   - Criação de release no GitHub
   - Notificação no Slack
@@ -205,9 +210,16 @@ Para o funcionamento correto dos workflows, configure as seguintes secrets no Gi
 
 | Secret | Descrição | Onde obter |
 |--------|-----------|------------|
-| `VERCEL_TOKEN` | Token de API da Vercel | Dashboard da Vercel → Settings → Tokens |
-| `VERCEL_ORG_ID` | ID da organização na Vercel | Dashboard da Vercel → Settings → General |
-| `VERCEL_PROJECT_ID` | ID do projeto na Vercel | Dashboard da Vercel → Project Settings |
+| `DOCKER_USERNAME` | Usuário do Docker Hub | Página de perfil do Docker Hub |
+| `DOCKER_PASSWORD` | Senha ou token do Docker Hub | Configurações de segurança do Docker Hub |
+| `VPS_HOST` | Endereço IP ou hostname da VPS (staging) | Painel de controle do provedor de VPS |
+| `VPS_USERNAME` | Usuário SSH para acesso à VPS (staging) | Configuração do servidor |
+| `VPS_SSH_KEY` | Chave SSH privada (staging) | Gerada com ssh-keygen |
+| `VPS_PORT` | Porta SSH (staging) | Geralmente 22 |
+| `VPS_HOST_PROD` | Endereço IP ou hostname da VPS (produção) | Painel de controle do provedor de VPS |
+| `VPS_USERNAME_PROD` | Usuário SSH para acesso à VPS (produção) | Configuração do servidor |
+| `VPS_SSH_KEY_PROD` | Chave SSH privada (produção) | Gerada com ssh-keygen |
+| `VPS_PORT_PROD` | Porta SSH (produção) | Geralmente 22 |
 | `CODECOV_TOKEN` | Token para relatórios de cobertura | Dashboard do Codecov → Settings → Repository Upload Token |
 | `SLACK_WEBHOOK_URL` | URL para notificações no Slack | Dashboard do Slack → Apps → Incoming Webhooks |
 
@@ -247,5 +259,5 @@ Exemplos:
 - [Documentação GitHub Actions](https://docs.github.com/pt/actions)
 - [Workflow Syntax for GitHub Actions](https://docs.github.com/pt/actions/reference/workflow-syntax-for-github-actions)
 - [GitHub Actions Marketplace](https://github.com/marketplace?type=actions)
-- [Vercel CLI](https://vercel.com/docs/cli)
+- [Docker](https://docs.docker.com/)
 - [Conventional Commits](https://www.conventionalcommits.org/pt-br/v1.0.0/) 

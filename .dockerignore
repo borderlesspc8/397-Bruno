@@ -1,0 +1,74 @@
+# Arquivos e diretórios do sistema
+.git
+.github
+.gitignore
+.gitattributes
+.idea
+.vscode
+*.sublime-workspace
+*.sublime-project
+.DS_Store
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.production
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Dependências e arquivos de build
+node_modules
+.pnp
+.pnp.js
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+.next/cache
+coverage
+.swc
+.nyc_output
+test-results
+playwright-report
+.playwright
+
+# Docker
+.dockerignore
+Dockerfile
+docker-compose.yml
+docker-compose.*.yml
+.postgres-data
+.redis
+
+# Documentação
+docs
+README.md
+LICENSE
+CHANGELOG.md
+*.md
+
+# Configuração e recursos de desenvolvimento
+.github
+.husky
+.eslintrc
+.eslintrc.js
+.eslintrc.json
+.prettierrc
+.prettierrc.js
+jest.config.js
+tsconfig.json
+next.config.js
+
+# Arquivos específicos do projeto que não devem ir para a imagem
+nginx
+e2e
+cypress
+tests
+!next.config.js
+!tsconfig.json
+
+# Manter
+!.env.example 

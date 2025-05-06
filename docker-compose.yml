@@ -1,17 +1,70 @@
-version: "3"
+version: '3.8'
 
 services:
-  postgres:
-    image: postgres:latest
-    container_name: finance-ai-database
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: finance-ai
+  app:
+    image: ${DOCKER_USERNAME:-usuario}/contarapida:${TAG:-latest}
+    restart: always
     ports:
-      - "5432:5432"
+      - "${PORT:-3000}:3000"
+    depends_on:
+      - postgres
+      - redis
+    environment:
+      - DATABASE_URL=postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/contarapida
+      - REDIS_URL=redis://redis:6379
+      - NODE_ENV=production
+      - NEXTAUTH_URL=${NEXTAUTH_URL:-http://localhost:3000}
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
+    networks:
+      - contarapida-network
     volumes:
-      - ./.postgres-data:/var/lib/postgresql/data
+      - uploads:/app/uploads
+    
+  postgres:
+    image: postgres:15
+    restart: always
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
+      - POSTGRES_DB=contarapida
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - contarapida-network
+    
+  redis:
+    image: redis:7
+    restart: always
+    command: redis-server --appendonly yes
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - contarapida-network
+
+  nginx:
+    image: nginx:alpine
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d
+      - ./nginx/ssl:/etc/nginx/ssl
+      - ./nginx/www:/var/www/html
+    depends_on:
+      - app
+    networks:
+      - contarapida-network
+
+networks:
+  contarapida-network:
+    driver: bridge
 
 volumes:
-  .postgres-data:
+  postgres-data:
+  redis-data:
+  uploads:
