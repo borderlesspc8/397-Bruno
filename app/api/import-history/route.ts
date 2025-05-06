@@ -3,6 +3,10 @@ import { auth } from "@/app/_lib/auth";
 import { ImportHistoryService } from "@/app/_services/import-history-service";
 import { ImportStatus } from "@/app/types/import-history";
 
+// Configuração para forçar o comportamento dinâmico
+export const dynamic = "force-dynamic";
+
+
 /**
  * API para obter histórico de importações
  */

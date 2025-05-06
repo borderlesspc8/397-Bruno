@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { processarDatasURL } from '@/app/_utils/dates';
 import { BetelTecnologiaService } from '@/app/_services/betelTecnologia';
 
+// Configuração para forçar o comportamento dinâmico
+export const dynamic = "force-dynamic";
+
+
 /**
  * GET /api/dashboard/produtos/mais-vendidos
  * Busca os produtos mais vendidos a partir das vendas reais da API

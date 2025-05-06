@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { processarDatasURL } from '@/app/_utils/dates';
 import { BetelTecnologiaService } from '@/app/_services/betelTecnologia';
 
+// Configuração para forçar o comportamento dinâmico
+export const dynamic = "force-dynamic";
+
+
 /**
  * @api {get} /api/dashboard/vendas/vendedor Buscar vendas por vendedor
  * @apiDescription Endpoint para buscar vendas de um vendedor específico no período

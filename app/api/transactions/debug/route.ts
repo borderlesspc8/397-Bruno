@@ -3,6 +3,10 @@ import { db } from "@/app/_lib/prisma";
 import { getAuthSession } from "@/app/_lib/auth";
 import { Prisma } from "@prisma/client";
 
+// Configuração para forçar o comportamento dinâmico
+export const dynamic = "force-dynamic";
+
+
 export async function GET(request: NextRequest) {
   try {
     // Verificar autenticação

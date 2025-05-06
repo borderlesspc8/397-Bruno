@@ -1,16 +1,65 @@
 import { NextAuthOptions } from "next-auth";
-import GoogleProvider from "next-auth/providers/google";
 import CredentialsProvider from "next-auth/providers/credentials";
+import EmailProvider from "next-auth/providers/email";
 import { prisma } from "./prisma";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import { SubscriptionPlan } from "../types";
+import { compare } from "bcrypt";
+import { isDemoMode, demoConfig } from "./config";
+import { User } from "next-auth";
+import { sendEmail } from "./email";
 
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma) as any,
   providers: [
-    GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID || "",
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
+    EmailProvider({
+      server: {
+        host: process.env.EMAIL_SERVER_HOST,
+        port: Number(process.env.EMAIL_SERVER_PORT),
+        auth: {
+          user: process.env.EMAIL_SERVER_USER,
+          pass: process.env.EMAIL_SERVER_PASSWORD,
+        },
+      },
+      from: process.env.EMAIL_FROM || "noreply@acceleracrm.com.br",
+      async sendVerificationRequest({ identifier: email, url }) {
+        try {
+          // Envio personalizado usando nossa função de envio de email
+          await sendEmail({
+            to: email,
+            subject: "Acesso ao Conta Rápida",
+            html: `
+              <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                <h1 style="color: #3b82f6; text-align: center;">Conta Rápida</h1>
+                <div style="background-color: #f9fafb; border-radius: 8px; padding: 20px; margin-top: 20px;">
+                  <h2 style="color: #111827;">Seu link de acesso</h2>
+                  <p style="color: #4b5563; line-height: 1.5;">
+                    Clique no botão abaixo para acessar sua conta no Conta Rápida. 
+                    Este link é válido por 10 minutos.
+                  </p>
+                  <div style="text-align: center; margin: 30px 0;">
+                    <a href="${url}" 
+                       style="background-color: #3b82f6; color: white; padding: 12px 24px; 
+                              text-decoration: none; border-radius: 4px; font-weight: bold;
+                              display: inline-block;">
+                      Acessar minha conta
+                    </a>
+                  </div>
+                  <p style="color: #4b5563; line-height: 1.5;">
+                    Se você não solicitou este link, ignore este e-mail.
+                  </p>
+                  <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb; text-align: center; color: #9ca3af; font-size: 14px;">
+                    <p>© ${new Date().getFullYear()} Conta Rápida - Todos os direitos reservados</p>
+                  </div>
+                </div>
+              </div>
+            `,
+          });
+        } catch (error) {
+          console.error("Erro ao enviar email de verificação:", error);
+          throw new Error("Erro ao enviar email de verificação");
+        }
+      },
     }),
     CredentialsProvider({
       name: "Credentials",
@@ -18,22 +67,77 @@ export const authOptions: NextAuthOptions = {
         email: { label: "E-mail", type: "email" },
         password: { label: "Senha", type: "password" },
       },
-      async authorize(credentials, req) {
-        // Adicione sua lógica de autorização aqui
+      async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
+          console.log("Credenciais não fornecidas");
           return null;
         }
 
-        // Exemplo básico, substitua por sua lógica de autenticação real
-        if (credentials.email === "admin@example.com" && credentials.password === "password") {
-          return {
-            id: "1",
-            name: "Admin",
-            email: "admin@example.com",
-          } as any;
-        }
+        try {
+          console.log(`Tentativa de login: ${credentials.email}, Modo demo: ${isDemoMode}`);
+          
+          // Modo de demonstração
+          if (isDemoMode && credentials.email === demoConfig.email && credentials.password === "123456") {
+            console.log("Tentando autenticar usuário demo");
+            
+            // Buscar o usuário demo no banco de dados
+            const demoUser = await prisma.user.findUnique({
+              where: { email: demoConfig.email }
+            });
 
+            if (!demoUser) {
+              console.log("Usuário demo não encontrado no banco de dados");
+              return null;
+            }
+            
+            console.log("Usuário demo encontrado, autenticando...");
+            // NextAuth espera exatamente este formato
+            return {
+              id: demoUser.id,
+              email: demoUser.email,
+              name: demoUser.name,
+              image: demoUser.image
+            } as User;
+          }
+
+          // Autenticação para usuários regulares
+          console.log("Autenticando usuário regular");
+          const user = await prisma.user.findUnique({
+            where: { email: credentials.email }
+          });
+
+          if (!user) {
+            console.log("Usuário não encontrado");
+            return null;
+          }
+
+          if (!user.password) {
+            console.log("Usuário não possui senha definida");
+            return null;
+          }
+
+          const isPasswordValid = await compare(
+            credentials.password,
+            user.password
+          );
+
+          if (!isPasswordValid) {
+            console.log("Senha inválida");
+            return null;
+          }
+
+          console.log("Usuário autenticado com sucesso");
+          // NextAuth espera exatamente este formato
+          return {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            image: user.image
+          } as User;
+        } catch (error) {
+          console.error("Erro de autenticação:", error);
         return null;
+        }
       },
     }),
   ],
@@ -41,10 +145,6 @@ export const authOptions: NextAuthOptions = {
   session: {
     strategy: "jwt",
     maxAge: 30 * 24 * 60 * 60, // 30 dias
-  },
-  jwt: {
-    // Usar o padrão encode/decode para evitar problemas de compatibilidade
-    // Isso pode corrigir o erro "Invalid Compact JWE"
   },
   cookies: {
     sessionToken: {
@@ -59,8 +159,9 @@ export const authOptions: NextAuthOptions = {
   },
   pages: {
     signIn: "/auth",
-    signOut: "/auth/logout",
+    signOut: "/auth",
     error: "/auth/error",
+    verifyRequest: "/auth/verify-request", // Página exibida após envio do magic link
   },
   callbacks: {
     async session({ session, token }) {
@@ -96,6 +197,7 @@ export const authOptions: NextAuthOptions = {
                 break;
               case 'ENTERPRISE':
                 planValue = SubscriptionPlan.ENTERPRISE;
+                console.log("Plano ENTERPRISE definido para o usuário:", token.sub);
                 break;
               default:
                 planValue = SubscriptionPlan.FREE;
@@ -111,8 +213,21 @@ export const authOptions: NextAuthOptions = {
               session.user.planExpiresAt = subscription.endDate;
             }
           } else {
-            // Se não houver assinatura, definir o plano padrão como FREE
-            session.user.subscriptionPlan = SubscriptionPlan.FREE;
+            // Modo de demonstração - usuário demo recebe plano premium
+            if (isDemoMode && session.user.email === demoConfig.email) {
+              session.user.subscriptionPlan = SubscriptionPlan.PREMIUM;
+              session.user.isActive = true;
+            } else {
+              // Usuários sem assinatura recebem plano FREE
+              session.user.subscriptionPlan = SubscriptionPlan.FREE;
+              session.user.isActive = true;
+            }
+          }
+          
+          // FORÇAR PLANO ENTERPRISE PARA ADMINISTRADOR
+          if (session.user.email === "mvcas95@gmail.com") {
+            console.log("Forçando plano ENTERPRISE para o administrador");
+            session.user.subscriptionPlan = SubscriptionPlan.ENTERPRISE;
             session.user.isActive = true;
           }
         } catch (error) {
@@ -130,6 +245,14 @@ export const authOptions: NextAuthOptions = {
       }
       return token;
     },
+    async redirect({ url, baseUrl }) {
+      // Personaliza os redirecionamentos para garantir que a verificação funcione
+      if (url.startsWith('/api/auth/callback') || url.startsWith('/auth/verify')) {
+        return `${baseUrl}/auth/verify`;
+      }
+      if (url.startsWith(baseUrl)) return url;
+      return baseUrl;
+    },
   },
-  debug: process.env.NODE_ENV === "development",
+  debug: process.env.NODE_ENV !== "production", // Habilitar apenas em desenvolvimento
 }; 

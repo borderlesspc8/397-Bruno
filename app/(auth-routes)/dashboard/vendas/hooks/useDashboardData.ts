@@ -36,6 +36,10 @@ export interface DashboardData {
     faturamento: number;
     vendas: number;
     ticketMedio: number;
+    custo?: number;
+    descontos?: number;
+    fretes?: number;
+    lucro?: number;
   };
 }
 
@@ -136,15 +140,56 @@ export function useDashboardData(dateRange: DateRange | undefined) {
     });
     
     // Calcular totais a partir dos vendedores
-    const totalFaturamento = vendedoresMapeados.reduce((acc: number, item: any) => 
-      acc + item.faturamento, 0);
+    const totalFaturamento = parseFloat(vendedoresMapeados.reduce((acc: number, item: any) => 
+      acc + item.faturamento, 0).toFixed(2));
     
     const totalVendas = vendedoresMapeados.reduce((acc: number, item: any) => 
       acc + item.vendas, 0);
     
     const ticketMedio = totalVendas > 0 
-      ? totalFaturamento / totalVendas 
+      ? parseFloat((totalFaturamento / totalVendas).toFixed(2))
       : 0;
+    
+    // Verificar dados contra o total real da API para garantir consistência
+    const apiTotalFaturamento = data.totalValor || data.totalFaturamento;
+    const faturamentoFinal = apiTotalFaturamento ? parseFloat(Number(apiTotalFaturamento).toFixed(2)) : totalFaturamento;
+    
+    console.log(`Faturamento calculado: ${totalFaturamento}, Faturamento da API: ${faturamentoFinal}`);
+    
+    // Calcular valores adicionais a partir das vendas
+    let totalCusto = 0;
+    let totalDescontos = 0;
+    let totalFretes = 0;
+    
+    // Processar cada venda para extrair custos, descontos e fretes
+    if (data.vendas && Array.isArray(data.vendas)) {
+      data.vendas.forEach((venda: any) => {
+        // Considerar apenas vendas Concretizada e Em andamento
+        if (venda.nome_situacao !== "Concretizada" && venda.nome_situacao !== "Em andamento") {
+          return;
+        }
+        
+        // Somar custos
+        if (venda.valor_custo) {
+          totalCusto += parseFloat(venda.valor_custo);
+        }
+        
+        // Somar descontos
+        if (venda.desconto_valor) {
+          totalDescontos += parseFloat(venda.desconto_valor);
+        }
+        
+        // Somar fretes
+        if (venda.valor_frete) {
+          totalFretes += parseFloat(venda.valor_frete);
+        }
+      });
+    }
+    
+    // Calcular lucro
+    const lucroCalculado = faturamentoFinal - totalCusto - totalDescontos + totalFretes;
+    
+    console.log(`Custos: ${totalCusto}, Descontos: ${totalDescontos}, Fretes: ${totalFretes}, Lucro calculado: ${lucroCalculado}`);
     
     return {
       vendedores: vendedoresMapeados,
@@ -158,9 +203,13 @@ export function useDashboardData(dateRange: DateRange | undefined) {
         semanal: []
       },
       totais: {
-        faturamento: totalFaturamento,
+        faturamento: faturamentoFinal,
         vendas: totalVendas,
-        ticketMedio: ticketMedio
+        ticketMedio: ticketMedio,
+        custo: totalCusto,
+        descontos: totalDescontos,
+        fretes: totalFretes,
+        lucro: lucroCalculado
       }
     };
   }, []);

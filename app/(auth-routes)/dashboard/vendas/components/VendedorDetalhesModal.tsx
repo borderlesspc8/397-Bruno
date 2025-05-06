@@ -6,6 +6,20 @@ import { Pagination, PaginationContent, PaginationItem, PaginationNext, Paginati
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/app/_components/ui/dialog';
 import { VendasService } from "@/app/_services/vendas";
 import { Vendedor as BaseVendedor } from "@/app/_services/betelTecnologia";
+import { Avatar, AvatarFallback, AvatarImage } from "@/app/_components/ui/avatar";
+import { 
+  BarChart2, 
+  Calendar, 
+  DollarSign, 
+  Mail, 
+  MapPin, 
+  Phone, 
+  Store, 
+  Trophy, 
+  User 
+} from "lucide-react";
+import { formatarDinheiro } from "@/app/_utils/formatters";
+import VendedorTabelaVendas from "./VendedorTabelaVendas";
 
 // Interface estendida com propriedades adicionais
 interface Vendedor extends BaseVendedor {
@@ -17,6 +31,7 @@ interface VendedorDetalhesModalProps {
   vendedor: Vendedor | null;
   aberto: boolean;
   onOpenChange: (aberto: boolean) => void;
+  onClose?: () => void;
   dataInicio: Date;
   dataFim: Date;
   totalFaturamento: number;
@@ -27,6 +42,7 @@ export function VendedorDetalhesModal({
   vendedor,
   aberto,
   onOpenChange,
+  onClose,
   dataInicio,
   dataFim,
   totalFaturamento,
@@ -94,10 +110,18 @@ export function VendedorDetalhesModal({
     }
   };
   
+  // Função para lidar com o fechamento do modal
+  const handleOpenChange = (open: boolean) => {
+    onOpenChange(open);
+    if (!open && onClose) {
+      onClose();
+    }
+  };
+  
   if (!vendedor) return null;
   
   return (
-    <Dialog open={aberto} onOpenChange={onOpenChange}>
+    <Dialog open={aberto} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
           <DialogTitle className="text-xl font-semibold">

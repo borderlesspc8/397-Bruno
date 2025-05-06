@@ -4,6 +4,10 @@ import { authOptions } from '@/app/_lib/auth-options';
 import { GestaoClickClientService } from '@/app/_services/gestao-click-client-service';
 import { prisma } from '@/app/_lib/prisma';
 
+// Configuração para forçar o comportamento dinâmico
+export const dynamic = "force-dynamic";
+
+
 // Definir interfaces para tipagem
 interface Cliente {
   id: string;

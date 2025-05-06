@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAuthSession } from "@/app/_lib/auth";
 import { TransactionAttachmentService } from "@/app/_services/transaction-attachment-service";
 
+// Configuração para forçar o comportamento dinâmico
+export const dynamic = "force-dynamic";
+
+
 // API para listar anexos de uma transação
 export async function GET(request: NextRequest) {
   try {

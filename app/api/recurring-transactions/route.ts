@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAuthSession } from "@/app/_lib/auth";
 import { RecurringTransactionService, RecurringFrequency } from "@/app/_services/recurring-transaction-service";
 
+// Configuração para forçar o comportamento dinâmico
+export const dynamic = "force-dynamic";
+
+
 // GET - Listar transações recorrentes
 export async function GET(request: NextRequest) {
   try {

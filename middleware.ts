@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getToken } from "next-auth/jwt";
 import type { NextRequest } from "next/server";
+import { SubscriptionPlan } from "./app/types";
 
 export async function middleware(request: NextRequest) {
   // Verifique se a rota requer autenticação antes de obter o token
@@ -10,14 +11,24 @@ export async function middleware(request: NextRequest) {
   const isDashboardRoute = pathname.startsWith("/dashboard");
   const isMarketingDashboardRoute = pathname === "/dashboards";
   const isLoginRoute = pathname === "/auth";
-  const isResetPasswordRoute = pathname === "/auth/reset-password";
+  const isResetPasswordRoute = pathname.startsWith("/auth/reset-password");
+  
+  // Rotas específicas para o magic link e autenticação via email
+  const isVerifyRoute = pathname.startsWith("/auth/verify");
+  const isVerifyRequestRoute = pathname.startsWith("/auth/verify-request");
+  const isApiAuthRoute = pathname.startsWith("/api/auth");
+  
+  // Evitar autenticação para rotas específicas de verificação por email
+  if (isVerifyRoute || isVerifyRequestRoute) {
+    return NextResponse.next();
+  }
   
   // Só buscar o token quando necessário (performance)
   let token = null;
   
   try {
     // Verificamos autenticação apenas para rotas que realmente precisam
-    if (isAdminRoute || isDashboardRoute || (isAuthRoute && !isResetPasswordRoute)) {
+    if (isAdminRoute || isDashboardRoute || (isAuthRoute && !isResetPasswordRoute && !isVerifyRoute && !isVerifyRequestRoute)) {
       token = await getToken({ 
         req: request,
         secret: process.env.NEXTAUTH_SECRET 
@@ -53,9 +64,33 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(redirectUrl);
   }
 
-  // Redirecionar usuários logados para fora de /auth (exceto reset-password que precisa ser acessível)
-  if (isAuthRoute && isAuthenticated && !isResetPasswordRoute) {
-    return NextResponse.redirect(new URL("/dashboard", request.url));
+  // Verificar se o usuário é da versão FREE e tentar acessar qualquer rota protegida que não seja dashboard
+  if (isAuthenticated && token?.subscriptionPlan === SubscriptionPlan.FREE) {
+    // Lista de rotas permitidas para usuários FREE (apenas dashboard)
+    const allowedRoutes = [
+      "/dashboard", 
+      "/dashboard/index",
+      "/dashboard/main",
+      "/dashboard/vendas"
+    ];
+    
+    // Verificar se a rota atual está na lista de permitidas ou começa com alguma delas
+    const isAllowedRoute = allowedRoutes.some(route => 
+      pathname === route || 
+      (pathname.startsWith(`${route}/`) && route !== "/dashboard") ||
+      pathname === "/dashboard"
+    );
+    
+    // Se não for uma rota permitida e não for a rota de auth ou a raiz, redirecionar para dashboard/vendas
+    if (!isAllowedRoute && !isAuthRoute && !pathname.startsWith("/api/") && pathname !== "/") {
+      console.log(`[MIDDLEWARE] Usuário FREE tentando acessar rota restrita: ${pathname}. Redirecionando para /dashboard/vendas`);
+      return NextResponse.redirect(new URL("/dashboard/vendas", request.url));
+    }
+  }
+
+  // Redirecionar usuários logados para fora de /auth (exceto reset-password e rotas de verificação)
+  if (isAuthRoute && isAuthenticated && !isResetPasswordRoute && !isVerifyRoute && !isVerifyRequestRoute) {
+    return NextResponse.redirect(new URL("/dashboard/vendas", request.url));
   }
 
   // Interceptar requisições para a imagem de avatar padrão não encontrada
@@ -69,11 +104,7 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/admin/:path*",
-    "/auth",
-    "/auth/reset-password",
-    "/dashboard/:path*",
-    "/dashboards",
-    "/images/:path*"
+    // Modificado para permitir explicitamente as rotas de verificação e callback
+    "/((?!api/auth/callback|api/auth|api/user|api/dashboard|_next/static|_next/image|assets|public|favicon.ico).*)",
   ],
 };

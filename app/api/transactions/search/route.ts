@@ -3,7 +3,10 @@ import { db } from "@/app/_lib/prisma";
 import { getAuthSession } from "@/app/_lib/auth";
 import { startOfMonth, endOfMonth, format, parseISO, isAfter, isBefore, isEqual } from "date-fns";
 import { BBIntegrationService } from "@/app/_lib/bb-integration";
-import { dynamic, fetchCache, revalidate } from '../../_utils/dynamic-config';
+
+// Configuração para forçar o comportamento dinâmico
+export const dynamic = "force-dynamic";
+
 
 export async function GET(request: NextRequest) {
   try {
@@ -482,5 +485,4 @@ function hashString(str: string): string {
   return Math.abs(hash).toString().padStart(8, '0');
 }
 
-// Exportar as configurações para esta rota
-export { dynamic, fetchCache, revalidate }; 
+// Configuração de rota dinâmica já declarada no topo do arquivo

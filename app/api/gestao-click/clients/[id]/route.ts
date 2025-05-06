@@ -2,8 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthSession } from '@/app/_lib/auth';
 import { GestaoClickClientService } from '@/app/_services/gestao-click-client-service';
 
-// Marcador para forçar o comportamento dinâmico
+// Configuração para forçar o comportamento dinâmico
 export const dynamic = "force-dynamic";
+
+
 
 /**
  * GET /api/gestao-click/clients/[id]

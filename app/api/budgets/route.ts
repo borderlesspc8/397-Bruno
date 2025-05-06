@@ -3,6 +3,10 @@ import { z } from "zod";
 import { auth } from "@/app/_lib/auth";
 import { prisma } from "@/app/_lib/prisma";
 
+// Configuração para forçar o comportamento dinâmico
+export const dynamic = "force-dynamic";
+
+
 // Schema de validação para criação e atualização de orçamentos
 const budgetSchema = z.object({
   title: z.string().min(3, "O título deve ter pelo menos 3 caracteres"),

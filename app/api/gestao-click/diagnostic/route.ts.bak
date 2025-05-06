@@ -1,0 +1,374 @@
+import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/app/_lib/auth-options";
+import { prisma } from "@/app/_lib/prisma";
+import { GestaoClickClientService } from "@/app/_services/gestao-click-client-service";
+
+// Configuração para forçar o comportamento dinâmico
+export const dynamic = "force-dynamic";
+
+
+export const dynamic = "force-dynamic";
+
+/**
+ * GET /api/gestao-click/diagnostic
+ * Endpoint de diagnóstico da integração com o Gestão Click
+ * Retorna status de conexão e estatísticas dos dados importados
+ */
+export async function GET(req: NextRequest) {
+  try {
+    // Verificar se é teste ou requer autenticação completa
+    const searchParams = req.nextUrl.searchParams;
+    const isTest = searchParams.get("test") === "true";
+    let userId = searchParams.get("userId") || "";
+
+    // Se não for teste, exigir autenticação
+    if (!isTest) {
+      const session = await getServerSession(authOptions);
+      if (!session?.user?.id) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: "Não autorizado",
+            message: "Este endpoint requer autenticação ou parâmetro de teste"
+          },
+          { status: 401 }
+        );
+      }
+      userId = session.user.id;
+    } else if (!userId) {
+      // Se for teste mas não tiver userId, usar valor padrão
+      userId = "1";
+    }
+
+    // Parâmetros adicionais
+    const apiKey = searchParams.get("apiKey") || process.env.GESTAO_CLICK_API_KEY || "";
+    const secretToken = searchParams.get("secretToken") || process.env.GESTAO_CLICK_SECRET_TOKEN || "";
+    const apiUrl = searchParams.get("apiUrl") || process.env.GESTAO_CLICK_API_URL || "https://api.beteltecnologia.com";
+
+    // Inicializar serviço
+    const gestaoClickService = new GestaoClickClientService({
+      apiKey,
+      secretToken,
+      apiUrl,
+      userId
+    });
+
+    // 1. Verificar conexão
+    let isConnected = false;
+    let connectionError = null;
+    try {
+      isConnected = await gestaoClickService.testConnection();
+    } catch (error) {
+      connectionError = error instanceof Error ? error.message : String(error);
+    }
+
+    // 2. Obter estatísticas do banco de dados
+    const stats = await getDatabaseStats(userId);
+
+    // 3. Verificar configurações de sincronização
+    const syncConfig = await getSyncConfiguration(userId);
+
+    // 4. Verificar últimas sincronizações
+    const lastImports = await getLastImports(userId);
+
+    // Construir resposta
+    return NextResponse.json({
+      success: true,
+      timestamp: new Date().toISOString(),
+      connection: {
+        status: isConnected ? "connected" : "failed",
+        apiUrl: apiUrl,
+        error: connectionError
+      },
+      configuration: syncConfig,
+      statistics: stats,
+      lastImports
+    });
+  } catch (error) {
+    console.error("Erro no diagnóstico do Gestão Click:", error);
+    return NextResponse.json(
+      {
+        success: false,
+        error: "Falha ao gerar diagnóstico",
+        message: error instanceof Error ? error.message : String(error),
+        timestamp: new Date().toISOString()
+      },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * Obtém estatísticas dos dados do Gestão Click no banco
+ */
+async function getDatabaseStats(userId: string) {
+  try {
+    // Verificar existência do modelo Customer
+    let clientCount = 0;
+    let recentClients = [];
+    try {
+      // Contar clientes
+      clientCount = await prisma.customer.count({
+        where: {
+          userId,
+          metadata: {
+            path: ["source"],
+            equals: "GESTAO_CLICK"
+          }
+        }
+      });
+
+      // Obter clientes mais recentes
+      recentClients = await prisma.customer.findMany({
+        where: {
+          userId,
+          metadata: {
+            path: ["source"],
+            equals: "GESTAO_CLICK"
+          }
+        },
+        orderBy: {
+          createdAt: "desc"
+        },
+        take: 5,
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          createdAt: true
+        }
+      });
+    } catch (error) {
+      console.warn("Erro ao acessar modelo Customer:", error);
+    }
+
+    // Verificar existência do modelo Sale
+    let saleCount = 0;
+    let recentSales = [];
+    let salesValues = { _sum: { totalAmount: null, netAmount: null } };
+    try {
+      // Contar vendas
+      saleCount = await prisma.sale.count({
+        where: {
+          userId,
+          metadata: {
+            path: ["source"],
+            equals: "GESTAO_CLICK"
+          }
+        }
+      });
+
+      // Obter valores totais de vendas
+      salesValues = await prisma.sale.aggregate({
+        where: {
+          userId,
+          metadata: {
+            path: ["source"],
+            equals: "GESTAO_CLICK"
+          }
+        },
+        _sum: {
+          totalAmount: true,
+          netAmount: true
+        }
+      });
+
+      // Obter vendas mais recentes
+      recentSales = await prisma.sale.findMany({
+        where: {
+          userId,
+          metadata: {
+            path: ["source"],
+            equals: "GESTAO_CLICK"
+          }
+        },
+        orderBy: {
+          date: "desc"
+        },
+        take: 5,
+        select: {
+          id: true,
+          number: true,
+          date: true,
+          totalAmount: true,
+          netAmount: true,
+          customerId: true
+        }
+      });
+    } catch (error) {
+      console.warn("Erro ao acessar modelo Sale:", error);
+    }
+
+    // Verificar existência do modelo SaleStatus
+    let statusCount = 0;
+    try {
+      // Contar situações
+      statusCount = await prisma.saleStatus.count({
+        where: {
+          userId,
+          metadata: {
+            path: ["source"],
+            equals: "GESTAO_CLICK"
+          }
+        }
+      });
+    } catch (error) {
+      console.warn("Erro ao acessar modelo SaleStatus:", error);
+    }
+
+    // Verificar existência do modelo Transaction
+    let transactionCount = 0;
+    try {
+      // Contar transações relacionadas
+      transactionCount = await prisma.transaction.count({
+        where: {
+          userId,
+          metadata: {
+            path: ["source"],
+            equals: "GESTAO_CLICK"
+          }
+        }
+      });
+    } catch (error) {
+      console.warn("Erro ao acessar modelo Transaction:", error);
+    }
+
+    return {
+      counts: {
+        clients: clientCount,
+        sales: saleCount,
+        statuses: statusCount,
+        transactions: transactionCount
+      },
+      values: {
+        totalSalesAmount: salesValues._sum.totalAmount || 0,
+        netSalesAmount: salesValues._sum.netAmount || 0
+      },
+      recent: {
+        clients: recentClients,
+        sales: recentSales
+      }
+    };
+  } catch (error) {
+    console.error("Erro ao obter estatísticas:", error);
+    // Retornar dados vazios em caso de erro
+    return {
+      counts: {
+        clients: 0,
+        sales: 0,
+        statuses: 0,
+        transactions: 0
+      },
+      values: {
+        totalSalesAmount: 0,
+        netSalesAmount: 0
+      },
+      recent: {
+        clients: [],
+        sales: []
+      },
+      error: error instanceof Error ? error.message : String(error)
+    };
+  }
+}
+
+/**
+ * Obtém as configurações de sincronização
+ */
+async function getSyncConfiguration(userId: string) {
+  try {
+    // Verificar se existe configuração de sincronização
+    // (Esta é uma implementação simplificada, adapte para sua estrutura real)
+    let syncConfig = null;
+    try {
+      syncConfig = await prisma.userPreferences.findFirst({
+        where: {
+          userId,
+          key: "gestao_click_sync_config"
+        }
+      });
+    } catch (error) {
+      // Se o modelo não existir ou houver outro erro
+      console.warn("Erro ao acessar modelo UserPreferences:", error);
+      return {
+        configured: false,
+        message: "Sincronização não configurada",
+        error: "Modelo de dados não disponível"
+      };
+    }
+
+    if (!syncConfig) {
+      return {
+        configured: false,
+        message: "Sincronização não configurada"
+      };
+    }
+
+    // Tentar fazer parse da configuração
+    try {
+      const config = JSON.parse(syncConfig.value || "{}");
+      return {
+        configured: true,
+        frequency: config.frequency || "manual",
+        lastScheduled: config.lastScheduled || null,
+        nextScheduled: config.nextScheduled || null,
+        autoImport: config.autoImport || false,
+        ...config
+      };
+    } catch (error) {
+      return {
+        configured: true,
+        error: "Configuração inválida",
+        rawValue: syncConfig.value
+      };
+    }
+  } catch (error) {
+    return {
+      configured: false,
+      error: error instanceof Error ? error.message : String(error)
+    };
+  }
+}
+
+/**
+ * Obtém informações sobre as últimas importações
+ */
+async function getLastImports(userId: string) {
+  try {
+    // Buscar registros de importação
+    // (Esta é uma implementação simplificada, adapte para sua estrutura real)
+    let importRecords = [];
+    try {
+      importRecords = await prisma.importHistory.findMany({
+        where: {
+          userId,
+          source: "GESTAO_CLICK"
+        },
+        orderBy: {
+          createdAt: "desc"
+        },
+        take: 5
+      });
+    } catch (error) {
+      // Se o modelo não existir ou houver outro erro
+      console.warn("Erro ao acessar modelo ImportHistory:", error);
+      return {
+        recent: [],
+        count: 0,
+        error: "Modelo de dados não disponível"
+      };
+    }
+
+    return {
+      recent: importRecords,
+      count: importRecords.length
+    };
+  } catch (error) {
+    return {
+      recent: [],
+      count: 0,
+      error: error instanceof Error ? error.message : String(error)
+    };
+  }
+} 

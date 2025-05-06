@@ -42,43 +42,6 @@ export default function DashboardWrapper({
     }
   };
 
-  // Gerar breadcrumb baseado no pathname
-  const generateBreadcrumb = () => {
-    const paths = pathname?.split('/').filter(Boolean) || [];
-    if (paths.length === 0) return [];
-    
-    const breadcrumbItems = [];
-    let currentPath = "";
-    
-    // Sempre iniciar com Home
-    breadcrumbItems.push({
-      label: "Home",
-      href: "/dashboard",
-      icon: Home
-    });
-    
-    // Adicionar Dashboard como segundo nível se não for a raiz
-    if (paths[0] === "dashboard" && paths.length > 1) {
-      breadcrumbItems.push({
-        label: "Dashboards",
-        href: "/dashboard",
-      });
-      
-      // Adicionar o último nível (nome do dashboard específico)
-      if (paths.length > 1) {
-        const dashboardName = paths[1].charAt(0).toUpperCase() + paths[1].slice(1);
-        breadcrumbItems.push({
-          label: dashboardName,
-          href: `/${paths[0]}/${paths[1]}`,
-        });
-      }
-    }
-    
-    return breadcrumbItems;
-  };
-  
-  const breadcrumbItems = generateBreadcrumb();
-  
   // Determinar qual tab está ativa com base no pathname
   const getActiveTab = () => {
     const paths = pathname?.split('/') || [];
@@ -104,20 +67,6 @@ export default function DashboardWrapper({
 
   return (
     <div className="container mx-auto px-4 py-6">
-      {/* Breadcrumb */}
-      <Breadcrumb className="mb-2">
-        <BreadcrumbList>
-          {breadcrumbItems.map((item, index) => (
-            <BreadcrumbItem key={index}>
-              {index > 0 && <BreadcrumbSeparator />}
-              <BreadcrumbLink href={item.href} className="flex items-center">
-                {item.icon && <item.icon className="mr-1 h-4 w-4" />}
-                {item.label}
-              </BreadcrumbLink>
-            </BreadcrumbItem>
-          ))}
-        </BreadcrumbList>
-      </Breadcrumb>
       
       {/* Cabeçalho com Tabs de navegação entre dashboards */}
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">

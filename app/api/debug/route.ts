@@ -45,4 +45,5 @@ export async function GET() {
   }
 }
 
-export { dynamic, fetchCache, revalidate }; 
+// Comentando a exportação duplicada que está causando o erro
+// export { dynamic, fetchCache, revalidate }; 

@@ -3,6 +3,10 @@ import { db } from "@/app/_lib/db";
 import { NotificationService } from "@/app/_services/notification-service";
 import { GoalStatus } from "@prisma/client";
 
+// Configuração para forçar o comportamento dinâmico
+export const dynamic = "force-dynamic";
+
+
 // Chave secreta para autorizar o acesso ao endpoint (deve ser configurada no .env)
 const CRON_SECRET = process.env.CRON_SECRET || "";
 

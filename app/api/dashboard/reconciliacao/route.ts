@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAuthSession } from "@/app/_lib/auth";
 import { verificarIntegracaoGestaoClick } from "@/app/_data/get-dashboard";
 
+// Configuração para forçar o comportamento dinâmico
+export const dynamic = "force-dynamic";
+
+
 /**
  * Endpoint para verificar reconciliação com Gestão Click
  * GET /api/dashboard/reconciliacao?month=MM&year=YYYY

@@ -3,6 +3,10 @@ import { getAuthSession } from "@/app/_lib/auth";
 import { db } from "@/app/_lib/prisma";
 import { SubscriptionPlan } from "@/app/types";
 
+// Configuração para forçar o comportamento dinâmico
+export const dynamic = "force-dynamic";
+
+
 export async function GET(request: NextRequest) {
   const session = await getAuthSession();
   
@@ -11,8 +15,7 @@ export async function GET(request: NextRequest) {
   }
   
   try {
-    // Em um ambiente real, aqui você integraria com uma API de pagamento como Stripe
-    // para cancelar a assinatura atual
+    // Simulação direta de downgrade sem integração de pagamento
     
     // Buscar a assinatura atual do usuário
     const existingSubscription = await db.subscription.findUnique({
@@ -33,6 +36,9 @@ export async function GET(request: NextRequest) {
         endDate: new Date(), // A assinatura anterior termina imediatamente
       },
     });
+    
+    // Log da alteração
+    console.log(`[SUBSCRIPTION] Usuário ${session.user.id} fez downgrade para o plano FREE`);
     
     // Redirecionar para a página de assinaturas com um parâmetro de sucesso
     return NextResponse.redirect(new URL("/subscription?downgrade=true", request.url));

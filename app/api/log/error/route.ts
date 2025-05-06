@@ -5,6 +5,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthSession } from "@/app/_lib/auth";
 
+// Configuração para forçar o comportamento dinâmico
+export const dynamic = "force-dynamic";
+
+
 export async function POST(request: NextRequest) {
   try {
     // Obter a sessão do usuário (opcional)

@@ -227,4 +227,30 @@ export class ValidationService {
       errors: Object.keys(errors).length > 0 ? errors : undefined
     };
   }
+
+  /**
+   * Formata um valor numérico para moeda (R$)
+   */
+  static formatToCurrency(value: number): string {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL'
+    }).format(value);
+  }
+
+  /**
+   * Converte uma string formatada em moeda para número
+   */
+  static formatToNumber(value: string): number {
+    // Remove todos os caracteres não numéricos (exceto ponto e vírgula)
+    const cleanString = value.replace(/[^0-9.,]/g, '');
+    
+    // Substitui vírgula por ponto para cálculos
+    const normalized = cleanString
+      .replace(/\./g, '') // Remove pontos (separadores de milhar)
+      .replace(',', '.'); // Substitui vírgula por ponto (decimal)
+    
+    // Converte para número
+    return parseFloat(normalized || '0');
+  }
 } 

@@ -7,6 +7,9 @@ import {
   TransactionPaymentMethod 
 } from "@/app/_types/transaction";
 
+// Configuração para forçar o comportamento dinâmico
+export const dynamic = "force-dynamic";
+
 // Definir interface para erros de importação
 interface ImportError {
   tx: any;

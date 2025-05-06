@@ -4,6 +4,10 @@ import { logger } from '@/app/_services/logger';
 import { format } from 'date-fns';
 import { gestaoClickConfig } from '@/app/_config/gestao-click';
 
+// Configuração para forçar o comportamento dinâmico
+export const dynamic = "force-dynamic";
+
+
 export async function GET() {
   try {
     // Exibe informações de configuração

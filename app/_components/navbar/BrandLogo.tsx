@@ -33,7 +33,7 @@ export const BrandLogo = ({ className = "" }: BrandLogoProps) => {
           className="h-8 w-8"
         />
         <span className="text-xl font-semibold hidden sm:inline-flex">
-          Conta Rápida
+          Personal Prime
         </span>
       </Link>
     </div>

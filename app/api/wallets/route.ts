@@ -4,9 +4,26 @@ import { getAuthSession } from "@/app/_lib/auth";
 import { WalletService } from "@/app/_services/wallet-service";
 import { Wallet } from "@prisma/client";
 import { calculateSimpleWalletBalance } from "@/app/_utils/wallet-balance";
+import { checkApiSubscriptionAccess } from "@/app/_utils/api-subscription-check";
+import { SubscriptionPlan } from "@/app/types";
+
+// Configuração para forçar o comportamento dinâmico
+export const dynamic = "force-dynamic";
+
 
 export async function GET(request: NextRequest) {
   try {
+    // Verificar se o usuário tem acesso a esta API baseado no plano
+    const subscriptionCheck = await checkApiSubscriptionAccess(
+      request,
+      [SubscriptionPlan.BASIC, SubscriptionPlan.PREMIUM, SubscriptionPlan.ENTERPRISE]
+    );
+    
+    // Se retornou uma resposta, significa que o acesso foi negado
+    if (subscriptionCheck) {
+      return subscriptionCheck;
+    }
+    
     const session = await getAuthSession();
     if (!session?.user) {
       return NextResponse.json(
@@ -135,6 +152,17 @@ function getDefaultStats() {
 
 export async function POST(request: NextRequest) {
   try {
+    // Verificar se o usuário tem acesso a esta API baseado no plano
+    const subscriptionCheck = await checkApiSubscriptionAccess(
+      request,
+      [SubscriptionPlan.BASIC, SubscriptionPlan.PREMIUM, SubscriptionPlan.ENTERPRISE]
+    );
+    
+    // Se retornou uma resposta, significa que o acesso foi negado
+    if (subscriptionCheck) {
+      return subscriptionCheck;
+    }
+    
     const session = await getAuthSession();
     if (!session?.user) {
       return new NextResponse("Não autorizado", { status: 401 });
@@ -180,6 +208,17 @@ export async function POST(request: NextRequest) {
 
 export async function PATCH(request: NextRequest) {
   try {
+    // Verificar se o usuário tem acesso a esta API baseado no plano
+    const subscriptionCheck = await checkApiSubscriptionAccess(
+      request,
+      [SubscriptionPlan.BASIC, SubscriptionPlan.PREMIUM, SubscriptionPlan.ENTERPRISE]
+    );
+    
+    // Se retornou uma resposta, significa que o acesso foi negado
+    if (subscriptionCheck) {
+      return subscriptionCheck;
+    }
+    
     const session = await getAuthSession();
     if (!session?.user) {
       return new NextResponse("Não autorizado", { status: 401 });
@@ -232,6 +271,17 @@ export async function PATCH(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
+    // Verificar se o usuário tem acesso a esta API baseado no plano
+    const subscriptionCheck = await checkApiSubscriptionAccess(
+      request,
+      [SubscriptionPlan.BASIC, SubscriptionPlan.PREMIUM, SubscriptionPlan.ENTERPRISE]
+    );
+    
+    // Se retornou uma resposta, significa que o acesso foi negado
+    if (subscriptionCheck) {
+      return subscriptionCheck;
+    }
+    
     const session = await getAuthSession();
     if (!session?.user) {
       return new NextResponse("Não autorizado", { status: 401 });
@@ -248,11 +298,11 @@ export async function DELETE(request: NextRequest) {
     // Excluir carteira usando o serviço
     const result = await WalletService.deleteWallet(id, session.user.id, transferTo || undefined);
 
-    if (!result.success) {
-      return new NextResponse(result.error || "Erro ao excluir carteira", { status: 400 });
+    if (!result || !result.success) {
+      return new NextResponse(result?.error || "Erro ao excluir carteira", { status: 400 });
     }
 
-    return NextResponse.json({ success: true });
+    return new NextResponse(null, { status: 204 });
   } catch (error) {
     console.error("Erro ao excluir carteira:", error);
     return new NextResponse("Erro interno do servidor", { status: 500 });

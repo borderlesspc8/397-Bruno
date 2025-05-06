@@ -4,6 +4,10 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/_lib/auth-options';
 import { format, subMonths } from 'date-fns';
 
+// Configuração para forçar o comportamento dinâmico
+export const dynamic = "force-dynamic";
+
+
 // Função para obter o usuário atual na sessão
 async function getCurrentUser() {
   const session = await getServerSession(authOptions);

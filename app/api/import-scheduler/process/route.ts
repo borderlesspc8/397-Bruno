@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ImportSchedulerService } from "@/app/_services/import-scheduler-service";
 
+// Configuração para forçar o comportamento dinâmico
+export const dynamic = "force-dynamic";
+
+
 /**
  * API para processamento de agendamentos pendentes
  * Esta rota deve ser chamada por um cronjob externo (por exemplo, usando Vercel Cron Jobs)

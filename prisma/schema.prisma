@@ -65,7 +65,6 @@ model User {
   isOnboarded           Boolean                @default(false)
   isTermsAccepted       Boolean                @default(false)
   lastLogin             DateTime               @default(now())
-  stripeCustomerId      String?
   accounts              Account[]
   attachments           Attachment[]
   budgets               Budget[]
@@ -674,6 +673,21 @@ model Produto {
   updatedAt     DateTime @updatedAt
 
   @@map("produtos")
+}
+
+model Meta {
+  id              String   @id @default(cuid())
+  mesReferencia   DateTime
+  metaMensal      Float
+  metaSalvio      Float
+  metaCoordenador Float
+  metasVendedores Json?
+  criadoPor       String
+  atualizadoPor   String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([mesReferencia])
 }
 
 enum TransactionType {

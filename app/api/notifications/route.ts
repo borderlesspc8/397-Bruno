@@ -4,6 +4,10 @@ import { authOptions } from "@/app/_lib/auth-options";
 import { NotificationService } from "@/app/_services/notification-service";
 import { z } from "zod";
 
+// Configuração para forçar o comportamento dinâmico
+export const dynamic = "force-dynamic";
+
+
 // Schema para validação na criação de notificações
 const createNotificationSchema = z.object({
   title: z.string().min(1, "Título é obrigatório"),

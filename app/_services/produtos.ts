@@ -4,9 +4,12 @@ export interface Produto {
   id: string;
   nome: string;
   quantidade: number;
-  precoUnitario: number;
+  precoUnitario?: number;
+  preco?: number;
   total: number;
   categoria?: string;
+  lojaId?: string;    // ID da loja do produto
+  lojaNome?: string;  // Nome da loja do produto
 }
 
 export interface ProdutosResponse {

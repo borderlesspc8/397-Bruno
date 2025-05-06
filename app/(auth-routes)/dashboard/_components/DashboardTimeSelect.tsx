@@ -53,7 +53,7 @@ export default function DashboardTimeSelect() {
     }
     
     console.log(`[DashboardTimeSelect] Navegando para o mês anterior: ${newMonth}/${newYear}`);
-    router.push(`/dashboard?month=${newMonth}&year=${newYear}`);
+    router.push(`/dashboard/vendas?month=${newMonth}&year=${newYear}`);
   };
   
   // Função para navegar para o próximo mês
@@ -68,7 +68,7 @@ export default function DashboardTimeSelect() {
     }
     
     console.log(`[DashboardTimeSelect] Navegando para o próximo mês: ${newMonth}/${newYear}`);
-    router.push(`/dashboard?month=${newMonth}&year=${newYear}`);
+    router.push(`/dashboard/vendas?month=${newMonth}&year=${newYear}`);
   };
   
   // Função para ir para o mês atual
@@ -77,7 +77,7 @@ export default function DashboardTimeSelect() {
     const currentYear = today.getFullYear();
     
     console.log(`[DashboardTimeSelect] Navegando para o mês atual: ${currentMonth}/${currentYear}`);
-    router.push(`/dashboard?month=${currentMonth}&year=${currentYear}`);
+    router.push(`/dashboard/vendas?month=${currentMonth}&year=${currentYear}`);
   };
 
   return (

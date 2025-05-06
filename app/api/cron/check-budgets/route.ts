@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { checkAllBudgetsLimits } from "@/app/api/budgets/check-limits";
 
+// Configuração para forçar o comportamento dinâmico
+export const dynamic = "force-dynamic";
+
+
 // Chave secreta para autorizar o acesso ao endpoint (deve ser configurada no .env)
 const CRON_SECRET = process.env.CRON_SECRET || "";
 

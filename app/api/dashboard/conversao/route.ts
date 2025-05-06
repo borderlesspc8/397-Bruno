@@ -1,5 +1,9 @@
 import { NextResponse } from 'next/server';
 
+// Configuração para forçar o comportamento dinâmico
+export const dynamic = "force-dynamic";
+
+
 // Interfaces para os tipos de dados
 interface ConsultorConversao {
   nome: string;

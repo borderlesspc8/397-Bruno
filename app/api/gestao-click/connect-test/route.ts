@@ -2,6 +2,10 @@ import { NextResponse } from 'next/server';
 import { logger } from '@/app/_services/logger';
 import { gestaoClickConfig } from '@/app/_config/gestao-click';
 
+// Configuração para forçar o comportamento dinâmico
+export const dynamic = "force-dynamic";
+
+
 export async function GET() {
   try {
     // Lista de endpoints para testar

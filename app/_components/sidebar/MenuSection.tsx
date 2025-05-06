@@ -22,13 +22,8 @@ export const MenuSectionComponent: React.FC<MenuSectionProps> = ({
   pathname,
   isDarkTheme
 }) => {
-  // Defina um plano padrão se userPlan for null ou undefined
-  const normalizedUserPlan = userPlan || SubscriptionPlan.FREE;
-  
-  // Log para depuração
-  React.useEffect(() => {
-    console.log("Menu Section - Plano do usuário:", normalizedUserPlan);
-  }, [normalizedUserPlan]);
+  // Normalizar o plano para o formato usado no hook useSubscriptionAccess
+  const normalizedUserPlan = userPlan?.toLowerCase?.() as SubscriptionPlan || "free";
   
   // Função para verificar se o plano do usuário inclui o plano necessário
   const isPlanIncluded = (userPlan: SubscriptionPlan, requiredPlan: SubscriptionPlan): boolean => {

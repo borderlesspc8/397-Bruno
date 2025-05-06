@@ -25,9 +25,10 @@ interface VendaDetalheModalProps {
   venda: any;
   aberto: boolean;
   onOpenChange: (aberto: boolean) => void;
+  onClose?: () => void;
 }
 
-export function VendaDetalheModal({ venda, aberto, onOpenChange }: VendaDetalheModalProps) {
+export function VendaDetalheModal({ venda, aberto, onOpenChange, onClose }: VendaDetalheModalProps) {
   const [vendaProcessada, setVendaProcessada] = useState<VendaProcessada | null>(null);
   
   // Processar os dados da venda sempre que ela mudar
@@ -50,8 +51,16 @@ export function VendaDetalheModal({ venda, aberto, onOpenChange }: VendaDetalheM
     return null;
   }
   
+  // Função para lidar com o fechamento do modal
+  const handleOpenChange = (open: boolean) => {
+    onOpenChange(open);
+    if (!open && onClose) {
+      onClose();
+    }
+  };
+  
   return (
-    <Dialog open={aberto} onOpenChange={onOpenChange}>
+    <Dialog open={aberto} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
         <DialogHeader className="border-b pb-4">
           <DialogTitle className="text-xl font-semibold flex items-center">

@@ -7,7 +7,10 @@ import { authOptions } from "@/app/_lib/auth-options";
 import { GestaoClickClientService } from "@/app/_services/gestao-click-client-service";
 import { logger } from "@/app/_services/logger";
 
+// Configuração para forçar o comportamento dinâmico
 export const dynamic = "force-dynamic";
+
+
 
 /**
  * GET /api/gestao-click/test-connection

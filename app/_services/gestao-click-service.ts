@@ -2635,7 +2635,7 @@ export class GestaoClickService {
       // Verificar se já existe um usuário de teste
       const testUser = await prisma.user.findFirst({
         where: {
-          email: 'teste@contarapida.com.br'
+          email: 'teste@acceleracrm.com.br'
         },
         select: { id: true }
       });
@@ -2650,7 +2650,7 @@ export class GestaoClickService {
       console.log('[GESTAO_CLICK] Criando usuário de teste para ambiente de desenvolvimento');
       const newUser = await prisma.user.create({
         data: {
-          email: 'teste@contarapida.com.br',
+          email: 'teste@acceleracrm.com.br',
           name: 'Usuário de Teste',
           emailVerified: new Date(),
         }

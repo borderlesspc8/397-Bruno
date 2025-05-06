@@ -7,6 +7,10 @@ import { authOptions } from "@/app/_lib/auth-options";
 import { GestaoClickService } from "@/app/_services/gestao-click-service";
 import { calculateImportDates, calculateNextRunDate } from "@/app/_lib/date-utils";
 
+// Configuração para forçar o comportamento dinâmico
+export const dynamic = "force-dynamic";
+
+
 interface ImportResult {
   success: boolean;
   message: string;

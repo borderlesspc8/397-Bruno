@@ -1,0 +1,84 @@
+name: Testes Automatizados
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  test:
+    name: Testes e Validação
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:14
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: contarapida_test
+        ports:
+          - 5432:5432
+        options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
+    
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/contarapida_test
+      NEXTAUTH_URL: http://localhost:3000
+      NEXTAUTH_SECRET: testing_secret_key_not_for_production
+      NODE_ENV: test
+    
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@v3
+      
+      - name: Configurar Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+      
+      - name: Instalar dependências
+        run: npm ci
+      
+      - name: Gerar cliente Prisma
+        run: npx prisma generate
+      
+      - name: Criar banco de dados de teste
+        run: npx prisma migrate deploy
+      
+      - name: Executar seed
+        run: npm run seed:system
+      
+      - name: Verificar tipos TypeScript
+        run: npx tsc --noEmit
+      
+      - name: Executar Lint
+        run: npm run lint
+      
+      - name: Executar testes unitários e de integração
+        run: npm run test:ci
+
+      - name: Publicar relatório de cobertura
+        uses: codecov/codecov-action@v3
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          directory: ./coverage
+          fail_ci_if_error: false
+      
+      - name: Instalar Playwright Browsers
+        run: npx playwright install --with-deps chromium
+      
+      - name: Executar testes E2E (apenas no merge para main)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: npm run test:e2e
+      
+      - name: Armazenar artefatos de testes
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: test-results
+          path: |
+            playwright-report/
+            coverage/
+          retention-days: 30 

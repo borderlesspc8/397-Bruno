@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, memo, useMemo } from "react";
 import { Vendedor } from "@/app/_services/betelTecnologia";
 import { formatCurrency } from "@/app/_utils/format";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/app/_components/ui/card";
@@ -14,46 +14,185 @@ import {
   DropdownMenuTrigger
 } from "@/app/_components/ui/dropdown-menu";
 import { Button } from "@/app/_components/ui/button";
-import { Filter, CreditCard, BadgePercent, BarChart } from "lucide-react";
+import { Filter, CreditCard, BadgePercent, BarChart, AlertCircle } from "lucide-react";
 import PodiumRanking from "../../vendas/components/PodiumRanking";
+import { useRankingVendedores } from "../../vendas/hooks/useRankingVendedores";
 
 interface RankingVendedoresPodiumProps {
   vendedores: Vendedor[];
   onUploadFoto?: (vendedor: Vendedor) => void;
+  onVendedorClick?: (vendedor: Vendedor) => void;
+  erro?: string | null;
+  isRankingComponent?: boolean;
 }
 
+// Componente de Cabeçalho memoizado para evitar re-renders desnecessários
+const CardHeader_Memo = memo(({ 
+  titulo, 
+  descricao, 
+  ordenacao, 
+  setOrdenacao 
+}: {
+  titulo: string;
+  descricao: string;
+  ordenacao: "faturamento" | "vendas" | "ticket";
+  setOrdenacao: (ordenacao: "faturamento" | "vendas" | "ticket") => void;
+}) => (
+  <CardHeader className="pb-2">
+    <div className="flex justify-between items-center">
+      <div>
+        <CardTitle className="text-xl font-bold">{titulo}</CardTitle>
+        <CardDescription className="mt-1">{descricao}</CardDescription>
+      </div>
+      
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="h-8 gap-1"
+            aria-label="Opções de ordenação"
+          >
+            <Filter className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Ordenar</span>
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-[180px]">
+          <DropdownMenuLabel>Ordenar por</DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          <DropdownMenuGroup>
+            <DropdownMenuItem 
+              onClick={() => setOrdenacao("faturamento")}
+              className={ordenacao === "faturamento" ? "bg-muted" : ""}
+              aria-selected={ordenacao === "faturamento"}
+            >
+              <CreditCard className="mr-2 h-4 w-4" />
+              <span>Faturamento</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem 
+              onClick={() => setOrdenacao("vendas")}
+              className={ordenacao === "vendas" ? "bg-muted" : ""}
+              aria-selected={ordenacao === "vendas"}
+            >
+              <BarChart className="mr-2 h-4 w-4" />
+              <span>Quantidade</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem 
+              onClick={() => setOrdenacao("ticket")}
+              className={ordenacao === "ticket" ? "bg-muted" : ""}
+              aria-selected={ordenacao === "ticket"}
+            >
+              <BadgePercent className="mr-2 h-4 w-4" />
+              <span>Ticket Médio</span>
+            </DropdownMenuItem>
+          </DropdownMenuGroup>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
+  </CardHeader>
+));
+
+// Nome do componente para melhor depuração
+CardHeader_Memo.displayName = 'CardHeader_Memo';
+
+// Componente de Footer memoizado
+const CardFooter_Memo = memo(({ 
+  quantidade, 
+  valorTotal, 
+  ordenacao 
+}: {
+  quantidade: number;
+  valorTotal: number;
+  ordenacao: "faturamento" | "vendas" | "ticket";
+}) => {
+  // Formatar valor de acordo com o tipo de ordenação
+  const valorFormatado = useMemo(() => {
+    if (ordenacao === "faturamento" || ordenacao === "ticket") {
+      return formatCurrency(valorTotal);
+    } else {
+      return `${valorTotal} vendas`;
+    }
+  }, [ordenacao, valorTotal]);
+
+  return (
+    <div className="flex justify-between text-sm text-muted-foreground mt-4 border-t pt-3">
+      <div>Total: {quantidade} vendedores</div>
+      <div>{valorFormatado}</div>
+    </div>
+  );
+});
+
+// Nome do componente para melhor depuração
+CardFooter_Memo.displayName = 'CardFooter_Memo';
+
+// Componente mensagem de erro memoizado
+const ErroMensagem = memo(({ mensagem }: { mensagem: string }) => (
+  <div 
+    className="bg-red-50 border border-red-200 rounded-md p-3 mt-2 text-red-700 flex items-center gap-2"
+    role="alert"
+    aria-live="assertive"
+  >
+    <AlertCircle className="h-4 w-4" />
+    <span>{mensagem}</span>
+  </div>
+));
+
+ErroMensagem.displayName = 'ErroMensagem';
+
+// Componente principal
 export default function RankingVendedoresPodium({ 
-  vendedores,
-  onUploadFoto
+  vendedores = [], // Valor padrão para evitar erros
+  onUploadFoto,
+  onVendedorClick,
+  erro = null,
+  isRankingComponent = true // Por padrão, consideramos como componente de ranking
 }: RankingVendedoresPodiumProps) {
   const [ordenacao, setOrdenacao] = useState<"faturamento" | "vendas" | "ticket">("faturamento");
-
-  // Calcular título com base na ordenação
-  const getTitulo = () => {
-    switch (ordenacao) {
-      case "faturamento":
-        return "Top Vendedores por Faturamento";
-      case "vendas":
-        return "Top Vendedores por Quantidade";
-      case "ticket":
-        return "Top Vendedores por Ticket Médio";
-      default:
-        return "Top Vendedores";
-    }
-  };
-
-  const handleClickVendedor = (vendedor: Vendedor) => {
-    if (onUploadFoto) {
-      onUploadFoto(vendedor);
-    }
-  };
   
-  // Considerações sobre o número mínimo de vendedores necessários para exibir o pódio
-  if (vendedores.length < 3) {
+  // Usar o hook otimizado para dados do ranking, passando o parâmetro isRankingComponent
+  const { titulo, descricao, totalOrdenacao, vendedoresOrdenados } = useRankingVendedores(
+    vendedores,
+    ordenacao,
+    10, // limite padrão
+    isRankingComponent
+  );
+
+  // Memoizar função para prevenir recriações a cada render
+  const handleClickVendedor = useMemo(() => {
+    return (vendedor: Vendedor) => {
+      // Priorizar a abertura do modal de detalhes se disponível
+      if (onVendedorClick) {
+        onVendedorClick(vendedor);
+      } 
+      // Manter compatibilidade com a função de upload de foto
+      else if (onUploadFoto) {
+        onUploadFoto(vendedor);
+      }
+    };
+  }, [onVendedorClick, onUploadFoto]);
+  
+  // Verificar erros primeiro
+  if (erro) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>{getTitulo()}</CardTitle>
+          <CardTitle>Ranking de Vendedores</CardTitle>
+          <CardDescription>Não foi possível carregar os dados</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ErroMensagem mensagem={erro} />
+        </CardContent>
+      </Card>
+    );
+  }
+  
+  // Considerações sobre o número mínimo de vendedores necessários para exibir o pódio
+  // Agora verificamos a lista filtrada vendedoresOrdenados em vez da lista original
+  if (!vendedoresOrdenados || vendedoresOrdenados.length < 3) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>{titulo || "Ranking de Vendedores"}</CardTitle>
           <CardDescription>
             São necessários pelo menos 3 vendedores para exibir o pódio
           </CardDescription>
@@ -69,73 +208,27 @@ export default function RankingVendedoresPodium({
 
   return (
     <Card>
-      <CardHeader className="pb-2">
-        <div className="flex justify-between items-center">
-          <div>
-            <CardTitle className="text-xl font-bold">{getTitulo()}</CardTitle>
-            <CardDescription className="mt-1">
-              Ordenado por {ordenacao === "faturamento" ? "valor total" : ordenacao === "vendas" ? "quantidade de vendas" : "ticket médio"}
-            </CardDescription>
-          </div>
-          
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="h-8 gap-1">
-                <Filter className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Ordenar</span>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-[180px]">
-              <DropdownMenuLabel>Ordenar por</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuGroup>
-                <DropdownMenuItem 
-                  onClick={() => setOrdenacao("faturamento")}
-                  className={ordenacao === "faturamento" ? "bg-muted" : ""}
-                >
-                  <CreditCard className="mr-2 h-4 w-4" />
-                  <span>Faturamento</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem 
-                  onClick={() => setOrdenacao("vendas")}
-                  className={ordenacao === "vendas" ? "bg-muted" : ""}
-                >
-                  <BarChart className="mr-2 h-4 w-4" />
-                  <span>Quantidade</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem 
-                  onClick={() => setOrdenacao("ticket")}
-                  className={ordenacao === "ticket" ? "bg-muted" : ""}
-                >
-                  <BadgePercent className="mr-2 h-4 w-4" />
-                  <span>Ticket Médio</span>
-                </DropdownMenuItem>
-              </DropdownMenuGroup>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      </CardHeader>
+      <CardHeader_Memo 
+        titulo={titulo}
+        descricao={descricao}
+        ordenacao={ordenacao}
+        setOrdenacao={setOrdenacao}
+      />
       
       <CardContent>
-        <div className="py-4">
+        <div className="py-4" aria-label={`Pódio de vendedores por ${ordenacao === "faturamento" ? "faturamento" : ordenacao === "vendas" ? "quantidade de vendas" : "ticket médio"}`}>
           <PodiumRanking 
-            vendedores={vendedores}
+            vendedores={vendedoresOrdenados} // Usando a lista filtrada
             ordenacao={ordenacao}
             onVendedorClick={handleClickVendedor}
           />
         </div>
         
-        <div className="flex justify-between text-sm text-muted-foreground mt-4 border-t pt-3">
-          <div>Total: {vendedores.length} vendedores</div>
-          <div>
-            {ordenacao === "faturamento" 
-              ? formatCurrency(vendedores.reduce((acc, v) => acc + v.faturamento, 0))
-              : ordenacao === "vendas"
-                ? `${vendedores.reduce((acc, v) => acc + v.vendas, 0)} vendas`
-                : formatCurrency(vendedores.reduce((acc, v) => acc + v.ticketMedio, 0) / vendedores.length)
-            }
-          </div>
-        </div>
+        <CardFooter_Memo 
+          quantidade={vendedores.length} // Mantém o total geral de vendedores
+          valorTotal={totalOrdenacao}
+          ordenacao={ordenacao}
+        />
       </CardContent>
     </Card>
   );

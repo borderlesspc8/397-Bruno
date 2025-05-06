@@ -6,10 +6,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { runAutoSyncGestaoClick } from "@/app/_lib/cron-jobs";
 
+// Configuração para forçar o comportamento dinâmico
+export const dynamic = "force-dynamic";
+
+
 // Chave de acesso para autenticar chamadas ao endpoint
 const CRON_API_KEY = process.env.CRON_API_KEY;
 
-export const dynamic = "force-dynamic";
 
 /**
  * GET /api/cron/gestao-click-sync

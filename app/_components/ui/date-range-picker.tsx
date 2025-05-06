@@ -25,6 +25,13 @@ export function DateRangePicker({
   align = "start",
 }: DateRangePickerProps) {
   const [open, setOpen] = React.useState(false);
+  // Estado local para controlar a seleção de data temporária 
+  const [tempRange, setTempRange] = React.useState<DateRange | undefined>(dateRange);
+
+  // Atualizar o estado temporário quando o dateRange mudar externamente
+  React.useEffect(() => {
+    setTempRange(dateRange);
+  }, [dateRange]);
 
   // Convertendo o alinhamento em posição válida para o Floating UI
   const placement: Placement = align === "center" 
@@ -67,6 +74,26 @@ export function DateRangePicker({
       : formattedDateFrom
     : "Selecionar período";
 
+  // Função para aplicar a seleção e fechar o calendário
+  const handleApply = () => {
+    if (tempRange) {
+      onDateRangeChange(tempRange);
+    }
+    setOpen(false);
+  };
+
+  // Função para lidar com a mudança temporária de seleção
+  const handleRangeChange = (range: DateRange | undefined) => {
+    setTempRange(range);
+  };
+
+  // Função para limpar a seleção
+  const handleClear = () => {
+    setTempRange(undefined);
+    onDateRangeChange(undefined);
+    setOpen(false);
+  };
+
   return (
     <div className={cn("relative", className)}>
       <Button
@@ -98,9 +125,9 @@ export function DateRangePicker({
             <Calendar
               initialFocus
               mode="range"
-              defaultMonth={dateRange?.from}
-              selected={dateRange}
-              onSelect={onDateRangeChange}
+              defaultMonth={tempRange?.from || dateRange?.from || new Date()}
+              selected={tempRange}
+              onSelect={handleRangeChange}
               numberOfMonths={1}
               locale={ptBR}
             />
@@ -108,10 +135,7 @@ export function DateRangePicker({
               <Button 
                 variant="outline" 
                 size="sm" 
-                onClick={() => {
-                  onDateRangeChange(undefined);
-                  setOpen(false);
-                }}
+                onClick={handleClear}
               >
                 Limpar
               </Button>
@@ -119,7 +143,7 @@ export function DateRangePicker({
                 variant="default" 
                 size="sm"
                 style={{ backgroundColor: "#faba33" }}
-                onClick={() => setOpen(false)}
+                onClick={handleApply}
               >
                 Aplicar
               </Button>

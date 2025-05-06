@@ -5,6 +5,10 @@ import { DREService } from "@/app/_services/dre-service";
 import { GestaoClickService } from "@/app/_services/gestao-click-service";
 import { formatISO, parseISO, format, startOfMonth, endOfMonth } from "date-fns";
 
+// Configuração para forçar o comportamento dinâmico
+export const dynamic = "force-dynamic";
+
+
 /**
  * API para obter dados do DRE (Demonstrativo de Resultado do Exercício)
  * 

@@ -1,32 +1,32 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Vendedor } from "@/app/_services/betelTecnologia";
 import { VendedorImagensService } from "@/app/_services/vendedorImagens";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/app/_components/ui/tabs";
 import { 
   TrendingUp,
+  User,
+  BarChart, 
   Users,
-  Medal,
-  BarChart,
-  Trophy,
-  ArrowUp,
-  Clock,
-  ChevronUp,
-  ChevronDown,
   Filter,
   BadgePercent,
   CreditCard,
   Sparkles,
-  User
+  Trophy,
+  Medal,
+  BarChart3,
+  Star,
+  ArrowUp,
+  ArrowDown,
+  ChevronUp,
+  ChevronDown
 } from "lucide-react";
-import { formatCurrency } from "@/app/_utils/format";
-import { cn } from "@/app/_utils/cn";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/app/_components/ui/card";
+import { formatCurrency, formatNumber } from "@/app/_lib/formatters";
+import { cn } from "@/app/_lib/utils";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/app/_components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/app/_components/ui/avatar";
 import { Button } from "@/app/_components/ui/button";
-import { Progress } from "@/app/_components/ui/progress";
-import { Badge } from "@/app/_components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/_components/ui/tabs";
 import { 
   DropdownMenu,
   DropdownMenuContent,
@@ -34,708 +34,470 @@ import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
-  DropdownMenuTrigger
+  DropdownMenuTrigger,
 } from "@/app/_components/ui/dropdown-menu";
 import PodiumRanking from "./PodiumRanking";
+import { motion } from 'framer-motion';
 
 interface RankingVendedoresProps {
   vendedores: Vendedor[];
-  totalVendas?: number;
-  periodo?: string;
-  onPeriodoChange?: (periodo: string) => void;
   titulo?: string;
   onVendedorClick?: (vendedor: Vendedor) => void;
+  onPeriodoChange?: (periodo: string) => void;
+  periodo?: string;
+}
+
+// Estendendo o tipo Vendedor para incluir dados adicionais para visualização
+interface VendedorExibicao extends Vendedor {
+  percentual: number;
+  variacao?: number;
+  foto?: string;
 }
 
 // Novos tipos e constantes para animações
 type AnimationState = 'idle' | 'entering' | 'active';
 
+const getRankColor = (posicao: number): string => {
+  switch (posicao) {
+    case 0: return "text-amber-500";
+    case 1: return "text-slate-400";
+    case 2: return "text-amber-800";
+    default: return "text-muted-foreground";
+  }
+};
+
+const getBadgeColor = (posicao: number): string => {
+  switch (posicao) {
+    case 0: return "bg-amber-500";
+    case 1: return "bg-slate-400";
+    case 2: return "bg-amber-800";
+    default: return "bg-slate-600";
+  }
+};
+
+const getInitials = (name: string): string => {
+  return name
+    .split(' ')
+    .map(part => part[0])
+    .slice(0, 2)
+    .join('')
+    .toUpperCase();
+};
+
+const getTrendIcon = (variacao?: number) => {
+  if (variacao === undefined) return null;
+  return variacao >= 0 ? (
+    <ArrowUp className="h-3 w-3 text-emerald-500" />
+  ) : (
+    <ArrowDown className="h-3 w-3 text-rose-500" />
+  );
+};
+
 export default function RankingVendedores({
   vendedores,
-  totalVendas = 0,
-  periodo = "30d",
-  onPeriodoChange,
   titulo = "Ranking de Vendedores",
-  onVendedorClick
+  onVendedorClick,
+  onPeriodoChange,
+  periodo = "30d"
 }: RankingVendedoresProps) {
-  const [ordenacao, setOrdenacao] = useState<"faturamento" | "vendas" | "ticket">("faturamento");
-  const [visualizacao, setVisualizacao] = useState<"podio" | "lista" | "cards">("podio");
-  const [animationState, setAnimationState] = useState<AnimationState>('idle');
-  const [animacoesCarregadas, setAnimacoesCarregadas] = useState<boolean[]>([]);
-  const ultimaVisualizacao = useRef<string>(visualizacao);
-  const [imagensVendedores, setImagensVendedores] = useState<Record<string, string>>({});
+  const [visualizacao, setVisualizacao] = useState<string>("podio");
+  const [ordenacao, setOrdenacao] = useState<string>("faturamento");
+  const [vendedoresOrdenados, setVendedoresOrdenados] = useState<VendedorExibicao[]>([]);
+  const [imagensVendedores, setImagensVendedores] = useState<Record<number, string>>({});
+  const [animationState, setAnimationState] = useState<AnimationState>('entering');
   const [isDesktop, setIsDesktop] = useState(false);
-  
-  // Verificar largura da tela
+  const [animacoesCarregadas, setAnimacoesCarregadas] = useState<boolean[]>([]);
+
+  // Calcular totais para percentuais
+  const totalFaturamento = vendedores.reduce((sum, v) => sum + v.faturamento, 0);
+  const totalQuantidadeVendas = vendedores.reduce((sum, v) => sum + v.vendas, 0);
+
+  // Processar vendedores para exibição com dados calculados
   useEffect(() => {
-    const checkIsDesktop = () => {
+    const ordenados = [...vendedores].map(v => {
+      const percentual = Number(((ordenacao === "faturamento" ? v.faturamento : v.vendas) / 
+        (ordenacao === "faturamento" ? totalFaturamento : totalQuantidadeVendas) * 100).toFixed(1));
+      
+      return {
+        ...v,
+        percentual: isNaN(percentual) ? 0 : percentual,
+        // Simulação de variação para exemplo
+        variacao: Math.random() > 0.5 ? Math.random() * 10 : -Math.random() * 10
+      } as VendedorExibicao;
+    });
+
+    // Ordenar conforme critério
+    ordenados.sort((a, b) => {
+      if (ordenacao === "faturamento") return b.faturamento - a.faturamento;
+      if (ordenacao === "vendas") return b.vendas - a.vendas;
+      return b.ticketMedio - a.ticketMedio;
+    });
+
+    setVendedoresOrdenados(ordenados);
+    setAnimacoesCarregadas(Array(ordenados.length).fill(false));
+  
+    // Carregar as animações progressivamente
+    const timer = setTimeout(() => {
+      setAnimacoesCarregadas(Array(ordenados.length).fill(true));
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [vendedores, ordenacao, totalFaturamento, totalQuantidadeVendas]);
+
+  // Detectar tamanho da tela para responsividade
+  useEffect(() => {
+    const checkIfDesktop = () => {
       setIsDesktop(window.innerWidth >= 1024);
     };
-    
-    checkIsDesktop();
-    window.addEventListener('resize', checkIsDesktop);
-    
-    return () => {
-      window.removeEventListener('resize', checkIsDesktop);
-    };
+    checkIfDesktop();
+    window.addEventListener('resize', checkIfDesktop);
+    return () => window.removeEventListener('resize', checkIfDesktop);
   }, []);
   
-  // Configurar animações progressivas para os elementos visuais
+  // Carregar imagens de vendedores
   useEffect(() => {
-    // Reset animation state when visualization changes
-    if (ultimaVisualizacao.current !== visualizacao) {
-      setAnimationState('entering');
-      ultimaVisualizacao.current = visualizacao;
-      
-      // Sequência de animações
-      setTimeout(() => {
-        setAnimationState('active');
-      }, 100);
-    } else if (animationState === 'idle') {
-      // Início inicial
-      setAnimationState('entering');
-      setTimeout(() => {
-        setAnimationState('active');
-      }, 100);
-    }
-    
-    // Configura animações progressivas para cada item
-    const quantidade = (visualizacao === 'cards' || visualizacao === 'lista') 
-      ? vendedores.length 
-      : Math.min(vendedores.length, 8); // Garantir que pelo menos 8 vendedores sejam animados na visualização "pódio" (ou menos, se houver menos)
-    
-    const novasAnimacoes = Array(quantidade).fill(false);
-    
-    // Cria um efeito cascata de carregamento
-    for (let i = 0; i < quantidade; i++) {
-      setTimeout(() => {
-        setAnimacoesCarregadas(prev => {
-          const novo = [...prev];
-          novo[i] = true;
-          return novo;
-        });
-      }, 150 + (i * 80)); // Delay escalonado para efeito cascata
-    }
-    
-    // Garantir que o ranking completo fique visível após carregamento
-    if (visualizacao === 'podio' && vendedores.length > 3) {
-      setTimeout(() => {
-        const container = document.getElementById('ranking-completo-container');
-        if (container) {
-          // Garantir que o quarto vendedor fique visível
-          const quartoVendedor = container.children[3];
-          if (quartoVendedor) {
-            setTimeout(() => {
-              quartoVendedor.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-            }, 500);
-          } else {
-            // Se não houver um quarto vendedor, garantir que o scroll mostre abaixo do terceiro
-            container.scrollTop = 100;
-          }
-        }
-      }, 1200);
-    }
-  }, [visualizacao, vendedores.length]);
-  
-  // Carregar imagens dos vendedores
-  useEffect(() => {
-    const carregarImagens = async () => {
-      const imagensPromises = vendedores.map(async (vendedor) => {
-        const id = vendedor.id;
-        if (!id) return null;
-        
-        try {
-          const imageUrl = await VendedorImagensService.buscarImagemVendedor(id);
-          return { id, url: imageUrl };
+    const loadImages = async () => {
+      const service = new VendedorImagensService();
+      try {
+        const imagens = await service.obterImagens(vendedores.map(v => v.id));
+        setImagensVendedores(imagens);
         } catch (error) {
-          console.error(`Erro ao carregar imagem para ${vendedor.nome}:`, error);
-          return { id, url: '/images/default-avatar.svg' };
-        }
-      });
-      
-      const imagens = await Promise.all(imagensPromises);
-      const novoMapa: Record<string, string> = {};
-      
-      imagens.forEach(item => {
-        if (item) {
-          novoMapa[item.id] = item.url;
-        }
-      });
-      
-      setImagensVendedores(novoMapa);
+        console.error("Erro ao carregar imagens:", error);
+      }
     };
-    
-    if (vendedores.length > 0) {
-      carregarImagens();
-    }
+    loadImages();
   }, [vendedores]);
   
-  // Filtra e ordena vendedores com base na ordenação selecionada
-  const vendedoresOrdenados = [...vendedores].sort((a, b) => {
-    // Verifica se ambos os vendedores não têm vendas/faturamento
-    const aVazio = ordenacao === "faturamento" ? (a.faturamento === 0) : 
-                  ordenacao === "vendas" ? (a.vendas === 0) : 
-                  (a.ticketMedio === 0);
-    
-    const bVazio = ordenacao === "faturamento" ? (b.faturamento === 0) : 
-                  ordenacao === "vendas" ? (b.vendas === 0) : 
-                  (b.ticketMedio === 0);
-    
-    // Se ambos não têm valor, ordenar por nome
-    if (aVazio && bVazio) {
-      return a.nome.localeCompare(b.nome);
-    }
-    
-    // Se apenas um não tem valor, priorizá-lo por último
-    if (aVazio) return 1;
-    if (bVazio) return -1;
-    
-    // Ordenação normal baseada no critério selecionado
-    switch (ordenacao) {
-      case "faturamento":
-        return (b.faturamento || 0) - (a.faturamento || 0);
-      case "vendas":
-        return (b.vendas || 0) - (a.vendas || 0);
-      case "ticket":
-        return (b.ticketMedio || 0) - (a.ticketMedio || 0);
-      default:
-        return (b.faturamento || 0) - (a.faturamento || 0);
-    }
-  });
+  // Completar animação após renderizar
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setAnimationState('active');
+    }, 100);
+    return () => clearTimeout(timer);
+  }, []);
   
-  // Verificar se existem vendedores no ranking
-  console.log(`RankingVendedores: Total de vendedores recebidos: ${vendedores.length}`);
-  console.log(`RankingVendedores: Total de vendedores após ordenação: ${vendedoresOrdenados.length}`);
-  
-  // Log detalhado de todos os vendedores ordenados para diagnóstico
-  console.log('RankingVendedores: Lista completa de vendedores ordenados:', 
-    vendedoresOrdenados.map((v, i) => `${i+1}. ${v.nome} (${v.vendas} vendas, R$ ${v.faturamento.toFixed(2)})`).join(', ')
-  );
-  
-  // Top 3 para o pódio
-  const podio = vendedoresOrdenados.slice(0, 3);
-  
-  // Determina maior valor para cálculo de percentuais
-  const maiorValor = ordenacao === "faturamento" 
-    ? Math.max(...vendedoresOrdenados.map(v => v.faturamento || 0))
-    : ordenacao === "vendas" 
-      ? Math.max(...vendedoresOrdenados.map(v => v.vendas || 0))
-      : Math.max(...vendedoresOrdenados.map(v => v.ticketMedio || 0));
-  
-  // Calcula total para métricas
-  const totalFaturamento = vendedoresOrdenados.reduce((acc, v) => acc + (v.faturamento || 0), 0);
-  const totalQuantidadeVendas = vendedoresOrdenados.reduce((acc, v) => acc + (v.vendas || 0), 0);
-  
-  if (!vendedores || vendedores.length === 0) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-xl font-bold">{titulo}</CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-col items-center justify-center py-12">
-          <Trophy className="h-16 w-16 text-muted-foreground/40 mb-4" />
-          <p className="text-muted-foreground text-center">
-            Nenhum dado disponível para o período selecionado
-          </p>
-        </CardContent>
-      </Card>
-    );
-  }
-  
-  const handlePeriodoChange = (value: string) => {
-    if (value && onPeriodoChange) {
-      onPeriodoChange(value);
-    }
-  };
-  
-  const getValorVendedor = (vendedor: any) => {
-    if (ordenacao === "faturamento") {
-      return formatCurrency(vendedor.faturamento || 0);
-    } else if (ordenacao === "vendas") {
-      return `${vendedor.vendas || 0} venda${vendedor.vendas === 1 ? '' : 's'}`;
-    } else {
-      return formatCurrency(vendedor.ticketMedio || 0);
-    }
-  };
-  
-  const formatarPercentual = (valor: number, total: number) => {
-    if (total === 0) return "0";
-    return ((valor / total) * 100).toFixed(1);
-  };
-  
-  const getCorPosicao = (posicao: number) => {
-    if (posicao === 0) return "bg-gradient-to-br from-yellow-400 to-yellow-600";
-    if (posicao === 1) return "bg-gradient-to-br from-gray-300 to-gray-500";
-    if (posicao === 2) return "bg-gradient-to-br from-amber-600 to-amber-800";
-    return "bg-gradient-to-br from-blue-500 to-indigo-600";
-  };
-  
-  // Obter cor para o badge de posição
-  const getCorBadge = (posicao: number) => {
-    if (posicao === 0) return "bg-yellow-500 border-yellow-600";
-    if (posicao === 1) return "bg-gray-400 border-gray-500";
-    if (posicao === 2) return "bg-amber-700 border-amber-800";
-    return "bg-indigo-600 border-indigo-700";
-  };
-  
-  // Obter cor baseada no percentual - quanto maior o percentual, mais verde
-  const getCorPercentual = (percentual: number) => {
-    if (percentual >= 45) return "bg-green-600";
-    if (percentual >= 30) return "bg-green-500";
-    if (percentual >= 15) return "bg-yellow-500";
-    return "bg-blue-500";
-  };
-  
-  // Retorna classe de animação baseada no índice e estado
-  const getAnimacaoItem = (index: number) => {
-    if (!animacoesCarregadas[index]) {
-      return "opacity-0 transform translate-y-4";
-    }
-    
-    return "opacity-100 transform translate-y-0 transition-all duration-500";
-  };
-  
-  // Renderizar medalha com efeito de brilho para primeiros lugares
-  const renderizarMedalha = (posicao: number) => {
-    if (posicao === 0) {
-      return (
-        <div className="relative">
-          <Medal className="h-5 w-5 text-yellow-500" />
-          <span className="absolute -top-1 -right-1">
-            <Sparkles className="h-3 w-3 text-yellow-300 animate-pulse" />
-          </span>
-        </div>
-      );
-    }
-    if (posicao === 1) return <Medal className="h-5 w-5 text-gray-400" />;
-    if (posicao === 2) return <Medal className="h-5 w-5 text-amber-700" />;
-    return <span className="text-xs font-medium">{posicao + 1}</span>;
-  };
-  
-  const getTendenciaVendedor = (vendedor: any, index: number) => {
-    // Aqui você pode implementar lógica real de tendência baseada em histórico
-    // Por enquanto, vamos simular baseado na posição para ter resultados consistentes
-    const tendencia = index % 3;
-    
-    if (tendencia === 0) return "subindo";
-    if (tendencia === 1) return "descendo";
-    return "estável";
-  };
-  
-  // Renderizar tendência (ícone de seta) com animação
-  const renderizarTendencia = (tendencia: string) => {
-    if (tendencia === "subindo") 
-      return <ChevronUp className="h-4 w-4 text-green-500 animate-bounce" style={{animationDuration: '2s'}} />;
-    if (tendencia === "descendo") 
-      return <ChevronDown className="h-4 w-4 text-red-500 animate-bounce" style={{animationDuration: '2s'}} />;
-    return null;
+  // Manipular alteração de período se disponível
+  const handlePeriodoChange = (novoPeriodo: string) => {
+    if (onPeriodoChange) {
+      onPeriodoChange(novoPeriodo);
+    };
   };
 
+  // Componente para o pódio
+  const RankingPodio = () => {
+    // Garantir que temos ao menos 3 vendedores
+    const top3 = [...vendedoresOrdenados].slice(0, 3);
+    while (top3.length < 3) {
+      top3.push({
+        id: -(top3.length + 1),
+        nome: 'Posição vaga',
+        faturamento: 0,
+        vendas: 0,
+        ticketMedio: 0,
+        percentual: 0,
+      } as VendedorExibicao);
+    }
+
+    // Organizar o pódio com o primeiro colocado no centro
+    const podiumOrder = [top3[1], top3[0], top3[2]];
+
   return (
-    <Card className={cn(
-      "overflow-hidden border-t-4 border-t-amber-500 transition-all duration-500",
-      animationState === 'entering' ? 'opacity-0 scale-95' : 'opacity-100 scale-100'
-    )}>
-      {/* Removida a animação de scroll que destacava automaticamente o quarto lugar */}
-      
-      <CardHeader className="pb-3">
-        <div className="flex justify-between items-center">
-          <div>
-            <CardTitle className="text-xl font-bold flex items-center gap-2">
-              <TrendingUp className="h-5 w-5 text-amber-500" />
-              {titulo}
-            </CardTitle>
-            <CardDescription className="mt-1">
-              Comparativo de desempenho entre vendedores
-            </CardDescription>
-          </div>
-          
-          <div className="flex items-center gap-2">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="h-8 gap-1">
-                  <Filter className="h-3.5 w-3.5" />
-                  <span className="hidden sm:inline">Ordenar</span>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-[180px]">
-                <DropdownMenuLabel>Ordenar por</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuGroup>
-                  <DropdownMenuItem 
-                    onClick={() => setOrdenacao("faturamento")}
-                    className={ordenacao === "faturamento" ? "bg-muted" : ""}
-                  >
-                    <CreditCard className="mr-2 h-4 w-4" />
-                    <span>Faturamento</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem 
-                    onClick={() => setOrdenacao("vendas")}
-                    className={ordenacao === "vendas" ? "bg-muted" : ""}
-                  >
-                    <BarChart className="mr-2 h-4 w-4" />
-                    <span>Quantidade</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem 
-                    onClick={() => setOrdenacao("ticket")}
-                    className={ordenacao === "ticket" ? "bg-muted" : ""}
-                  >
-                    <BadgePercent className="mr-2 h-4 w-4" />
-                    <span>Ticket Médio</span>
-                  </DropdownMenuItem>
-                </DropdownMenuGroup>
-              </DropdownMenuContent>
-            </DropdownMenu>
+      <div className="flex flex-col items-center">
+        <div className="flex items-end justify-center gap-4 mb-8 mt-4 w-full max-w-4xl mx-auto">
+          {podiumOrder.map((vendedor, index) => {
+            const posicaoReal = index === 0 ? 1 : index === 1 ? 0 : 2;
+            const empty = vendedor.id < 0;
+            const alturas = ["h-32", "h-40", "h-28"];
+            const cores = ["from-blue-500 to-blue-600", "from-amber-500 to-amber-600", "from-orange-500 to-orange-600"];
             
-            <Tabs defaultValue="podio" onValueChange={(v) => setVisualizacao(v as any)}>
-              <TabsList className="h-8">
-                <TabsTrigger value="podio" className="h-7 px-2">Pódio</TabsTrigger>
-                <TabsTrigger value="lista" className="h-7 px-2">Lista</TabsTrigger>
-                <TabsTrigger value="cards" className="h-7 px-2">Cards</TabsTrigger>
-              </TabsList>
-            </Tabs>
-          </div>
-        </div>
-        
-        <div className="flex items-center justify-between mt-2 text-xs text-muted-foreground">
-          <div className="flex items-center gap-1">
-            <Users className="h-3.5 w-3.5" />
-            <span>
-              {vendedores.length} Vendedores · Total: {formatCurrency(totalFaturamento)}
-            </span>
-          </div>
-          
-          {onPeriodoChange && (
-            <div className="flex items-center gap-1 bg-muted/20 rounded-md">
-              <Button 
-                variant={periodo === "7d" ? "secondary" : "ghost"} 
-                size="sm" 
-                className="h-6 px-2 text-xs rounded-sm"
-                onClick={() => handlePeriodoChange("7d")}
+            return (
+              <motion.div
+                key={vendedor.id}
+                className="flex flex-col items-center"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, delay: posicaoReal * 0.1 }}
               >
-                7d
-              </Button>
-              <Button 
-                variant={periodo === "30d" ? "secondary" : "ghost"} 
-                size="sm" 
-                className="h-6 px-2 text-xs rounded-sm"
-                onClick={() => handlePeriodoChange("30d")}
-              >
-                30d
-              </Button>
-              <Button 
-                variant={periodo === "90d" ? "secondary" : "ghost"} 
-                size="sm" 
-                className="h-6 px-2 text-xs rounded-sm"
-                onClick={() => handlePeriodoChange("90d")}
-              >
-                90d
-              </Button>
-            </div>
-          )}
-        </div>
-      </CardHeader>
-      <CardContent>
-        {visualizacao === "podio" && (
-          <div className="flex flex-col lg:flex-row gap-6">
-            {/* Seção do Pódio - Ocupa 100% em mobile e 6/9 em desktop */}
-            <div className="w-full lg:w-2/3">
-              <div className="flex justify-center items-center w-full">
-                <div className="w-full">
-                  <PodiumRanking 
-                    vendedores={vendedoresOrdenados}
-                    ordenacao={ordenacao}
-                    onVendedorClick={onVendedorClick}
-                  />
-                </div>
-              </div>
-            </div>
-            
-            {/* Seção de Ranking Completo - 100% em mobile e 3/9 em desktop */}
-            <div className="w-full lg:w-1/3 mt-4 lg:mt-0">
-              <h3 className="font-medium text-sm mb-4 text-muted-foreground uppercase tracking-wider border-b pb-2 flex justify-between items-center">
-                <div className="flex items-center gap-2">
-                  <span>Ranking Completo</span>
-                  {vendedoresOrdenados.length > 3 && (
-                    <div className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-800/30 dark:text-amber-300 animate-pulse">
-                      {vendedoresOrdenados.length}
-                    </div>
-                  )}
-                </div>
-                <span className="text-xs font-normal">vendedores</span>
-              </h3>
-              
-              <div 
-                className="space-y-3 overflow-auto pr-2 scrollbar-thin relative rounded-lg border border-muted bg-card shadow-inner p-3" 
-                id="ranking-completo-container"
-                style={{ 
-                  maxHeight: '520px',
-                  minHeight: vendedoresOrdenados.length > 3 ? (
-                    isDesktop ? '400px' : '280px'
-                  ) : 'auto'
-                }}
-              >
-                {vendedoresOrdenados.map((vendedor, index) => {
-                  const valorOrdenacao = ordenacao === "faturamento" 
-                    ? vendedor.faturamento 
-                    : ordenacao === "vendas" 
-                      ? vendedor.vendas 
-                      : vendedor.ticketMedio;
-                      
-                  const percentual = Number(formatarPercentual(
-                    valorOrdenacao,
-                    ordenacao === "faturamento" 
-                      ? totalFaturamento 
-                      : ordenacao === "vendas" 
-                        ? totalQuantidadeVendas 
-                        : totalFaturamento
-                  ));
-                  
-                  const tendencia = getTendenciaVendedor(vendedor, index);
-                  
-                  return (
-                    <div 
-                      key={`vendedor-${vendedor.id || index}`}
-                      className={`flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors ${
-                        onVendedorClick ? 'cursor-pointer' : ''
-                      } ${getAnimacaoItem(index)}`}
-                      onClick={() => onVendedorClick && onVendedorClick(vendedor)}
-                    >
-                      <div className={`flex items-center justify-center w-6 h-6 rounded-full text-white ${getCorBadge(index)} border shadow-sm`}>
-                        {index < 3 ? renderizarMedalha(index) : (index + 1)}
-                      </div>
-                      
-                      <Avatar className="h-10 w-10">
-                        <AvatarImage
-                          src={vendedor?.id ? imagensVendedores[vendedor.id] : '/images/default-avatar.svg'}
-                          alt={`Foto de ${vendedor?.nome || 'vendedor'}`}
-                        />
-                        <AvatarFallback className={`text-white ${getCorPosicao(index)}`}>
-                          <User className="h-6 w-6" />
+                <div className="flex flex-col items-center mb-2">
+                  <div className="relative">
+                    <Avatar className="h-20 w-20 border-4 border-white shadow-lg">
+                      {vendedor.foto ? (
+                        <AvatarImage src={vendedor.foto} alt={vendedor.nome} />
+                      ) : (
+                        <AvatarFallback className={cn(
+                          "bg-gradient-to-br text-white text-xl font-bold",
+                          empty ? "bg-gray-300" : cores[posicaoReal]
+                        )}>
+                          {empty ? "?" : getInitials(vendedor.nome)}
                         </AvatarFallback>
-                      </Avatar>
-                      
-                      <div className="flex-1 min-w-0">
-                        <div className="flex justify-between items-center">
-                          <div className="flex items-center gap-2 truncate pr-2">
-                            <span className="font-medium text-sm truncate">{vendedor.nome}</span>
-                            {renderizarTendencia(tendencia)}
-                          </div>
-                          <div className="flex items-center gap-1 text-right whitespace-nowrap">
-                            <span className="text-xs font-medium">{getValorVendedor(vendedor)}</span>
-                          </div>
-                        </div>
-                        
-                        <div className="flex items-center mt-1 gap-2">
-                          <div className="flex-1 h-2 bg-muted/50 rounded-full overflow-hidden">
-                            <div 
-                              className={`h-full ${getCorPercentual(percentual)} transition-all duration-1000 ease-out`} 
-                              style={{ 
-                                width: `${animacoesCarregadas[index] ? percentual : 0}%`,
-                                transition: 'width 1.5s cubic-bezier(0.65, 0, 0.35, 1)'
-                              }}
-                            />
-                          </div>
-                          <span className="text-xs w-11 text-right">{percentual}%</span>
-                        </div>
+                      )}
+                    </Avatar>
+                    <div className={cn(
+                      "absolute -bottom-2 -right-2 w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-sm",
+                      getBadgeColor(posicaoReal)
+                    )}>
+                      {posicaoReal + 1}
+        </div>
+          </div>
+                  <h3 className="mt-3 font-semibold text-center line-clamp-1 max-w-[120px]">
+                    {vendedor.nome}
+                  </h3>
+                  <div className="text-sm font-medium text-primary">
+                    {empty ? "-" : formatCurrency(vendedor.faturamento)}
+            </div>
+                  <div className="text-xs text-muted-foreground">
+                    {empty ? "-" : `${vendedor.vendas} vendas`}
+        </div>
+                </div>
+                <div className={cn(
+                  "w-24 rounded-t-lg bg-gradient-to-b flex items-center justify-center text-white font-semibold",
+                  alturas[posicaoReal],
+                  empty ? "bg-gray-200" : cores[posicaoReal]
+                )}>
+                  {!empty && (
+                    <div className="text-center">
+                      <div className="text-xl font-bold">{posicaoReal + 1}º</div>
+                      <div className="text-xs opacity-80">{vendedor.percentual}%</div>
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+            );
+          })}
+        </div>
+        
+        {vendedoresOrdenados.length > 3 && (
+          <div className="mt-4 w-full max-w-md mx-auto space-y-2">
+            <h4 className="text-sm font-medium text-muted-foreground text-center">
+              Demais colocados
+            </h4>
+            <div className="space-y-1.5">
+              {vendedoresOrdenados.slice(3, 6).map((vendedor, index) => (
+                    <div 
+                  key={vendedor.id}
+                  className="flex items-center justify-between p-2 rounded-md border bg-card/50 hover:bg-card/80 transition-colors"
+                      onClick={() => onVendedorClick && onVendedorClick(vendedor)}
+                  role={onVendedorClick ? "button" : undefined}
+                  tabIndex={onVendedorClick ? 0 : undefined}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={cn(
+                      "w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-medium",
+                      getBadgeColor(index + 3)
+                    )}>
+                      {index + 4}
                       </div>
-                    </div>
-                  );
-                })}
-                
-                {vendedoresOrdenados.length > 5 && (
-                  <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-white dark:from-gray-800 to-transparent pointer-events-none flex justify-center items-end pb-2">
-                    <div className="flex flex-col items-center">
-                      <span className="text-xs text-muted-foreground mb-1">
-                        +{vendedoresOrdenados.length - 4} vendedores
-                      </span>
-                      <span className="text-xs text-amber-500 animate-bounce">
-                        Role para ver mais
-                      </span>
-                    </div>
+                    <Avatar className="h-8 w-8">
+                      {vendedor.foto ? (
+                        <AvatarImage src={vendedor.foto} alt={vendedor.nome} />
+                      ) : (
+                        <AvatarFallback>
+                          {getInitials(vendedor.nome)}
+                        </AvatarFallback>
+                      )}
+                      </Avatar>
+                    <div className="font-medium text-sm">{vendedor.nome}</div>
+                          </div>
+                  <div className="text-right">
+                    <div className="font-medium">{formatCurrency(vendedor.faturamento)}</div>
+                    <div className="text-xs text-muted-foreground">{vendedor.vendas} vendas</div>
                   </div>
-                )}
               </div>
+              ))}
             </div>
           </div>
         )}
-        
-        {visualizacao === "lista" && (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="text-xs bg-muted/50">
-                <tr>
-                  <th className="px-3 py-2 text-left">Pos.</th>
-                  <th className="px-3 py-2 text-left">Vendedor</th>
-                  <th className="px-3 py-2 text-right">Vendas</th>
-                  <th className="px-3 py-2 text-right">Faturamento</th>
-                  <th className="px-3 py-2 text-right">Ticket Médio</th>
-                  <th className="px-3 py-2 text-right">% do Total</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {vendedoresOrdenados.map((vendedor, index) => {
-                  const valorOrdenacao = ordenacao === "faturamento" 
-                    ? vendedor.faturamento 
-                    : ordenacao === "vendas" 
-                      ? vendedor.vendas 
-                      : vendedor.ticketMedio;
-                      
-                  const percentual = Number(formatarPercentual(
-                    valorOrdenacao,
-                    ordenacao === "faturamento" 
-                      ? totalFaturamento 
-                      : ordenacao === "vendas" 
-                        ? totalQuantidadeVendas 
-                        : totalFaturamento
-                  ));
-                  
+      </div>
+    );
+  };
+
+  // Componente para exibição em lista
+  const RankingLista = () => {
                   return (
-                    <tr 
-                      key={index} 
-                      className={`hover:bg-muted/25 transition-colors ${
-                        onVendedorClick ? 'cursor-pointer' : ''
-                      } ${getAnimacaoItem(index)}`}
+      <div className="space-y-3 px-1 py-2">
+        {vendedoresOrdenados.map((vendedor, index) => (
+          <motion.div 
+            key={vendedor.id}
+            initial={{ opacity: 0, x: -10 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.2, delay: index * 0.05 }}
+            className={cn(
+              "flex items-center justify-between p-3 rounded-md border transition-all",
+              index < 3 ? "bg-card/50 shadow-sm" : "bg-background hover:bg-muted/30",
+              onVendedorClick && "cursor-pointer hover:shadow-md"
+            )}
                       onClick={() => onVendedorClick && onVendedorClick(vendedor)}
-                    >
-                      <td className="px-3 py-2">
-                        <div className="flex items-center">
-                          <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs text-white ${getCorBadge(index)} shadow-sm`}>
-                            {index < 3 ? renderizarMedalha(index) : (index + 1)}
+            role={onVendedorClick ? "button" : undefined}
+            tabIndex={onVendedorClick ? 0 : undefined}
+          >
+            <div className="flex items-center gap-3">
+              <div className={cn(
+                "w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-medium",
+                getBadgeColor(index)
+              )}>
+                {index + 1}
                           </div>
-                        </div>
-                      </td>
-                      <td className="px-3 py-2 font-medium">
-                        <div className="flex items-center gap-2">
-                          <Avatar className="h-7 w-7">
-                            <AvatarImage
-                              src={vendedor?.id ? imagensVendedores[vendedor.id] : '/images/default-avatar.svg'}
-                              alt={`Foto de ${vendedor?.nome || 'vendedor'}`}
-                            />
-                            <AvatarFallback className={`text-white ${getCorPosicao(index)}`}>
-                              <User className="h-6 w-6" />
+              <Avatar className="h-10 w-10 border border-muted">
+                {vendedor.foto ? (
+                  <AvatarImage src={vendedor.foto} alt={vendedor.nome} />
+                ) : (
+                  <AvatarFallback>
+                    {getInitials(vendedor.nome)}
                             </AvatarFallback>
+                )}
                           </Avatar>
-                          <div className="flex items-center gap-1">
+              <div>
+                <div className="font-medium flex items-center gap-1.5">
                           {vendedor.nome}
-                            {renderizarTendencia(getTendenciaVendedor(vendedor, index))}
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-3 py-2 text-right">{vendedor.vendas}</td>
-                      <td className="px-3 py-2 text-right">{formatCurrency(vendedor.faturamento)}</td>
-                      <td className="px-3 py-2 text-right">{formatCurrency(vendedor.ticketMedio)}</td>
-                      <td className="px-3 py-2 text-right">
-                        <div className="flex items-center justify-end gap-1">
-                          <div className="w-16 h-1.5 bg-muted/50 rounded-full overflow-hidden">
-                            <div 
-                              className={`h-full ${getCorPercentual(percentual)} transition-all duration-1000 ease-out`} 
-                              style={{ 
-                                width: `${animacoesCarregadas[index] ? percentual : 0}%`,
-                                transition: 'width 1.5s cubic-bezier(0.65, 0, 0.35, 1)'
-                              }}
-                            />
-                          </div>
-                          <span>{percentual}%</span>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-        
-        {visualizacao === "cards" && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-            {vendedoresOrdenados.map((vendedor, index) => {
-              const valorOrdenacao = ordenacao === "faturamento" 
-                ? vendedor.faturamento 
-                : ordenacao === "vendas" 
-                  ? vendedor.vendas 
-                  : vendedor.ticketMedio;
-                  
-              const percentual = Number(formatarPercentual(
-                valorOrdenacao,
-                ordenacao === "faturamento" 
-                  ? totalFaturamento 
-                  : ordenacao === "vendas" 
-                    ? totalQuantidadeVendas 
-                    : totalFaturamento
-              ));
-              
-              return (
-                <div 
-                  key={`vendedor-card-${index}`}
-                  className={cn(
-                    "relative bg-white dark:bg-gray-800 rounded-lg shadow-sm border p-4 hover:shadow-md transition-shadow",
-                    onVendedorClick ? 'cursor-pointer' : '',
-                    getAnimacaoItem(index),
-                    index < 3 ? "ring-1 ring-offset-2" : "",
-                    index === 0 ? "ring-yellow-400" : index === 1 ? "ring-gray-400" : index === 2 ? "ring-amber-700" : ""
+                  {index < 3 && (
+                    <Medal className={cn("h-3.5 w-3.5", getRankColor(index))} />
                   )}
-                  onClick={() => onVendedorClick && onVendedorClick(vendedor)}
+                </div>
+                <div className="text-xs text-muted-foreground">{vendedor.percentual}% do total</div>
+                          </div>
+                        </div>
+            <div className="text-right">
+              <div className="font-medium flex items-center justify-end gap-1">
+                {formatCurrency(vendedor.faturamento)}
+                {getTrendIcon(vendedor.variacao)}
+              </div>
+              <div className="text-xs text-muted-foreground">{vendedor.vendas} vendas</div>
+                          </div>
+          </motion.div>
+        ))}
+                        </div>
+                  );
+  };
+
+  // Componente para exibição em cards
+  const RankingCards = () => {
+              return (
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-1">
+        {vendedoresOrdenados.map((vendedor, index) => (
+          <motion.div 
+            key={vendedor.id}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: index * 0.05 }}
+            onClick={() => onVendedorClick && onVendedorClick(vendedor)}
+                  className={cn(
+              "relative rounded-lg border bg-card p-4 transition-all",
+              onVendedorClick && "cursor-pointer hover:shadow-md hover:-translate-y-0.5"
+            )}
+            role={onVendedorClick ? "button" : undefined}
+            tabIndex={onVendedorClick ? 0 : undefined}
                 >
-                  <div className={`absolute top-0 right-0 w-8 h-8 ${getCorBadge(index)} rounded-bl-lg rounded-tr-lg flex items-center justify-center text-white font-bold shadow-md`}>
-                    {index < 3 ? renderizarMedalha(index) : (index + 1)}
+            <div className="flex justify-between items-start mb-4">
+              <div className="flex items-center gap-3">
+                <Avatar className="h-12 w-12 border-2 border-muted/30">
+                  {vendedor.foto ? (
+                    <AvatarImage src={vendedor.foto} alt={vendedor.nome} />
+                  ) : (
+                    <AvatarFallback>
+                      {getInitials(vendedor.nome)}
+                    </AvatarFallback>
+                  )}
+                </Avatar>
+                <div>
+                  <div className="font-medium">{vendedor.nome}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {vendedor.vendas} vendas ({vendedor.percentual}%)
                   </div>
-                  
-                  <div className="flex items-center gap-3 mb-3">
-                    <Avatar className="h-12 w-12">
-                      <AvatarImage
-                        src={vendedor?.id ? imagensVendedores[vendedor.id] : '/images/default-avatar.svg'}
-                        alt={`Foto de ${vendedor?.nome || 'vendedor'}`}
-                      />
-                      <AvatarFallback className={`text-white ${getCorPosicao(index)}`}>
-                        <User className="h-6 w-6" />
-                      </AvatarFallback>
-                    </Avatar>
-                    
-                    <div>
-                      <h4 className="font-semibold text-sm flex items-center gap-1">
-                        {vendedor.nome}
-                        {renderizarTendencia(getTendenciaVendedor(vendedor, index))}
-                      </h4>
-                      <p className="text-muted-foreground text-xs">
-                        {vendedor.vendas} venda{vendedor.vendas === 1 ? '' : 's'}
-                      </p>
+                </div>
+              </div>
+              <div className={cn(
+                "w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold",
+                getBadgeColor(index)
+              )}>
+                {index + 1}
                     </div>
                   </div>
                   
                   <div className="space-y-2">
-                    <div className="flex justify-between items-center">
-                      <span className="text-xs text-muted-foreground">Faturamento</span>
-                      <span className="font-medium text-sm">{formatCurrency(vendedor.faturamento)}</span>
+              <div className="flex justify-between items-baseline">
+                <span className="text-sm text-muted-foreground">Faturamento</span>
+                <span className="text-lg font-bold">{formatCurrency(vendedor.faturamento)}</span>
                     </div>
                     
-                    <div className="flex justify-between items-center">
-                      <span className="text-xs text-muted-foreground">Ticket Médio</span>
-                      <span className="font-medium text-sm">{formatCurrency(vendedor.ticketMedio)}</span>
-                    </div>
-                    
-                    <div className="pt-1">
-                      <div className="flex justify-between items-center text-xs">
-                        <span className="text-muted-foreground">Participação</span>
-                        <span>{percentual}%</span>
-                      </div>
-                      <div className="mt-1 h-1.5 bg-muted/50 rounded-full overflow-hidden">
-                        <div 
-                          className={`h-full ${getCorPercentual(percentual)} transition-all duration-1000 ease-out`} 
-                          style={{ 
-                            width: `${animacoesCarregadas[index] ? percentual : 0}%`,
-                            transition: 'width 1.5s cubic-bezier(0.65, 0, 0.35, 1)'
-                          }}
+              <div className="w-full bg-muted/30 rounded-full h-2">
+                <div 
+                  className={cn(
+                    "h-2 rounded-full",
+                    index === 0 ? "bg-amber-500" : 
+                    index === 1 ? "bg-slate-400" : 
+                    index === 2 ? "bg-amber-800" : 
+                    "bg-primary/60"
+                  )}
+                  style={{ width: `${Math.max(vendedor.percentual, 5)}%` }}
                         />
                       </div>
                     </div>
+          </motion.div>
+        ))}
+      </div>
+    );
+  };
+
+  return (
+    <Card className="shadow-sm">
+      <CardHeader className="pb-3">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div>
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Trophy className="h-5 w-5 text-amber-500" />
+              {titulo}
+            </CardTitle>
+            <CardDescription>
+              Comparativo de desempenho entre vendedores
+            </CardDescription>
+          </div>
+          
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 gap-1 text-xs"
+              onClick={() => setOrdenacao(ordenacao === "faturamento" ? "vendas" : "faturamento")}
+            >
+              <BarChart3 className="h-3.5 w-3.5" />
+              Ordenar por {ordenacao === "faturamento" ? "Vendas" : "Valor"}
+            </Button>
+            
+            <Tabs defaultValue={visualizacao} onValueChange={(v) => setVisualizacao(v)}>
+              <TabsList className="grid w-[180px] grid-cols-3">
+                <TabsTrigger value="lista" className="text-xs">Lista</TabsTrigger>
+                <TabsTrigger value="podio" className="text-xs">Pódio</TabsTrigger>
+                <TabsTrigger value="cards" className="text-xs">Cards</TabsTrigger>
+              </TabsList>
+            </Tabs>
                   </div>
                 </div>
-              );
-            })}
+      </CardHeader>
+      
+      <CardContent className="pt-1">
+        {vendedoresOrdenados.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+            <Users className="h-12 w-12 mb-4 opacity-20" />
+            <p>Nenhum vendedor encontrado no período</p>
+          </div>
+        ) : (
+          <div>
+            {visualizacao === 'lista' && <RankingLista />}
+            {visualizacao === 'podio' && <RankingPodio />}
+            {visualizacao === 'cards' && <RankingCards />}
           </div>
         )}
       </CardContent>
+      
+      <CardFooter className="flex justify-between py-3 text-xs text-muted-foreground border-t">
+        <div className="flex items-center gap-1">
+          <Users className="h-3.5 w-3.5" />
+          <span>{vendedoresOrdenados.length} vendedores</span>
+        </div>
+        <div>
+          Total: {formatCurrency(vendedoresOrdenados.reduce((acc, v) => acc + v.faturamento, 0))}
+        </div>
+      </CardFooter>
     </Card>
   );
 } 

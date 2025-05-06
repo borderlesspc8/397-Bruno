@@ -10,7 +10,10 @@ import { prisma } from "@/app/_lib/prisma";
 import { revalidatePath } from "next/cache";
 import { getServerSession } from "next-auth";
 
+// Configuração para forçar o comportamento dinâmico
 export const dynamic = "force-dynamic";
+
+
 
 // Função formatadora de datas
 function formatDateForStorage(date: string | Date): string {

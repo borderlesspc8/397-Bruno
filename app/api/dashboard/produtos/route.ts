@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { processarDatasURL } from '@/app/_utils/dates';
 import { prisma } from '@/app/_lib/prisma';
 
+// Configuração para forçar o comportamento dinâmico
+export const dynamic = "force-dynamic";
+
+
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;

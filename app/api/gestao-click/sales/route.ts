@@ -10,8 +10,10 @@ import { GestaoClickService } from "@/app/_services/gestao-click-service";
 import { InstallmentService } from "@/app/_services/installment-service";
 import { GestaoClickSale } from "@/app/_types/transaction";
 
-// Marcador para forçar o comportamento dinâmico
+// Configuração para forçar o comportamento dinâmico
 export const dynamic = "force-dynamic";
+
+
 
 /**
  * GET /api/gestao-click/sales

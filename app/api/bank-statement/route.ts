@@ -11,15 +11,18 @@ import { authOptions } from "@/app/_lib/auth-options";
 import { prisma } from "@/app/_lib/prisma";
 import { readFileSync } from "fs";
 import { join } from "path";
-import { dynamic, fetchCache, revalidate } from '../_utils/dynamic-config';
+
+// Configuração para forçar o comportamento dinâmico
+export const dynamic = "force-dynamic";
+
 
 // Definir enum localmente se não estiver disponível
 enum BankIntegrationProvider {
   BANCO_DO_BRASIL = "banco-do-brasil"
 }
 
-// Exportar as configurações para esta rota
-export { dynamic, fetchCache, revalidate };
+// Removendo a exportação duplicada
+// export { dynamic, fetchCache, revalidate };
 
 export async function GET(request: Request) {
   try {

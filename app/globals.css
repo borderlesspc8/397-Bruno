@@ -2,8 +2,181 @@
 @tailwind components;
 @tailwind utilities;
 
+:root, .light {
+  --background: 0 0% 100%;
+  --foreground: 240 10% 3.9%;
+  --card: 0 0% 100%;
+  --card-foreground: 240 10% 3.9%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 240 10% 3.9%;
+  --primary: 210 100% 45%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 240 4.8% 95.9%;
+  --secondary-foreground: 240 5.9% 10%;
+  --muted: 240 4.8% 95.9%;
+  --muted-foreground: 240 3.8% 46.1%;
+  --accent: 240 4.8% 95.9%;
+  --accent-foreground: 240 5.9% 10%;
+  --destructive: 0 84.2% 60.2%;
+  --destructive-foreground: 0 0% 98%;
+  --info: 204 94% 94%;
+  --info-foreground: 204 94% 34%;
+  --success: 145 80% 96%;
+  --success-foreground: 145 80% 36%;
+  --warning: 45 100% 96%;
+  --warning-foreground: 45 100% 36%;
+  --alert: 0 100% 96%;
+  --alert-foreground: 0 100% 36%;
+  --border: 240 5.9% 90%;
+  --input: 240 5.9% 90%;
+  --ring: 240 5.9% 10%;
+  --radius: 0.5rem;
+  
+  --positive-value: 142 69% 38%;
+  --negative-value: 358 76% 46%;
+  
+  --sidebar-width: 16rem;
+  --sidebar-width-collapsed: 4rem;
+  --topbar-height: 4rem;
+}
+
+.dark {
+  --background: 222 47% 7%;
+  --foreground: 0 0% 95%;
+  --card: 222 45% 9%;
+  --card-foreground: 0 0% 95%;
+  --popover: 222 45% 9%;
+  --popover-foreground: 0 0% 95%;
+  --primary: 210 95% 60%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 222 35% 15%;
+  --secondary-foreground: 0 0% 95%;
+  --muted: 222 35% 15%;
+  --muted-foreground: 240 5% 65%;
+  --accent: 222 35% 22%;
+  --accent-foreground: 0 0% 95%;
+  --destructive: 0 75% 50%;
+  --destructive-foreground: 0 0% 95%;
+  --info: 204 70% 15%;
+  --info-foreground: 204 90% 65%;
+  --success: 145 80% 15%;
+  --success-foreground: 145 80% 65%;
+  --warning: 45 100% 15%;
+  --warning-foreground: 45 100% 65%;
+  --alert: 0 75% 15%;
+  --alert-foreground: 0 85% 65%;
+  --border: 222 30% 18%;
+  --input: 222 30% 18%;
+  --ring: 219 90% 65%;
+  
+  --positive-value: 142 76% 56%;
+  --negative-value: 358 85% 57%;
+}
+
+/* Classe para transição suave entre temas */
+.theme-transition {
+  transition: background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              border-color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              fill 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  
+  body {
+    @apply bg-background text-foreground;
+  }
+  
+  .positive-value {
+    @apply text-[hsl(var(--positive-value))];
+  }
+  
+  .negative-value {
+    @apply text-[hsl(var(--negative-value))];
+  }
+
+  /* Estilos para tabelas financeiras */
+  .finance-table th {
+    @apply font-semibold text-muted-foreground uppercase text-xs tracking-wider;
+  }
+  
+  .finance-table td,
+  .finance-table th {
+    @apply py-3 px-4;
+  }
+  
+  .finance-table tbody tr {
+    @apply border-b border-border hover:bg-muted/30 transition-colors;
+  }
+  
+  .finance-table .financial-value {
+    @apply font-semibold tabular-nums text-right;
+  }
+  
+  /* Melhorias na acessibilidade para scrollbars */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  
+  ::-webkit-scrollbar-track {
+    @apply bg-secondary/50;
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    @apply bg-muted-foreground/50 rounded-full transition-colors;
+  }
+  
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-muted-foreground/70;
+  }
+  
+  /* Esconde scrollbar em dispositivos móveis, 
+     mas mantém a funcionalidade */
+  @media (max-width: 640px) {
+    ::-webkit-scrollbar {
+      width: 4px;
+      height: 4px;
+    }
+  }
+  
+  /* Suporte a dark mode para texto selecionado */
+  ::selection {
+    @apply bg-primary/30 text-foreground;
+  }
+  
+  .dark ::selection {
+    @apply bg-primary/40 text-foreground;
+  }
+}
+
+/* Animações e transições */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideInFromRight {
+  from { transform: translateX(20px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+.animate-slide-in {
+  animation: slideInFromRight 0.3s ease-out;
+}
+
 body {
   font-family: Arial, Helvetica, sans-serif;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 @layer utilities {
@@ -72,60 +245,60 @@ body {
   }
 
   .dark {
-    /* Cores base - fundo escuro com tom amarelo */
-    --background: 224 30% 6%;
+    /* Cores base - fundo escuro com melhor contraste */
+    --background: 222 47% 7%;
     --foreground: 210 40% 98%;
     
     /* Componentes de cartão - com melhor contraste */
-    --card: 224 30% 10%;
+    --card: 222 47% 10%;
     --card-foreground: 210 40% 98%;
     
     /* Componentes popup - coerentes com o esquema */
-    --popover: 224 30% 8%;
+    --popover: 222 47% 8%;
     --popover-foreground: 210 40% 98%;
     
-    /* Cores principais - amarelo como cor principal */
-    --primary: 40 94% 59%;
-    --primary-foreground: 0 0% 10%;
+    /* Cores principais - azul mais vibrante como cor principal */
+    --primary: 217 91% 60%;
+    --primary-foreground: 0 0% 100%;
     
-    /* Elementos secundários - tom amarelo mais escuro */
-    --secondary: 40 70% 25%;
+    /* Elementos secundários - tom azul escuro complementar */
+    --secondary: 217 33% 20%;
     --secondary-foreground: 210 40% 98%;
     
     /* Estados silenciados - mais legíveis */
-    --muted: 40 30% 20%;
-    --muted-foreground: 40 20% 75%;
+    --muted: 217 33% 17%;
+    --muted-foreground: 215 20% 75%;
     
-    /* Elementos de destaque - amarelo mais escuro */
-    --accent: 40 50% 25%;
+    /* Elementos de destaque - azul escuro */
+    --accent: 217 33% 25%;
     --accent-foreground: 210 40% 98%;
     
-    /* Estados destrutivos - mantendo vermelho */
-    --destructive: 0 62.8% 50%;
+    /* Estados destrutivos - vermelho mais acessível */
+    --destructive: 0 72% 51%;
     --destructive-foreground: 210 40% 98%;
     
-    /* Elementos de interface - bordas com tom amarelado */
-    --border: 40 30% 15%;
-    --input: 40 30% 15%;
-    --ring: 40 94% 59%;
+    /* Elementos de interface - bordas com contraste adequado */
+    --border: 217 33% 18%;
+    --input: 217 33% 18%;
+    --ring: 217 91% 60%;
     
-    /* Cores financeiras - mais vibrantes no tema escuro */
-    --income: 142 76% 50%;
+    /* Cores financeiras - mais vibrantes e acessíveis */
+    --income: 142 76% 45%;
     --expense: 0 84% 65%;
-    --investment: 40 94% 59%;
-    --transfer: 40 70% 65%;
+    --investment: 217 91% 60%;
+    --transfer: 262 83% 65%;
     
-    /* Cores para gráficos - adaptadas para o tema amarelo */
-    --chart-1: 40 94% 59%;
-    --chart-2: 30 70% 50%;
-    --chart-3: 20 85% 60%;
-    --chart-4: 50 70% 65%;
-    --chart-5: 60 80% 60%;
+    /* Cores para gráficos - adaptadas para o tema azul escuro */
+    --chart-1: 217 91% 60%;
+    --chart-2: 199 89% 48%;
+    --chart-3: 262 83% 65%;
+    --chart-4: 316 73% 52%;
+    --chart-5: 142 76% 45%;
     
     /* Cores para dashboard */
-    --dashboard-highlight: 40 30% 15%;
-    --dashboard-card-hover: 40 30% 12%;
-    --dashboard-shadow: 40 30% 3%;
+    --dashboard-highlight: 217 33% 18%;
+    --dashboard-card-hover: 217 33% 15%;
+    --dashboard-shadow: 222 47% 5%;
   }
   
   /* Classe explícita para forçar o tema light */
@@ -244,7 +417,7 @@ body {
 .dark textarea:focus, 
 .dark select:focus {
   border-color: hsl(var(--primary));
-  box-shadow: 0 0 0 1px hsla(var(--primary), 0.5);
+  box-shadow: 0 0 0 2px hsla(var(--primary), 0.3);
 }
 
 /* Melhoria na legibilidade de tabelas no tema escuro */
@@ -260,11 +433,11 @@ body {
 
 .dark table thead th {
   color: hsl(var(--muted-foreground));
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .dark table tbody tr:nth-child(odd) {
-  background-color: hsla(224, 30%, 8%, 0.6);
+  background-color: hsla(var(--card), 0.6);
 }
 
 .dark table tbody tr:hover {
@@ -275,23 +448,23 @@ body {
 .value-positive,
 .income-value {
   color: hsl(var(--income));
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .value-negative,
 .expense-value {
   color: hsl(var(--expense));
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .investment-value {
   color: hsl(var(--investment));
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .transfer-value {
   color: hsl(var(--transfer));
-  font-weight: 500;
+  font-weight: 600;
 }
 
 /* Transição suave entre temas */
@@ -299,7 +472,11 @@ body {
 .theme-transition *,
 .theme-transition *::before,
 .theme-transition *::after {
-  transition: all 0.2s ease-in-out !important;
+  transition: background-color 0.3s ease,
+              color 0.3s ease,
+              border-color 0.3s ease,
+              box-shadow 0.3s ease,
+              fill 0.3s ease !important;
   transition-delay: 0 !important;
 }
 
@@ -345,15 +522,15 @@ body {
 }
 
 .dark ::-webkit-scrollbar-track {
-  background: hsla(224, 30%, 10%, 0.3);
+  background: hsla(var(--muted), 0.3);
 }
 
 .dark ::-webkit-scrollbar-thumb {
-  background: hsl(224, 30%, 20%);
+  background: hsl(var(--muted));
 }
 
 .dark ::-webkit-scrollbar-thumb:hover {
-  background: hsl(224, 30%, 30%);
+  background: hsl(var(--accent));
 }
 
 /* Melhorias de textos informativos e tooltips */
@@ -362,7 +539,7 @@ body {
 }
 
 .dark .text-info {
-  color: hsl(217.2, 91.2%, 75%);
+  color: hsl(var(--primary));
 }
 
 /* Tema para tooltips */
@@ -377,8 +554,8 @@ body {
 
 .dark [data-tooltip]::before,
 .dark [data-tooltip]::after {
-  background-color: hsl(224, 30%, 15%);
-  border: 1px solid hsl(217.2, 32.6%, 25%);
+  background-color: hsl(var(--popover));
+  border: 1px solid hsl(var(--border));
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
 }
 
@@ -416,25 +593,25 @@ a, button, .interactive {
 .badge-income {
   background-color: hsla(var(--income), 0.15);
   color: hsl(var(--income));
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .badge-expense {
   background-color: hsla(var(--expense), 0.15);
   color: hsl(var(--expense));
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .badge-investment {
   background-color: hsla(var(--investment), 0.15);
   color: hsl(var(--investment));
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .badge-transfer {
   background-color: hsla(var(--transfer), 0.15);
   color: hsl(var(--transfer));
-  font-weight: 500;
+  font-weight: 600;
 }
 
 /* Otimizações para layout do dashboard */
@@ -457,22 +634,26 @@ a, button, .interactive {
   min-height: 0;
 }
 
-/* Make sure the dashboard content is scrollable */
-html, body {
-  height: 100%;
-  overflow: hidden;
+/* Adicionar regras específicas para o novo layout */
+.app-layout-with-navbar {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100%;
 }
 
-@media (max-width: 768px) {
-  .dashboard-sidebar {
-    display: none;
-  }
-  
-  .dashboard-content {
-    width: 100%;
-  }
+.app-layout-with-navbar header {
+  flex-shrink: 0;
 }
 
+.app-layout-with-navbar main {
+  flex-grow: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch; /* Para melhor desempenho em dispositivos iOS */
+}
+.bg-gray-50{
+  background-color: rgba(0, 19, 38, 1) !important;
+}
 /* Estilos específicos para o calendário */
 .rdp-dropdown {
   appearance: none;
@@ -882,6 +1063,11 @@ html, body {
 
 /* Estilos para garantir que o popup do datepicker seja exibido corretamente */
 [data-radix-popper-content-wrapper] {
+  z-index: 50 !important;
+}
+
+/* Exceção específica para os calendários que devem ficar centralizados */
+.date-picker-centered [data-radix-popper-content-wrapper] {
   position: fixed !important;
   inset: auto !important;
   transform: none !important;
@@ -892,7 +1078,6 @@ html, body {
   max-height: calc(100vh - 80px) !important;
   max-width: calc(100vw - 40px) !important;
   overflow: auto !important;
-  z-index: 50 !important;
 }
 
 @media (min-width: 768px) {
@@ -936,4 +1121,61 @@ html, body {
     min-width: auto !important;
     width: 300px !important;
   }
+}
+
+/* Classe para esconder a barra de rolagem mas manter a funcionalidade */
+.hide-scrollbar {
+  -ms-overflow-style: none;  /* Internet Explorer e Edge */
+  scrollbar-width: none;     /* Firefox */
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;  /* Chrome, Safari e Opera */
+}
+
+/* Estilos personalizados para a barra de rolagem */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #a1a1a1;
+}
+
+/* Compatibilidade com tema escuro */
+.dark .custom-scrollbar::-webkit-scrollbar-track {
+  background: #2a2a2a;
+}
+
+.dark .custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #555;
+}
+
+.dark .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #666;
+}
+
+/* Garantir que apenas uma definição de tema esteja ativa */
+html.dark {
+  color-scheme: dark;
+}
+
+html.light {
+  color-scheme: light;
+}
+
+/* Melhorar transição entre temas */
+.bg-background {
+  transition: background-color 0.3s ease;
 }

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/app/_lib/prisma";
 import { randomBytes } from "crypto";
-import { sendEmail } from "@/app/_lib/email";
+import { sendPasswordResetEmail } from "@/app/_lib/email";
 
 export async function POST(request: Request) {
   try {
@@ -13,15 +13,22 @@ export async function POST(request: Request) {
     });
 
     if (!user) {
+      // Por questões de segurança, não informamos que o email não existe
+      // Apenas retornamos sucesso para evitar enumeração de usuários
       return NextResponse.json(
-        { error: "E-mail não encontrado" },
-        { status: 404 }
+        { message: "Se o email estiver cadastrado, enviaremos as instruções de recuperação" },
+        { status: 200 }
       );
     }
 
     // Gera um token único
     const token = randomBytes(32).toString("hex");
     const expires = new Date(Date.now() + 3600000); // 1 hora
+
+    // Remove tokens antigos para este usuário (opcional)
+    await prisma.passwordReset.deleteMany({
+      where: { userId: user.id }
+    });
 
     // Salva o token no banco
     await prisma.passwordReset.create({
@@ -32,22 +39,11 @@ export async function POST(request: Request) {
       },
     });
 
-    // Envia o e-mail
-    const resetLink = `${process.env.NEXT_PUBLIC_APP_URL}/auth/reset-password?token=${token}`;
-    
-    await sendEmail({
-      to: email,
-      subject: "Recuperação de Senha - Conta Rápida",
-      html: `
-        <h1>Recuperação de Senha</h1>
-        <p>Olá,</p>
-        <p>Recebemos uma solicitação para redefinir sua senha. Se você não fez esta solicitação, ignore este e-mail.</p>
-        <p>Para redefinir sua senha, clique no link abaixo:</p>
-        <a href="${resetLink}">Redefinir Senha</a>
-        <p>Este link expira em 1 hora.</p>
-        <p>Atenciosamente,<br>Equipe Conta Rápida</p>
-      `,
-    });
+    // Envia o e-mail usando a nova função especializada
+    await sendPasswordResetEmail(email, token);
+
+    // Log de auditoria (opcional)
+    console.log(`[PASSWORD_RESET_REQUESTED] User: ${user.id}, Email: ${email}`);
 
     return NextResponse.json(
       { message: "E-mail de recuperação enviado com sucesso" },

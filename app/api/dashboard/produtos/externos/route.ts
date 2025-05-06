@@ -3,6 +3,10 @@ import { BetelTecnologiaService } from '@/app/_services/betelTecnologia';
 import { processarDatasURL } from '@/app/_utils/dates';
 import { Produto } from '@/app/_services/produtos';
 
+// Configuração para forçar o comportamento dinâmico
+export const dynamic = "force-dynamic";
+
+
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;

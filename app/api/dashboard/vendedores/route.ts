@@ -1,20 +1,16 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from "@/app/_lib/prisma";
+import { parse, format, startOfMonth, subMonths } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 import { BetelTecnologiaService } from '@/app/_services/betelTecnologia';
-import { processarDatasURL } from '@/app/_utils/dates';
-import { Vendedor } from '@/app/_services/betelTecnologia';
+import { getCachedData, CachePrefix } from '@/app/_services/cache';
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { db } from "@/app/_lib/prisma";
 
-// Lista de vendedores fixos que devem sempre aparecer na listagem
-// mesmo que não tenham vendas registradas no período
-const VENDEDORES_FIXOS: Vendedor[] = [
-  {
-    id: 'marcos-vinicius',
-    nome: 'Marcos Vinicius',
-    vendas: 0,
-    faturamento: 0,
-    ticketMedio: 0
-  }
-  // Adicione outros vendedores fixos conforme necessário
-];
+// Configuração para forçar o comportamento dinâmico
+export const dynamic = "force-dynamic";
+
 
 /**
  * @api {get} /api/dashboard/vendedores Buscar vendedores
@@ -32,115 +28,92 @@ const VENDEDORES_FIXOS: Vendedor[] = [
  * @apiSuccess {Number} totalVendas Total de vendas
  * @apiSuccess {Number} totalFaturamento Total de faturamento
  */
-export async function GET(request: Request) {
+
+// Tempo de vida do cache para vendedores (15 minutos)
+const CACHE_TTL_VENDEDORES = 15 * 60; // segundos
+
+export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
-    const dataInicio = searchParams.get('dataInicio');
-    const dataFim = searchParams.get('dataFim');
-
-    // Usar o utilitário para processar as datas
-    const resultadoDatas = processarDatasURL(dataInicio, dataFim);
+    const searchParams = request.nextUrl.searchParams;
     
-    // Se houve erro no processamento das datas
-    if (!resultadoDatas.success) {
-      return NextResponse.json(
-        { 
-          erro: resultadoDatas.error,
-          vendedores: [],
-          totalVendedores: 0,
-          totalVendas: 0,
-          totalFaturamento: 0
-        },
-        { status: 400 }
-      );
+    // Parâmetros de filtro da data
+    const dataInicioParam = searchParams.get('dataInicio');
+    const dataFimParam = searchParams.get('dataFim');
+
+    if (!dataInicioParam || !dataFimParam) {
+      return NextResponse.json({ 
+        erro: 'Os parâmetros dataInicio e dataFim são obrigatórios',
+        vendedores: []
+      }, { status: 400 });
     }
 
-    console.log(`Buscando vendedores de ${resultadoDatas.dataInicio!.toISOString()} até ${resultadoDatas.dataFim!.toISOString()}`);
+    // Converter string para objeto Date
+    let dataInicio: Date;
+    let dataFim: Date;
 
-    // Chamar o serviço para buscar os vendedores
-    console.log('Buscando vendedores...');
-    const resultado = await BetelTecnologiaService.buscarVendedores({
-      dataInicio: resultadoDatas.dataInicio!,
-      dataFim: resultadoDatas.dataFim!
-    });
-
-    // Verificar erro
-    if (resultado.erro) {
-      console.warn('Erro no serviço:', resultado.erro);
-      
-      // Se o erro está relacionado a credenciais, retornar mensagem específica
-      if (
-        resultado.erro.includes('Token de acesso não configurado') || 
-        resultado.erro.includes('Token secreto não configurado') ||
-        resultado.erro.includes('credenciais inválidas')
-      ) {
-        return NextResponse.json(
-          { 
-            erro: 'É necessário configurar as credenciais da API externa. Entre em contato com o suporte.',
-            vendedores: [],
-            totalVendedores: 0,
-            totalVendas: 0,
-            totalFaturamento: 0
-          },
-          { status: 401 }
-        );
+    try {
+      // Aceitar tanto formato ISO quanto data formatada
+      if (dataInicioParam.includes('T')) {
+        dataInicio = new Date(dataInicioParam);
+      } else {
+        dataInicio = parse(dataInicioParam, 'yyyy-MM-dd', new Date());
       }
       
-      // Outros erros
-      return NextResponse.json(
-        { 
-          erro: `Erro ao buscar vendedores: ${resultado.erro}`,
-          vendedores: [],
-          totalVendedores: 0,
-          totalVendas: 0,
-          totalFaturamento: 0
-        },
-        { status: 500 }
-      );
-    }
-
-    // Log dos vendedores retornados para depuração
-    if (resultado.vendedores.length > 0) {
-      console.log('Exemplo de vendedor processado:', JSON.stringify(resultado.vendedores[0], null, 2));
-    }
-
-    // Verificar se os vendedores fixos já estão na lista
-    const vendedoresAtualizados = [...resultado.vendedores];
-    let vendedoresAdicionados = 0;
-
-    for (const vendedorFixo of VENDEDORES_FIXOS) {
-      const existeVendedor = vendedoresAtualizados.some(v => 
-        v.nome.includes(vendedorFixo.nome) || v.id === vendedorFixo.id
-      );
-      
-      if (!existeVendedor) {
-        vendedoresAtualizados.push(vendedorFixo);
-        vendedoresAdicionados++;
-        console.log(`Vendedor fixo adicionado: ${vendedorFixo.nome}`);
+      if (dataFimParam.includes('T')) {
+        dataFim = new Date(dataFimParam);
+      } else {
+        dataFim = parse(dataFimParam, 'yyyy-MM-dd', new Date());
       }
+
+      // Verificar se as datas são válidas
+      if (isNaN(dataInicio.getTime()) || isNaN(dataFim.getTime())) {
+        throw new Error('Datas inválidas');
+      }
+      
+      // NÃO forçar o primeiro dia do mês - usar as datas exatas enviadas pelo cliente
+      // dataInicio = startOfMonth(dataInicio);
+    } catch (error) {
+      return NextResponse.json({ 
+        erro: 'Formato de data inválido',
+        vendedores: []
+      }, { status: 400 });
     }
 
-    // Se adicionamos vendedores, atualizar o resultado
-    if (vendedoresAdicionados > 0) {
-      resultado.vendedores = vendedoresAtualizados;
-      resultado.totalVendedores = vendedoresAtualizados.length;
-      console.log(`Total de ${vendedoresAdicionados} vendedores fixos adicionados à listagem`);
-    }
-
-    // Se tudo ocorreu bem, retorna os dados
-    return NextResponse.json(resultado);
+    // Gerar chave única para o cache
+    const formattedDataInicio = format(dataInicio, 'yyyy-MM-dd');
+    const formattedDataFim = format(dataFim, 'yyyy-MM-dd');
+    const cacheKey = `${CachePrefix.VENDEDORES}${formattedDataInicio}:${formattedDataFim}`;
     
+    try {
+      // Buscar dados com cache para evitar requisições repetidas
+      const resultado = await getCachedData(
+        cacheKey,
+        async () => {
+          // Obter vendedores da API externa
+          const vendedoresResult = await BetelTecnologiaService.buscarVendedores({
+            dataInicio,
+            dataFim
+          });
+          
+          return vendedoresResult;
+        },
+        CACHE_TTL_VENDEDORES // TTL específico para vendedores
+      );
+
+      // Retornar o resultado da busca
+      return NextResponse.json(resultado);
+    } catch (error) {
+      console.error('Erro ao buscar vendedores:', error);
+      return NextResponse.json({ 
+        erro: 'Erro ao buscar dados dos vendedores',
+        vendedores: []
+      }, { status: 500 });
+    }
   } catch (error) {
-    console.error('Erro ao processar requisição de vendedores:', error);
-    return NextResponse.json(
-      { 
-        erro: 'Erro interno ao processar requisição de vendedores',
-        vendedores: [],
-        totalVendedores: 0,
-        totalVendas: 0,
-        totalFaturamento: 0
-      },
-      { status: 500 }
-    );
+    console.error('Erro na API:', error);
+    return NextResponse.json({ 
+      erro: 'Erro interno do servidor',
+      vendedores: []
+    }, { status: 500 });
   }
 } 

@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { prisma } from "@/app/_lib/prisma";
-import { dynamic, fetchCache, revalidate } from '../../_utils/dynamic-config';
+
+// Configuração para forçar o comportamento dinâmico
+export const dynamic = "force-dynamic";
+
 
 // Tipos para o histórico de atividades
 interface ActivityItem {
@@ -126,8 +129,8 @@ const mockActivityHistory: ActivityItem[] = [
   },
 ];
 
-// Exportar as configurações para esta rota
-export { dynamic, fetchCache, revalidate };
+// Comentando a exportação duplicada que está causando o erro
+// export { dynamic, fetchCache, revalidate };
 
 // GET /api/user/activities - Obter histórico de atividades do usuário
 export async function GET(req: NextRequest) {

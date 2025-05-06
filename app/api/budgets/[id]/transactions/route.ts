@@ -4,6 +4,10 @@ import { getAuthSession } from "@/app/_lib/auth";
 import { transactionAdapter } from "@/app/_lib/types";
 import { associateTransactionToBudget, removeTransactionFromBudget } from "@/app/_services/budget-transaction-matcher";
 
+// Configuração para forçar o comportamento dinâmico
+export const dynamic = "force-dynamic";
+
+
 interface RouteParams {
   params: {
     id: string;

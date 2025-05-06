@@ -1,10 +1,100 @@
 /**
- * Formata um valor numérico para o formato de moeda brasileira (R$)
+ * Utilitários para formatação de valores numéricos, datas e textos
  */
-export function formatCurrency(value: number): string {
-  return new Intl.NumberFormat('pt-BR', {
+
+/**
+ * Formata um valor numérico como moeda (R$)
+ * @param value Valor numérico a ser formatado
+ * @param options Opções de formatação
+ * @returns String formatada como moeda
+ */
+export function formatCurrency(
+  value: number, 
+  options?: { 
+    currency?: string; 
+    locale?: string;
+    minimumFractionDigits?: number;
+    maximumFractionDigits?: number;
+  }
+): string {
+  const {
+    currency = 'BRL',
+    locale = 'pt-BR',
+    minimumFractionDigits = 2,
+    maximumFractionDigits = 2
+  } = options || {};
+
+  return new Intl.NumberFormat(locale, {
     style: 'currency',
-    currency: 'BRL',
+    currency,
+    minimumFractionDigits,
+    maximumFractionDigits
+  }).format(value);
+}
+
+/**
+ * Formata um valor numérico com separadores de milhar
+ * @param value Valor numérico a ser formatado
+ * @param options Opções de formatação
+ * @returns String formatada com separadores de milhar
+ */
+export function formatNumber(
+  value: number,
+  options?: {
+    locale?: string;
+    minimumFractionDigits?: number;
+    maximumFractionDigits?: number;
+  }
+): string {
+  const {
+    locale = 'pt-BR',
+    minimumFractionDigits = 0,
+    maximumFractionDigits = 0
+  } = options || {};
+
+  return new Intl.NumberFormat(locale, {
+    minimumFractionDigits,
+    maximumFractionDigits
+  }).format(value);
+}
+
+/**
+ * Formata um valor numérico como porcentagem
+ * @param value Valor numérico a ser formatado (0.1 para 10%)
+ * @param options Opções de formatação
+ * @returns String formatada como porcentagem
+ */
+export function formatPercent(
+  value: number,
+  options?: {
+    locale?: string;
+    minimumFractionDigits?: number;
+    maximumFractionDigits?: number;
+  }
+): string {
+  const {
+    locale = 'pt-BR',
+    minimumFractionDigits = 1,
+    maximumFractionDigits = 1
+  } = options || {};
+
+  return new Intl.NumberFormat(locale, {
+    style: 'percent',
+    minimumFractionDigits,
+    maximumFractionDigits
+  }).format(value / 100);
+}
+
+/**
+ * Formata um número para exibição compacta (ex: 1.2k para 1200)
+ * @param value Valor numérico a ser formatado
+ * @param locale Localidade para formatação
+ * @returns String formatada de forma compacta
+ */
+export function formatCompactNumber(value: number, locale: string = 'pt-BR'): string {
+  return new Intl.NumberFormat(locale, {
+    notation: 'compact',
+    compactDisplay: 'short'
   }).format(value);
 }
 

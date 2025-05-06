@@ -8,6 +8,10 @@ import { prisma } from "@/app/_lib/prisma";
 import { parseISO, format, startOfDay, endOfDay, addDays, subDays, isBefore, isAfter } from "date-fns";
 import { CashFlowPredictionSource, InstallmentStatus } from "@/app/_types/transaction";
 
+// Configuração para forçar o comportamento dinâmico
+export const dynamic = "force-dynamic";
+
+
 /**
  * GET /api/cash-flow
  * Obtém o fluxo de caixa para um período, incluindo predições

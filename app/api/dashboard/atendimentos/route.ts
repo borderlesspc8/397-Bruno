@@ -7,6 +7,10 @@ import { formatDate } from "@/app/_utils/format";
 import { addDays, subDays } from "date-fns";
 import { logger } from "@/app/_lib/logger";
 
+// Configuração para forçar o comportamento dinâmico
+export const dynamic = "force-dynamic";
+
+
 // Interface para a estrutura de dados do dashboard
 interface DashboardAtendimentos {
   totais: {

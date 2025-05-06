@@ -3,6 +3,10 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/_lib/auth";
 import { PrismaClient } from "@prisma/client";
 
+// Configuração para forçar o comportamento dinâmico
+export const dynamic = "force-dynamic";
+
+
 const prisma = new PrismaClient();
 
 /**
@@ -20,7 +24,7 @@ async function isAdmin(userId: string): Promise<boolean> {
   const adminEmails = [
     "marcos.vbcursos@gmail.com",
     "andrerodrigues.dev@gmail.com",
-    "admin@contarapida.com.br"
+    "admin@acceleracrm.com.br"
   ];
 
   return adminEmails.includes(user.email?.toLowerCase() || "");

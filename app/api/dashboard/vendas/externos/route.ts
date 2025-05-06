@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { BetelTecnologiaService } from '@/app/_services/betelTecnologia';
 import { processarDatasURL } from '@/app/_utils/dates';
 
+// Configuração para forçar o comportamento dinâmico
+export const dynamic = "force-dynamic";
+
+
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;

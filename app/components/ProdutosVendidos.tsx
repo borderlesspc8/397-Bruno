@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Bar } from 'react-chartjs-2';
 import { Card, CardContent } from '@/app/components/ui/card';
 import { 
@@ -13,7 +13,13 @@ import {
   Shirt, 
   Smartphone, 
   Book, 
-  Gift
+  Gift,
+  Pizza,
+  Beer,
+  Sandwich,
+  Beef,
+  IceCream,
+  Wine,
 } from 'lucide-react';
 import {
   Chart as ChartJS,
@@ -51,71 +57,137 @@ interface ProdutosVendidosProps {
   produtos: Produto[];
 }
 
+// Constantes para categorias
+const CATEGORIAS = {
+  COMIDA: 'Comida',
+  BEBIDA: 'Bebida',
+  SOBREMESA: 'Sobremesa',
+  LANCHE: 'Lanche',
+  REFEICAO: 'Refeição',
+  CAFE: 'Café',
+  PIZZA: 'Pizza',
+  CERVEJA: 'Cerveja',
+  VINHO: 'Vinho',
+  SANDUICHE: 'Sanduíche',
+  CARNE: 'Carne',
+};
+
+// Constantes para tipos de ordenação
+const ORDENACAO = {
+  QUANTIDADE: 'quantidade',
+  TOTAL: 'total',
+};
+
+// Componente para ícone da categoria
+const CategoryIcon = ({ category }: { category: string }) => {
+  switch (category) {
+    case CATEGORIAS.CAFE:
+      return <Coffee className="h-4 w-4" />;
+    case CATEGORIAS.PIZZA:
+      return <Pizza className="h-4 w-4" />;
+    case CATEGORIAS.CERVEJA:
+    case CATEGORIAS.BEBIDA:
+      return <Beer className="h-4 w-4" />;
+    case CATEGORIAS.COMIDA:
+    case CATEGORIAS.REFEICAO:
+      return <Utensils className="h-4 w-4" />;
+    case CATEGORIAS.LANCHE:
+    case CATEGORIAS.SANDUICHE:
+      return <Sandwich className="h-4 w-4" />;
+    case CATEGORIAS.CARNE:
+      return <Beef className="h-4 w-4" />;
+    case CATEGORIAS.SOBREMESA:
+      return <IceCream className="h-4 w-4" />;
+    case CATEGORIAS.VINHO:
+      return <Wine className="h-4 w-4" />;
+    default:
+      return <Package className="h-4 w-4" />;
+  }
+};
+
+// Componente para formatação de moeda
+const FormatCurrency = ({ value }: { value: number }) => (
+  <>
+    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value)}
+  </>
+);
+
+// Botão de alternância para ordenação
+const SortButton = ({ 
+  active, 
+  value, 
+  currentValue, 
+  onClick, 
+  children 
+}: { 
+  active: boolean, 
+  value: 'quantidade' | 'total', 
+  currentValue: string, 
+  onClick: (value: 'quantidade' | 'total') => void, 
+  children: React.ReactNode 
+}) => (
+  <button
+    onClick={() => onClick(value)}
+    className={`px-3 py-1 text-sm rounded-full ${
+      active ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'
+    }`}
+  >
+    {children}
+  </button>
+);
+
 const ProdutosVendidos = ({ produtos }: ProdutosVendidosProps) => {
-  // Estado para controlar a ordenação (quantidade ou total)
-  const [orderBy, setOrderBy] = useState<'quantidade' | 'total'>('quantidade');
-  
-  // Função para obter ícone baseado na categoria
-  const getCategoryIcon = (category: string) => {
-    const categoryMap: Record<string, React.ReactNode> = {
-      'Alimentos': <Coffee className="h-4 w-4" />,
-      'Bebidas': <Utensils className="h-4 w-4" />,
-      'Vestuário': <Shirt className="h-4 w-4" />,
-      'Eletrônicos': <Smartphone className="h-4 w-4" />,
-      'Livros': <Book className="h-4 w-4" />,
-      'Presentes': <Gift className="h-4 w-4" />
-    };
-    
-    return categoryMap[category] || <Package className="h-4 w-4" />;
-  };
-  
-  // Função para obter cor baseada na categoria
+  const [orderBy, setOrderBy] = useState<'quantidade' | 'total'>(ORDENACAO.QUANTIDADE as 'quantidade');
+
   const getCategoryColor = (category: string) => {
-    const colorMap: Record<string, string> = {
-      'Alimentos': 'bg-blue-100 text-blue-800',
-      'Bebidas': 'bg-green-100 text-green-800',
-      'Vestuário': 'bg-purple-100 text-purple-800',
-      'Eletrônicos': 'bg-yellow-100 text-yellow-800',
-      'Livros': 'bg-pink-100 text-pink-800',
-      'Presentes': 'bg-indigo-100 text-indigo-800'
-    };
-    
-    return colorMap[category] || 'bg-gray-100 text-gray-800';
+    switch (category) {
+      case CATEGORIAS.CAFE:
+        return 'bg-amber-100 text-amber-800';
+      case CATEGORIAS.PIZZA:
+        return 'bg-red-100 text-red-800';
+      case CATEGORIAS.CERVEJA:
+      case CATEGORIAS.BEBIDA:
+        return 'bg-yellow-100 text-yellow-800';
+      case CATEGORIAS.COMIDA:
+      case CATEGORIAS.REFEICAO:
+        return 'bg-green-100 text-green-800';
+      case CATEGORIAS.LANCHE:
+      case CATEGORIAS.SANDUICHE:
+        return 'bg-orange-100 text-orange-800';
+      case CATEGORIAS.CARNE:
+        return 'bg-red-100 text-red-800';
+      case CATEGORIAS.SOBREMESA:
+        return 'bg-purple-100 text-purple-800';
+      case CATEGORIAS.VINHO:
+        return 'bg-purple-100 text-purple-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
   };
 
-  // Ordenar produtos conforme a seleção do usuário
+  // Ordenar produtos usando useMemo para evitar recálculos desnecessários
   const sortedProducts = useMemo(() => {
-    if (!produtos || produtos.length === 0) return [];
-    
-    console.log('Ordenando produtos por:', orderBy);
+    if (!produtos) return [];
     
     return [...produtos].sort((a, b) => 
-      orderBy === 'quantidade' 
+      orderBy === ORDENACAO.QUANTIDADE 
         ? b.quantidade - a.quantidade 
         : b.total - a.total
     );
   }, [produtos, orderBy]);
 
-  // Dados para o gráfico
+  // Preparar dados do gráfico com useMemo
   const chartData = useMemo(() => {
     if (!produtos || produtos.length === 0) return { labels: [], datasets: [] };
     
-    // Pegar os top 10 produtos ou todos se forem menos que 10
+    // Limitar para os top 10 produtos
     const topProducts = sortedProducts.slice(0, 10);
     
-    console.log('Preparando dados para o gráfico com', topProducts.length, 'produtos');
-    
     return {
-      labels: topProducts.map(product => product.nome.length > 15 
-        ? `${product.nome.substring(0, 15)}...` 
-        : product.nome
-      ),
+      labels: topProducts.map(p => p.nome),
       datasets: [
         {
-          label: orderBy === 'quantidade' ? 'Quantidade' : 'Faturamento (R$)',
-          data: topProducts.map(product => 
-            orderBy === 'quantidade' ? product.quantidade : product.total
-          ),
+          data: topProducts.map(p => orderBy === ORDENACAO.QUANTIDADE ? p.quantidade : p.total),
           backgroundColor: [
             'rgba(54, 162, 235, 0.6)',
             'rgba(75, 192, 192, 0.6)',
@@ -146,8 +218,8 @@ const ProdutosVendidos = ({ produtos }: ProdutosVendidosProps) => {
     };
   }, [produtos, sortedProducts, orderBy]);
 
-  // Opções do gráfico
-  const options = {
+  // Opções do gráfico com useMemo para evitar recriação desnecessária
+  const options = useMemo(() => ({
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
@@ -157,7 +229,7 @@ const ProdutosVendidos = ({ produtos }: ProdutosVendidosProps) => {
       tooltip: {
         callbacks: {
           label: function(context: any) {
-            if (orderBy === 'quantidade') {
+            if (orderBy === ORDENACAO.QUANTIDADE) {
               return `Quantidade: ${context.raw}`;
             } else {
               return `Valor: ${new Intl.NumberFormat('pt-BR', { 
@@ -174,7 +246,7 @@ const ProdutosVendidos = ({ produtos }: ProdutosVendidosProps) => {
         beginAtZero: true,
         ticks: {
           callback: function(value: string | number) {
-            if (orderBy === 'quantidade') {
+            if (orderBy === ORDENACAO.QUANTIDADE) {
               return value;
             } else {
               return new Intl.NumberFormat('pt-BR', { 
@@ -187,8 +259,18 @@ const ProdutosVendidos = ({ produtos }: ProdutosVendidosProps) => {
         }
       }
     }
-  } as const;
+  }), [orderBy]);
 
+  // Calcular totais gerais
+  const totalQuantidade = useMemo(() => 
+    produtos?.reduce((acc, curr) => acc + curr.quantidade, 0) || 0,
+  [produtos]);
+  
+  const totalValor = useMemo(() => 
+    produtos?.reduce((acc, curr) => acc + curr.total, 0) || 0,
+  [produtos]);
+
+  // Componente para exibir quando não há produtos
   if (!produtos || produtos.length === 0) {
     return (
       <Card className="w-full">
@@ -202,29 +284,36 @@ const ProdutosVendidos = ({ produtos }: ProdutosVendidosProps) => {
     );
   }
 
+  // Handler para alternar ordenação
+  const handleOrderByChange = (value: 'quantidade' | 'total') => {
+    setOrderBy(value);
+  };
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <Card className="w-full">
         <CardContent className="p-0 overflow-hidden">
           <div className="p-6 pb-0">
-            <h3 className="text-lg font-semibold mb-4">Top Produtos por {orderBy === 'quantidade' ? 'Quantidade' : 'Faturamento'}</h3>
+            <h3 className="text-lg font-semibold mb-4">
+              Top Produtos por {orderBy === ORDENACAO.QUANTIDADE ? 'Quantidade' : 'Faturamento'}
+            </h3>
             <div className="flex justify-end space-x-2 mb-4">
-              <button
-                onClick={() => setOrderBy('quantidade')}
-                className={`px-3 py-1 text-sm rounded-full ${
-                  orderBy === 'quantidade' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'
-                }`}
+              <SortButton 
+                active={orderBy === ORDENACAO.QUANTIDADE} 
+                value={'quantidade'}
+                currentValue={orderBy}
+                onClick={handleOrderByChange}
               >
                 Quantidade
-              </button>
-              <button
-                onClick={() => setOrderBy('total')}
-                className={`px-3 py-1 text-sm rounded-full ${
-                  orderBy === 'total' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'
-                }`}
+              </SortButton>
+              <SortButton 
+                active={orderBy === ORDENACAO.TOTAL} 
+                value={'total'}
+                currentValue={orderBy}
+                onClick={handleOrderByChange}
               >
                 Faturamento
-              </button>
+              </SortButton>
             </div>
           </div>
           <div className="h-[300px] p-4">
@@ -238,22 +327,22 @@ const ProdutosVendidos = ({ produtos }: ProdutosVendidosProps) => {
           <div className="p-6 pb-0">
             <h3 className="text-lg font-semibold mb-4">Detalhes dos Produtos</h3>
             <div className="flex justify-end space-x-2 mb-4">
-              <button
-                onClick={() => setOrderBy('quantidade')}
-                className={`px-3 py-1 text-sm rounded-full ${
-                  orderBy === 'quantidade' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'
-                }`}
+              <SortButton 
+                active={orderBy === ORDENACAO.QUANTIDADE} 
+                value={'quantidade'}
+                currentValue={orderBy}
+                onClick={handleOrderByChange}
               >
                 <PlusCircle className="h-4 w-4 inline mr-1" /> Quantidade
-              </button>
-              <button
-                onClick={() => setOrderBy('total')}
-                className={`px-3 py-1 text-sm rounded-full ${
-                  orderBy === 'total' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'
-                }`}
+              </SortButton>
+              <SortButton 
+                active={orderBy === ORDENACAO.TOTAL} 
+                value={'total'}
+                currentValue={orderBy}
+                onClick={handleOrderByChange}
               >
                 <MinusCircle className="h-4 w-4 inline mr-1" /> Faturamento
-              </button>
+              </SortButton>
             </div>
           </div>
           <div className="max-h-[400px] overflow-auto p-4">
@@ -270,13 +359,13 @@ const ProdutosVendidos = ({ produtos }: ProdutosVendidosProps) => {
               <tbody>
                 {sortedProducts.map((product, index) => (
                   <tr 
-                    key={index} 
+                    key={product.id || index} 
                     className={`border-b last:border-0 ${index % 2 === 0 ? 'bg-gray-50' : 'bg-white'} hover:bg-gray-100 transition-colors`}
                   >
                     <td className="py-3 pl-2">
                       <div className="flex items-center">
                         <div className="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center mr-3">
-                          {getCategoryIcon(product.categoria || '')}
+                          <CategoryIcon category={product.categoria || ''} />
                         </div>
                         <span className="font-medium">{product.nome}</span>
                       </div>
@@ -287,15 +376,13 @@ const ProdutosVendidos = ({ produtos }: ProdutosVendidosProps) => {
                       </span>
                     </td>
                     <td className="py-3 text-right">
-                      {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(
-                        product.precoUnitario || product.preco || 0
-                      )}
+                      <FormatCurrency value={product.precoUnitario || product.preco || 0} />
                     </td>
                     <td className="py-3 text-right">
                       <span className="font-semibold">{product.quantidade}</span>
                     </td>
                     <td className="py-3 text-right font-semibold">
-                      {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(product.total)}
+                      <FormatCurrency value={product.total} />
                     </td>
                   </tr>
                 ))}
@@ -305,12 +392,10 @@ const ProdutosVendidos = ({ produtos }: ProdutosVendidosProps) => {
                   <td className="py-3 font-semibold">Total</td>
                   <td colSpan={2}></td>
                   <td className="py-3 text-right font-semibold">
-                    {produtos.reduce((acc: number, curr: Produto) => acc + curr.quantidade, 0)}
+                    {totalQuantidade}
                   </td>
                   <td className="py-3 text-right font-semibold">
-                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(
-                      produtos.reduce((acc: number, curr: Produto) => acc + curr.total, 0)
-                    )}
+                    <FormatCurrency value={totalValor} />
                   </td>
                 </tr>
               </tfoot>

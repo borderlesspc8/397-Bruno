@@ -1,0 +1,287 @@
+/**
+ * Rota para testar a conexão com o Gestão Click
+ */
+import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/app/_lib/auth-options";
+import { GestaoClickClientService } from "@/app/_services/gestao-click-client-service";
+import { logger } from "@/app/_services/logger";
+
+// Configuração para forçar o comportamento dinâmico
+export const dynamic = "force-dynamic";
+
+
+export const dynamic = "force-dynamic";
+
+/**
+ * GET /api/gestao-click/test-connection
+ * Testa a conexão com a API do Gestão Click
+ * Este endpoint pode ser usado sem autenticação se chaves válidas forem fornecidas diretamente
+ */
+export async function GET(req: NextRequest) {
+  try {
+    // Obter parâmetros da query
+    const searchParams = req.nextUrl.searchParams;
+    const apiKey = searchParams.get('apiKey') || process.env.GESTAO_CLICK_API_KEY || '';
+    const secretToken = searchParams.get('secretToken') || process.env.GESTAO_CLICK_SECRET_TOKEN || '';
+    const apiUrl = searchParams.get('apiUrl') || process.env.GESTAO_CLICK_API_URL || 'https://api.beteltecnologia.com.br';
+    
+    // Se não temos nem API key nem secret, tentamos obter do usuário logado
+    let userId = searchParams.get('userId') || '1'; // Default para testes
+    
+    if (!apiKey || !secretToken) {
+      // Verificar autenticação apenas se não temos as chaves
+      const session = await getServerSession(authOptions);
+      if (!session?.user?.id) {
+        return NextResponse.json(
+          { 
+            success: false, 
+            error: 'Chaves de API não fornecidas e usuário não autenticado',
+            message: 'Forneça as chaves de API via query params ou faça login'
+          },
+          { status: 401 }
+        );
+      }
+      
+      userId = session.user.id;
+    }
+
+    logger.info(`Testando conexão com Gestão Click (GET)`, {
+      context: "GESTAO_CLICK_TEST",
+      data: {
+        userId,
+        apiUrl,
+        hasApiKey: !!apiKey,
+        hasSecretToken: !!secretToken
+      }
+    });
+
+    // Inicializar o serviço com a nova interface
+    const gestaoClickService = new GestaoClickClientService({
+      apiKey,
+      secretToken,
+      apiUrl,
+      userId
+    });
+
+    // Testar conexão
+    const isConnected = await gestaoClickService.testConnection();
+    
+    // Obter informações de contas bancárias usando o método apropriado
+    // Usando getClientes como diagnóstico básico se não há getBankAccounts disponível
+    let contas: Array<{ id: string; name: string }> = [];
+    let diagnosticError = null;
+    
+    try {
+      const clientesResponse = await gestaoClickService.getClientes(1, 5);
+      contas = clientesResponse.data.slice(0, 5).map(cliente => ({
+        id: cliente.id.toString(),
+        name: cliente.nome
+      }));
+    } catch (error) {
+      // Silenciar erro - apenas diagnóstico
+      diagnosticError = error instanceof Error ? error.message : String(error);
+      contas = [];
+    }
+
+    logger.info(`Resultado do teste de conexão (GET): ${isConnected ? 'Sucesso' : 'Falha'}`, {
+      context: "GESTAO_CLICK_TEST",
+      data: {
+        success: isConnected,
+        clientesCount: contas.length,
+        diagnosticError
+      }
+    });
+    
+    return NextResponse.json({
+      success: true,
+      connection: {
+        endpoint: apiUrl,
+        status: isConnected ? 'connected' : 'failed'
+      },
+      diagnostics: {
+        clients: {
+          count: contas.length,
+          items: contas
+        },
+        errorDetails: diagnosticError
+      }
+    });
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    
+    logger.error(`Erro ao testar conexão com Gestão Click (GET)`, {
+      context: "GESTAO_CLICK_TEST",
+      data: {
+        error: errorMessage,
+        stack: error instanceof Error ? error.stack : undefined
+      }
+    });
+    
+    return NextResponse.json(
+      { 
+        success: false,
+        error: 'Falha na conexão',
+        message: errorMessage,
+        details: {
+          timestamp: new Date().toISOString(),
+          path: '/api/gestao-click/test-connection'
+        }
+      },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * POST /api/gestao-click/test-connection
+ * Testa a conexão com credenciais fornecidas no corpo da requisição
+ */
+export async function POST(req: NextRequest) {
+  try {
+    // Obter credenciais do corpo da requisição
+    const body = await req.json();
+    const useEnvCredentials = body.useEnvCredentials === true;
+    
+    let apiKey = '';
+    let secretToken = '';
+    
+    if (useEnvCredentials) {
+      // Tentar obter de ambos os formatos de variáveis de ambiente
+      apiKey = process.env.GESTAO_CLICK_API_KEY || 
+               process.env.GESTAO_CLICK_ACCESS_TOKEN || '';
+      
+      secretToken = process.env.GESTAO_CLICK_SECRET_TOKEN || 
+                    process.env.GESTAO_CLICK_SECRET_ACCESS_TOKEN || '';
+                    
+      logger.info(`Usando credenciais do ambiente para teste de conexão`, {
+        context: "GESTAO_CLICK_TEST",
+        data: {
+          hasApiKey: !!apiKey,
+          hasSecretToken: !!secretToken,
+          apiKeySource: apiKey ? 
+            (process.env.GESTAO_CLICK_API_KEY ? 'GESTAO_CLICK_API_KEY' : 
+             process.env.GESTAO_CLICK_ACCESS_TOKEN ? 'GESTAO_CLICK_ACCESS_TOKEN' : 'nenhum') : 'nenhum',
+          secretTokenSource: secretToken ? 
+            (process.env.GESTAO_CLICK_SECRET_TOKEN ? 'GESTAO_CLICK_SECRET_TOKEN' : 
+             process.env.GESTAO_CLICK_SECRET_ACCESS_TOKEN ? 'GESTAO_CLICK_SECRET_ACCESS_TOKEN' : 'nenhum') : 'nenhum'
+        }
+      });
+    } else {
+      // Usar credenciais do corpo da requisição
+      apiKey = body.apiKey || '';
+      secretToken = body.secretToken || '';
+    }
+    
+    // Restante das configurações
+    const apiUrl = body.apiUrl || process.env.GESTAO_CLICK_API_URL || 'https://api.beteltecnologia.com.br';
+    const userId = body.userId || '1'; // Default para testes
+    const authMethod = body.authMethod || 'token'; // Método de autenticação
+    
+    logger.info(`Testando conexão com Gestão Click (POST)`, {
+      context: "GESTAO_CLICK_TEST",
+      data: {
+        userId,
+        apiUrl,
+        hasApiKey: !!apiKey,
+        hasSecretToken: !!secretToken,
+        authMethod,
+        useEnvCredentials
+      }
+    });
+
+    if (!apiKey || !secretToken) {
+      logger.warn(`Credenciais incompletas fornecidas`, {
+        context: "GESTAO_CLICK_TEST"
+      });
+      
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: 'Credenciais incompletas', 
+          message: 'API Key e Secret Token são obrigatórios' 
+        },
+        { status: 400 }
+      );
+    }
+
+    // Inicializar o serviço com a nova interface
+    const gestaoClickService = new GestaoClickClientService({
+      apiKey,
+      secretToken,
+      apiUrl,
+      userId,
+      authMethod: authMethod as any // Tipagem temporária
+    });
+
+    // Testar conexão
+    const isConnected = await gestaoClickService.testConnection();
+    
+    // Obter informações de clientes como diagnóstico
+    let contas: Array<{ id: string; name: string }> = [];
+    let errorDetails = null;
+    
+    if (isConnected) {
+      try {
+        const clientesResponse = await gestaoClickService.getClientes(1, 5);
+        contas = clientesResponse.data.slice(0, 5).map(cliente => ({
+          id: cliente.id.toString(),
+          name: cliente.nome
+        }));
+      } catch (error) {
+        errorDetails = error instanceof Error ? error.message : String(error);
+      }
+    }
+
+    logger.info(`Resultado do teste de conexão (POST): ${isConnected ? 'Sucesso' : 'Falha'}`, {
+      context: "GESTAO_CLICK_TEST",
+      data: {
+        success: isConnected,
+        clientesCount: contas.length,
+        errorDetails
+      }
+    });
+
+    return NextResponse.json({
+      success: isConnected,
+      connection: {
+        endpoint: apiUrl,
+        status: isConnected ? 'connected' : 'failed',
+        authMethod
+      },
+      diagnostics: {
+        clients: {
+          count: contas.length,
+          items: contas
+        },
+        errorDetails
+      },
+      message: isConnected 
+        ? 'Conexão estabelecida com sucesso' 
+        : 'Falha ao conectar com as credenciais fornecidas'
+    });
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    
+    logger.error(`Erro ao testar conexão com Gestão Click (POST)`, {
+      context: "GESTAO_CLICK_TEST",
+      data: {
+        error: errorMessage,
+        stack: error instanceof Error ? error.stack : undefined
+      }
+    });
+    
+    return NextResponse.json(
+      { 
+        success: false,
+        error: 'Falha na conexão',
+        message: errorMessage,
+        details: {
+          timestamp: new Date().toISOString(),
+          path: '/api/gestao-click/test-connection'
+        }
+      },
+      { status: 500 }
+    );
+  }
+} 

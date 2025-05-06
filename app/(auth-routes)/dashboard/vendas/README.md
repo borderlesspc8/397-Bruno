@@ -46,6 +46,40 @@ app/(auth-routes)/dashboard/vendas/
 - Tipos claros e interfaces bem documentadas
 - Nomeação consistente e significativa
 
+## Cálculo Correto de Lucro
+
+### Implementação
+- O lucro é calculado corretamente como **Faturamento Total - Custo Total - Descontos Totais**
+- A implementação utiliza uma API dedicada (`/api/dashboard/custos`) que retorna:
+  - `valorTotalFaturamento`: O faturamento total do período
+  - `valorTotalCusto`: O custo total das vendas no período
+  - `valorTotalDescontos`: O total de descontos aplicados no período
+  - `valorTotalFretes`: O total de fretes no período (informativo)
+  - `lucroTotal`: O lucro calculado (faturamento - custo - descontos)
+  - `margemLucroPercentual`: A margem de lucro em percentual
+
+### Fluxo de Dados
+1. O endpoint `/api/dashboard/custos` obtém os dados de vendas do período via `BetelTecnologiaService`
+2. O serviço `CalculoFinanceiroService` calcula o custo total, faturamento total, descontos totais e fretes totais
+3. O lucro é calculado como Faturamento - Custo - Descontos
+4. Esses valores são exibidos no componente `DashboardSummary`
+5. Quando os dados de custo não estão disponíveis, o sistema exibe uma estimativa baseada na média do setor
+
+### Tratamento de Descontos e Fretes
+- **Descontos**: São detectados por:
+  - Campo específico `desconto` na venda, quando disponível
+  - Itens na venda com a palavra "desconto" no nome do produto
+  - São deduzidos do faturamento para calcular o lucro real
+- **Fretes**: São detectados por:
+  - Campo específico `frete` na venda, quando disponível
+  - Itens na venda com a palavra "frete" no nome do produto
+  - São exibidos como informação adicional no card de lucro
+
+### Fallbacks
+- **Dados Reais**: O sistema prioriza o uso de dados reais de custo e descontos quando disponíveis nas vendas
+- **Estimativa**: Caso não haja dados suficientes, o sistema utiliza uma estimativa de 40% de margem de lucro
+- **Interface**: O componente indica claramente quando os valores são estimados vs. calculados com dados reais
+
 ## Como Expandir
 
 ### Adicionando Novos Gráficos ou Visualizações
@@ -61,3 +95,67 @@ app/(auth-routes)/dashboard/vendas/
 - Implementar testes unitários para hooks e componentes
 - Adicionar mais métricas e visualizações conforme necessário
 - Considerar a implementação de filtros adicionais além das datas 
+- Melhorar a coleta de dados de custo para aumentar a precisão do cálculo de lucro 
+
+# Dashboard de Vendas - Otimizações
+
+## Otimizações Realizadas na Tab "Ranking de Vendas"
+
+Esta documentação descreve as otimizações implementadas para melhorar a performance e a experiência do usuário no Dashboard de Vendas, especificamente na tab "Ranking de Vendas".
+
+### 1. Hooks Personalizados
+
+Foram criados dois hooks personalizados para otimizar o carregamento e processamento de dados:
+
+- **useVendedoresImagens**: 
+  - Implementa carregamento paralelo de imagens utilizando `Promise.all`
+  - Adiciona cache em memória para evitar requisições repetidas
+  - Limita o número de imagens carregadas apenas ao necessário
+  - Gerencia estados de carregamento e erros
+
+- **useRankingVendedores**:
+  - Utiliza `useMemo` para evitar recálculos desnecessários
+  - Implementa ordenação eficiente de vendedores por diferentes critérios
+  - Calcula valores derivados como totais e médias apenas quando necessário
+  - Fornece dados pré-processados para os componentes
+
+### 2. Componentização e Memoização
+
+- Uso de `React.memo` para evitar renderizações desnecessárias
+- Divisão de componentes grandes em subcomponentes menores e mais focados
+- Componentes como `VendedorCard`, `CardHeader_Memo` e `CardFooter_Memo` são renderizados apenas quando seus props mudam
+
+### 3. Carregamento Otimizado
+
+- Implementação de `Suspense` para carregamento assíncrono de componentes menos críticos
+- Uso de estados de carregamento mais granulares
+- Animações progressivas para melhorar a percepção de performance
+
+### 4. Redução de Requisições
+
+- Carregamento de imagens em paralelo em vez de sequencial
+- Reutilização de dados já carregados
+- Implementação de dependências adequadas nos efeitos para evitar chamadas desnecessárias
+
+### 5. Uso Eficiente da Árvore de Renderização
+
+- Isolamento de partes dinâmicas em componentes separados
+- Passagem apenas das props necessárias para cada componente
+- Uso de `useMemo` para controlar quando componentes devem ser renderizados novamente
+
+## Estrutura de Arquivos
+
+O código foi reorganizado da seguinte forma:
+
+- `/hooks/useVendedoresImagens.ts` - Hook para gerenciar imagens
+- `/hooks/useRankingVendedores.ts` - Hook para ordenação e filtros
+- `/components/PodiumRanking.tsx` - Componente otimizado para exibir o pódio
+- `/components/RankingVendedoresPodium.tsx` - Container para ranking de vendedores
+
+## Benefícios
+
+- **Carregamento mais rápido**: Redução significativa no tempo de carregamento
+- **Maior fluidez**: Menos travamentos durante a interação do usuário
+- **Menor uso de recursos**: Redução na quantidade de dados transferidos pela rede
+- **Melhor experiência de usuário**: Feedback visual melhorado durante carregamento
+- **Código mais sustentável**: Melhor separação de responsabilidades e maior testabilidade 

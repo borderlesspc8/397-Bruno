@@ -4,6 +4,10 @@ import { BetelTecnologiaService } from '@/app/_services/betelTecnologia';
 import { writeFileSync } from 'fs';
 import { join } from 'path';
 
+// Configuração para forçar o comportamento dinâmico
+export const dynamic = "force-dynamic";
+
+
 /**
  * GET /api/gestao-click/produtos-mais-vendidos
  * Busca os produtos mais vendidos com base nas vendas do Gestão Click
@@ -167,9 +171,25 @@ export async function GET(req: NextRequest) {
       const totalVendas = vendasResult.totalVendas;
       const totalFaturamento = produtosMaisVendidos.reduce((acc, produto) => acc + produto.valor, 0);
       
+      // Classificar produtos baseado no valor de venda unitário
+      // Se o valor unitário >= 1000, é equipamento, caso contrário é acessório
+      const equipamentos = produtosMaisVendidos.filter(p => {
+        // Obter valor unitário (valor de venda por unidade)
+        const valorUnitario = p.valor / p.quantidade;
+        return valorUnitario >= 1000;
+      });
+      
+      const acessorios = produtosMaisVendidos.filter(p => {
+        // Obter valor unitário (valor de venda por unidade)
+        const valorUnitario = p.valor / p.quantidade;
+        return valorUnitario < 1000;
+      });
+      
       // Retornar dados formatados para o componente
       return NextResponse.json({
         produtos: produtosMaisVendidos,
+        equipamentos,
+        acessorios,
         totalProdutos,
         totalVendas,
         totalFaturamento

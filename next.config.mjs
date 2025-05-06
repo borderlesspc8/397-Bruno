@@ -59,7 +59,7 @@ const nextConfig = {
   },
   // Desativar geração de ETags para melhorar desempenho
   generateEtags: false,
-  // Adicionar configuração para rotas de API
+  // Adicionar configuração para rotas de API e favicons
   async headers() {
     return [
       {
@@ -84,6 +84,16 @@ const nextConfig = {
       {
         // Configuração para arquivos estáticos de imagens
         source: '/images/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
+          },
+        ],
+      },
+      {
+        // Configuração para favicons
+        source: '/favicon.ico',
         headers: [
           {
             key: 'Cache-Control',

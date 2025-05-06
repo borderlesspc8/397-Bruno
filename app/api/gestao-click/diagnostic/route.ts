@@ -4,7 +4,10 @@ import { authOptions } from "@/app/_lib/auth-options";
 import { prisma } from "@/app/_lib/prisma";
 import { GestaoClickClientService } from "@/app/_services/gestao-click-client-service";
 
+// Configuração para forçar o comportamento dinâmico
 export const dynamic = "force-dynamic";
+
+
 
 /**
  * GET /api/gestao-click/diagnostic

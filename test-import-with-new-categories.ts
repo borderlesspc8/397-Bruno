@@ -12,7 +12,7 @@ async function testImportWithNewCategories() {
       where: {
         email: {
           contains: "teste_",
-          endsWith: "@contarapida.com.br"
+          endsWith: "@acceleracrm.com.br"
         }
       },
       orderBy: {

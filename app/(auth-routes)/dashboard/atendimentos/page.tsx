@@ -342,7 +342,7 @@ export default function DashboardAtendimentos() {
                       ></div>
                     </div>
                     <div className="text-right text-sm text-muted-foreground">
-                      {formatPercent(item.percentual)}
+                      {formatPercent(item.percentual*100)}
                     </div>
                   </div>
                 ))}

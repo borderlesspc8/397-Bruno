@@ -8,7 +8,10 @@ import { getAuthSession } from "@/app/_lib/auth";
 import { prisma } from "@/app/_lib/prisma";
 import { WalletType } from "@/app/_constants/schema";
 
+// Configuração para forçar o comportamento dinâmico
 export const dynamic = "force-dynamic";
+
+
 
 /**
  * GET /api/gestao-click/credentials

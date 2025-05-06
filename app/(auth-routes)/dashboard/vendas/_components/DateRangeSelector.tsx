@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { DateRange } from "react-day-picker";
 import { 
   format, 
@@ -24,90 +24,83 @@ interface DateRangeSelectorProps {
 
 export function DateRangeSelector({ onDateRangeChange }: DateRangeSelectorProps) {
   const today = new Date();
+  const currentMonth = today.getMonth();
+  const currentYear = today.getFullYear();
   
-  // Período padrão: do primeiro dia do mês atual até hoje
+  // Período padrão: do primeiro dia do mês atual até o último dia do mês atual
   const defaultRange: DateRange = {
-    from: startOfMonth(today),
-    to: today
+    from: new Date(currentYear, currentMonth, 1), // Garantindo que é o mês atual
+    to: endOfMonth(new Date(currentYear, currentMonth, 1)) // Final do mês atual
   };
   
   const [dateRange, setDateRange] = useState<DateRange | undefined>(defaultRange);
   const [presetOpen, setPresetOpen] = useState(false);
   
+  // Aplicar novo período e enviar para o componente pai
+  const applyDateRange = (range: DateRange | undefined) => {
+    if (!range?.from) {
+      setDateRange(range);
+      return;
+    }
+    
+    // Armazenar o range selecionado pelo usuário sem forçar o mês atual
+    setDateRange(range);
+    
+    // Enviar para o componente pai o range selecionado
+    onDateRangeChange({ 
+      from: range.from, 
+      to: range.to || range.from 
+    });
+  };
+  
+  // Quando o componente for montado, enviar o período inicial para o componente pai
+  useEffect(() => {
+    if (dateRange?.from && dateRange?.to) {
+      // Usar o período padrão na inicialização, sem forçar alterações
+      onDateRangeChange({
+        from: dateRange.from,
+        to: dateRange.to
+      });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  
   // Mostra o nome do período selecionado ou as datas
   const getDisplayText = () => {
     if (!dateRange?.from) return "Selecionar período";
     
-    // Verificar se é o período do mês atual (1º dia até hoje)
-    const isCurrentMonthToday = 
-      dateRange.from.getTime() === startOfMonth(today).getTime() && 
-      dateRange.to?.getTime() === today.getTime();
-    if (isCurrentMonthToday) return "Mês Atual até Hoje";
-    
     // Verificar se é o mês atual completo
     const isCurrentMonth = 
-      dateRange.from.getTime() === startOfMonth(today).getTime() && 
+      dateRange.from.getTime() === new Date(today.getFullYear(), today.getMonth(), 1).getTime() && 
       dateRange.to?.getTime() === endOfMonth(today).getTime();
-    if (isCurrentMonth) return "Mês Atual Completo";
+    if (isCurrentMonth) return "Mês Atual";
     
     // Verificar se é o mês anterior
     const lastMonth = subMonths(today, 1);
     const isLastMonth = 
-      dateRange.from.getTime() === startOfMonth(lastMonth).getTime() && 
+      dateRange.from.getTime() === new Date(lastMonth.getFullYear(), lastMonth.getMonth(), 1).getTime() && 
       dateRange.to?.getTime() === endOfMonth(lastMonth).getTime();
     if (isLastMonth) return "Mês Anterior";
     
     // Verificar se é o ano atual
     const isCurrentYear = 
-      dateRange.from.getTime() === startOfYear(today).getTime() && 
+      dateRange.from.getTime() === new Date(today.getFullYear(), 0, 1).getTime() && 
       dateRange.to?.getTime() === endOfYear(today).getTime();
     if (isCurrentYear) return "Ano Atual";
     
-    // Caso contrário, exibir as datas formatadas
-    return `${format(dateRange.from, "dd/MM/yyyy")} - ${format(dateRange.to || dateRange.from, "dd/MM/yyyy")}`;
-  };
-  
-  // Aplicar novo período e enviar para o componente pai
-  const applyDateRange = (range: DateRange | undefined) => {
-    setDateRange(range);
-    if (range?.from && range?.to) {
-      onDateRangeChange({ from: range.from, to: range.to });
-    }
+    // Para outros períodos, exibir as datas formatadas
+    return `${format(dateRange.from, "dd/MM/yyyy", { locale: ptBR })} - ${format(dateRange.to || dateRange.from, "dd/MM/yyyy", { locale: ptBR })}`;
   };
   
   // Opções rápidas de período
   const periodPresets = [
     { 
-      name: "Hoje", 
+      name: "Mês Atual", 
       handler: () => {
-        const range = { from: today, to: today };
-        setDateRange(range);
-        onDateRangeChange(range);
-        setPresetOpen(false);
-      }
-    },
-    { 
-      name: "Esta Semana", 
-      handler: () => {
-        const range = { from: startOfWeek(today, { weekStartsOn: 1 }), to: endOfWeek(today, { weekStartsOn: 1 }) };
-        setDateRange(range);
-        onDateRangeChange(range);
-        setPresetOpen(false);
-      }
-    },
-    { 
-      name: "Mês Atual até Hoje", 
-      handler: () => {
-        const range = { from: startOfMonth(today), to: today };
-        setDateRange(range);
-        onDateRangeChange(range);
-        setPresetOpen(false);
-      }
-    },
-    { 
-      name: "Mês Atual Completo", 
-      handler: () => {
-        const range = { from: startOfMonth(today), to: endOfMonth(today) };
+        const range = { 
+          from: new Date(currentYear, currentMonth, 1),
+          to: endOfMonth(new Date(currentYear, currentMonth, 1)) 
+        };
         setDateRange(range);
         onDateRangeChange(range);
         setPresetOpen(false);
@@ -117,7 +110,36 @@ export function DateRangeSelector({ onDateRangeChange }: DateRangeSelectorProps)
       name: "Mês Anterior", 
       handler: () => {
         const lastMonth = subMonths(today, 1);
-        const range = { from: startOfMonth(lastMonth), to: endOfMonth(lastMonth) };
+        const range = { 
+          from: new Date(lastMonth.getFullYear(), lastMonth.getMonth(), 1),
+          to: endOfMonth(lastMonth) 
+        };
+        setDateRange(range);
+        onDateRangeChange(range);
+        setPresetOpen(false);
+      }
+    },
+    { 
+      name: "Dois Meses Atrás", 
+      handler: () => {
+        const twoMonthsAgo = subMonths(today, 2);
+        const range = { 
+          from: new Date(twoMonthsAgo.getFullYear(), twoMonthsAgo.getMonth(), 1),
+          to: endOfMonth(twoMonthsAgo) 
+        };
+        setDateRange(range);
+        onDateRangeChange(range);
+        setPresetOpen(false);
+      }
+    },
+    { 
+      name: "Três Meses Atrás", 
+      handler: () => {
+        const threeMonthsAgo = subMonths(today, 3);
+        const range = { 
+          from: new Date(threeMonthsAgo.getFullYear(), threeMonthsAgo.getMonth(), 1),
+          to: endOfMonth(threeMonthsAgo) 
+        };
         setDateRange(range);
         onDateRangeChange(range);
         setPresetOpen(false);
@@ -126,7 +148,10 @@ export function DateRangeSelector({ onDateRangeChange }: DateRangeSelectorProps)
     { 
       name: "Ano Atual", 
       handler: () => {
-        const range = { from: startOfYear(today), to: endOfYear(today) };
+        const range = { 
+          from: new Date(today.getFullYear(), 0, 1),
+          to: endOfYear(today) 
+        };
         setDateRange(range);
         onDateRangeChange(range);
         setPresetOpen(false);

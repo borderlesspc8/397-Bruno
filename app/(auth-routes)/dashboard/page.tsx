@@ -1,18 +1,37 @@
 "use client";
 
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/app/_components/ui/card";
 import { Button } from "@/app/_components/ui/button";
 import { BarChart, Users, LineChart, MousePointerClick, ArrowRight } from "lucide-react";
 import { DashboardHeader } from "./_components/DashboardHeader";
+import SubscriptionStatus from "@/app/components/subscription-status";
+import { useSession } from "next-auth/react";
+import { SubscriptionPlan } from "@/app/types";
 
 export default function DashboardPage() {
+  const router = useRouter();
+  const { data: session } = useSession();
+  const userPlan = session?.user?.subscriptionPlan as SubscriptionPlan || SubscriptionPlan.FREE;
+  const isFreeUser = userPlan === SubscriptionPlan.FREE;
+
+  // Redirecionar automaticamente para dashboard/vendas
+  useEffect(() => {
+    router.push("/dashboard/vendas");
+  }, [router]);
+
+  // Este conteúdo só será exibido enquanto o redirecionamento não ocorre
   return (
     <div className="container mx-auto p-4 md:p-6">
       <DashboardHeader 
         title="Dashboard" 
         description="Bem-vindo ao seu painel de controle. Visualize indicadores importantes para o seu negócio."
       />
+      
+      {/* Mostrar banner de status da assinatura para usuários free */}
+      <SubscriptionStatus />
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         <Card className="border-2 border-primary/20 hover:border-primary/50 transition-colors">

@@ -5,6 +5,10 @@ import { authOptions } from '@/lib/auth';
 import { DashboardData, Produto } from '@/types/dashboard';
 import { isValid, parseISO, format } from 'date-fns';
 
+// Configuração para forçar o comportamento dinâmico
+export const dynamic = "force-dynamic";
+
+
 export async function GET(request: NextRequest) {
   try {
     // Simula autenticação para desenvolvimento

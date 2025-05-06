@@ -81,4 +81,33 @@ export class VendasService {
       };
     }
   }
+
+  static async buscarVendasPorProduto(params: {
+    dataInicio: Date;
+    dataFim: Date;
+    produtoId: string;
+  }): Promise<VendasResponse> {
+    try {
+      console.log('Chamando API para produto ID:', params.produtoId);
+      
+      const { data } = await api.get<VendasResponse>('/api/dashboard/vendas/produto', {
+        params: {
+          dataInicio: params.dataInicio.toISOString(),
+          dataFim: params.dataFim.toISOString(),
+          produtoId: params.produtoId
+        },
+      });
+      
+      console.log('Resposta da API:', data);
+      return data;
+    } catch (error) {
+      console.error('Erro ao buscar vendas por produto:', error);
+      return { 
+        vendas: [], 
+        totalVendas: 0,
+        totalValor: 0,
+        erro: error instanceof Error ? error.message : 'Erro ao buscar vendas por produto' 
+      };
+    }
+  }
 }

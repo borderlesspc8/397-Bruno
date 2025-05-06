@@ -6,6 +6,10 @@ import axios from "axios";
 import https from "https";
 import fs from "fs";
 
+// Configuração para forçar o comportamento dinâmico
+export const dynamic = "force-dynamic";
+
+
 export async function POST(request: Request) {
   try {
     // Verificar autenticação do usuário

@@ -1,4 +1,27 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { z } from "zod";
+
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { db } from "@/app/_lib/prisma";
+
+// Configuração para forçar o comportamento dinâmico
+export const dynamic = "force-dynamic";
+
+// Schema para validação dos dados de entrada
+const metaSchema = z.object({
+  mesReferencia: z.date(),
+  metaMensal: z.number().positive("O valor deve ser positivo"),
+  metaSalvio: z.number().positive("O valor deve ser positivo"),
+  metaCoordenador: z.number().positive("O valor deve ser positivo"),
+  metasVendedores: z.array(
+    z.object({
+      vendedorId: z.string().min(1, "Vendedor obrigatório"),
+      nome: z.string(),
+      meta: z.number().positive("O valor deve ser positivo")
+    })
+  ).optional(),
+});
 
 // Interfaces para os tipos de dados
 interface MetaRealizado {
@@ -124,19 +147,136 @@ function generateMockData(): DashboardMetasData {
   };
 }
 
-// Rota GET para o dashboard de metas
-export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const dataInicio = searchParams.get('dataInicio');
-  const dataFim = searchParams.get('dataFim');
+// GET - Listar todas as metas
+export async function GET(request: NextRequest) {
+  try {
+    // Verificar autenticação
+    const session = await getServerSession(authOptions);
 
-  // Aqui você faria a chamada para a API do Gestão Click para obter os dados reais
-  // Para desenvolvimento, usamos dados mockados
-  
-  // Simula um atraso na resposta para testar estados de loading
-  await new Promise(resolve => setTimeout(resolve, 800));
+    if (!session) {
+      return NextResponse.json(
+        { error: "Não autorizado" },
+        { status: 401 }
+      );
+    }
 
-  const data = generateMockData();
-  
-  return NextResponse.json(data);
+    // Buscar todas as metas
+    const metas = await (db as any).meta.findMany({
+      orderBy: { mesReferencia: "desc" },
+    });
+    
+    // Processar o campo metasVendedores para deserializar o JSON
+    const metasProcessadas = metas.map((meta: any) => {
+      try {
+        // Garantir que metasVendedores sempre seja um array ou null
+        let metasVendedores = null;
+        
+        if (meta.metasVendedores) {
+          try {
+            const parsedValue = JSON.parse(meta.metasVendedores as string);
+            // Verificar se o resultado é realmente um array
+            metasVendedores = Array.isArray(parsedValue) ? parsedValue : [];
+          } catch (parseError) {
+            console.error(`Erro ao processar JSON de metasVendedores para meta ${meta.id}:`, parseError);
+            metasVendedores = [];
+          }
+        } else {
+          metasVendedores = [];
+        }
+        
+        return {
+          ...meta,
+          metasVendedores
+        };
+      } catch (error) {
+        console.error(`Erro ao processar metasVendedores para meta ${meta.id}:`, error);
+        return {
+          ...meta,
+          metasVendedores: []
+        };
+      }
+    });
+
+    return NextResponse.json(metasProcessadas);
+  } catch (error) {
+    console.error("Erro ao listar metas:", error);
+    return NextResponse.json(
+      { error: "Erro ao listar metas" },
+      { status: 500 }
+    );
+  }
+}
+
+// POST - Criar nova meta
+export async function POST(request: NextRequest) {
+  try {
+    // Verificar autenticação
+    const session = await getServerSession(authOptions);
+
+    if (!session) {
+      return NextResponse.json(
+        { error: "Não autorizado" },
+        { status: 401 }
+      );
+    }
+
+    // Obter e validar os dados do corpo da requisição
+    const body = await request.json();
+    
+    // Converter a string de data para objeto Date
+    if (typeof body.mesReferencia === "string") {
+      body.mesReferencia = new Date(body.mesReferencia);
+    }
+    
+    // Validar os dados
+    const result = metaSchema.safeParse(body);
+
+    if (!result.success) {
+      return NextResponse.json(
+        { error: "Dados inválidos", details: result.error.format() },
+        { status: 400 }
+      );
+    }
+
+    // Verificar se já existe uma meta para o mesmo mês
+    const mesReferencia = new Date(body.mesReferencia);
+    const firstDayOfMonth = new Date(mesReferencia.getFullYear(), mesReferencia.getMonth(), 1);
+    const lastDayOfMonth = new Date(mesReferencia.getFullYear(), mesReferencia.getMonth() + 1, 0);
+    
+    const existingMeta = await (db as any).meta.findFirst({
+      where: {
+        mesReferencia: {
+          gte: firstDayOfMonth,
+          lte: lastDayOfMonth,
+        },
+      },
+    });
+
+    if (existingMeta) {
+      return NextResponse.json(
+        { error: "Já existe uma meta cadastrada para este mês" },
+        { status: 409 }
+      );
+    }
+
+    // Criar nova meta
+    const novaMeta = await (db as any).meta.create({
+      data: {
+        mesReferencia: body.mesReferencia,
+        metaMensal: body.metaMensal,
+        metaSalvio: body.metaSalvio,
+        metaCoordenador: body.metaCoordenador,
+        metasVendedores: body.metasVendedores ? JSON.stringify(body.metasVendedores) : null,
+        criadoPor: session.user.id,
+      },
+    });
+
+    return NextResponse.json(novaMeta, { status: 201 });
+  } catch (error) {
+    console.error("Erro ao criar meta:", error);
+    return NextResponse.json(
+      { error: "Erro ao criar meta" },
+      { status: 500 }
+    );
+  }
 } 

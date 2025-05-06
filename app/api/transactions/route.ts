@@ -4,6 +4,10 @@ import { TransactionService, TransactionFilters } from "@/app/_services/transact
 import { ErrorCode, ErrorHandlingService } from "@/app/_services/error-handling-service";
 import { db } from "@/app/_lib/db";
 
+// Configuração para forçar o comportamento dinâmico
+export const dynamic = "force-dynamic";
+
+
 export async function GET(req: NextRequest) {
   try {
     const { user } = await getAuthSession();

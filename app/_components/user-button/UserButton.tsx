@@ -71,7 +71,7 @@ export function UserButton() {
   const userPlan = userData?.subscriptionPlan || session.user.subscriptionPlan;
   
   const handleLogout = async () => {
-    await signOut({ callbackUrl: "/auth/login" });
+    await signOut({ callbackUrl: "/auth" });
   };
   
   return (
@@ -128,55 +128,21 @@ export function UserButton() {
               <span>Meu Perfil</span>
             </Link>
           </DropdownMenuItem>
-          
+{/*           
           <DropdownMenuItem asChild>
             <Link href="/subscription" className="flex items-center cursor-pointer">
               <Star className="mr-2 h-4 w-4" />
               <span>Meu Plano</span>
             </Link>
-          </DropdownMenuItem>
+          </DropdownMenuItem> */}
           
-          <DropdownMenuItem asChild>
+          {/* <DropdownMenuItem asChild>
             <Link href="/history" className="flex items-center cursor-pointer">
               <History className="mr-2 h-4 w-4" />
               <span>Histórico de Atividades</span>
             </Link>
           </DropdownMenuItem>
-          
-          <DropdownMenuSeparator />
-          
-          {/* Opções de Tema */}
-          <DropdownMenuLabel className="px-2 pt-0">Aparência</DropdownMenuLabel>
-          <div className="px-2 py-1.5 flex gap-2">
-            <Button 
-              variant={theme === "light" ? "default" : "outline"} 
-              size="sm" 
-              className="flex-1 flex items-center justify-center gap-1.5"
-              onClick={() => setTheme("light")}
-            >
-              <Sun className="h-3.5 w-3.5" />
-              <span className="text-xs">Claro</span>
-            </Button>
-            <Button 
-              variant={theme === "dark" ? "default" : "outline"} 
-              size="sm" 
-              className="flex-1 flex items-center justify-center gap-1.5"
-              onClick={() => setTheme("dark")}
-            >
-              <Moon className="h-3.5 w-3.5" />
-              <span className="text-xs">Escuro</span>
-            </Button>
-            <Button 
-              variant={theme === "system" ? "default" : "outline"} 
-              size="sm" 
-              className="flex-1 flex items-center justify-center gap-1.5"
-              onClick={() => setTheme("system")}
-            >
-              <Monitor className="h-3.5 w-3.5" />
-              <span className="text-xs">Sistema</span>
-            </Button>
-          </div>
-          
+           */}
           <DropdownMenuSeparator />
           
           <DropdownMenuItem asChild>

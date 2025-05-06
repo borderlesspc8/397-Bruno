@@ -5,11 +5,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verificarECorrigirConfiguracao, corrigirVendaEParcelas } from "../utils/fix-webhook";
 
+// Configuração para forçar o comportamento dinâmico
+export const dynamic = "force-dynamic";
+
+
 // Definir segredo para proteção do endpoint
 const FIX_SECRET = process.env.WEBHOOK_FIX_SECRET || "webhook-fix-secret";
 
 // Configurar como dinâmico para evitar cache
-export const dynamic = "force-dynamic";
 
 /**
  * GET /api/webhooks/gestao-click/fix

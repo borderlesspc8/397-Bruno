@@ -3,8 +3,10 @@ import { getAuthSession } from '@/app/_lib/auth';
 import { GestaoClickClientService } from '@/app/_services/gestao-click-client-service';
 import { GestaoClickCliente } from '@/app/_types/gestao-click';
 
-// Marcador para forçar o comportamento dinâmico
+// Configuração para forçar o comportamento dinâmico
 export const dynamic = "force-dynamic";
+
+
 
 /**
  * GET /api/gestao-click/clients

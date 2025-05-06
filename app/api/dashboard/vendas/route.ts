@@ -4,33 +4,31 @@ import { authOptions } from "@/app/_lib/auth";
 import { GestaoClickClientService } from "@/app/_services/gestao-click-client-service";
 import { prisma } from "@/app/_lib/prisma";
 import { BetelTecnologiaService } from '@/app/_services/betelTecnologia';
-import { parse, format } from 'date-fns';
+import { parse, format, startOfMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { getCachedData, CachePrefix, preloadCache } from '@/app/_services/cache';
+import { BetelVenda } from '@/app/_utils/calculoFinanceiro';
 
-// Função para memoização de dados para evitar múltiplas requisições redundantes
-const memoizedResults = new Map<string, { data: any, timestamp: number }>();
-const CACHE_EXPIRATION = 5 * 60 * 1000; // 5 minutos em milissegundos
+// Configuração para forçar o comportamento dinâmico
+export const dynamic = "force-dynamic";
+
+
+// Constantes para otimização
+const STATUS_VALIDOS = ["Concretizada", "Em andamento"];
+const CACHE_TTL_VENDAS = 15 * 60 * 1000; // 15 minutos
+
+// Interface para vendas recebidas da API, estendendo BetelVenda
+interface VendaBetel extends BetelVenda {
+  desconto_valor?: string | number;
+  valor_frete?: string | number;
+}
 
 // Funções auxiliares para processamento de dados
 function processVendasPorConsultor(vendas: any, funcionarios: any) {
   // Inicializar map para armazenar vendas por vendedor
   const vendasPorVendedor = new Map();
   
-  console.log("Processando vendas do consultor. Dados recebidos:");
-  console.log("Vendas:", vendas?.data ? `${vendas.data.length} registros` : "Sem dados");
-  console.log("Funcionarios:", funcionarios?.data ? `${funcionarios.data.length} registros` : "Sem dados");
-  
-  // Exibir amostra da primeira venda para debug
-  if (vendas?.data && vendas.data.length > 0) {
-    const primeiraVenda = vendas.data[0];
-    console.log("Exemplo da primeira venda:", {
-      id: primeiraVenda.id,
-      vendedor_id: primeiraVenda.vendedor_id,
-      nome_vendedor: primeiraVenda.nome_vendedor
-    });
-  }
-  
-  // Preparar dados de funcionários para lookup rápido
+  // Preparar dados de funcionários para lookup rápido - otimizado para usar Map
   const funcionariosMap = new Map();
   if (Array.isArray(funcionarios.data)) {
     funcionarios.data.forEach((funcionario: any) => {
@@ -42,10 +40,13 @@ function processVendasPorConsultor(vendas: any, funcionarios: any) {
     });
   }
   
-  // Processar vendas
+  // Processar vendas - Filtrar apenas para status válidos
   if (vendas && Array.isArray(vendas.data)) {
+    // Usar forEach em vez de map para evitar criar um array intermediário
     vendas.data.forEach((venda: any) => {
-      if (!venda.vendedor_id) return;
+      if (!venda.vendedor_id || !STATUS_VALIDOS.includes(venda.nome_situacao)) {
+        return;
+      }
       
       const vendedorId = venda.vendedor_id;
       const valorVenda = parseFloat(venda.valor_liquido || venda.valor_total || "0");
@@ -71,18 +72,10 @@ function processVendasPorConsultor(vendas: any, funcionarios: any) {
     });
   }
   
-  const resultado = Array.from(vendasPorVendedor.values())
+  // Converter para array, filtrar e ordenar - otimizado para uma única operação de array
+  return Array.from(vendasPorVendedor.values())
     .filter(vendedor => vendedor.valorTotal > 0)
     .sort((a, b) => b.valorTotal - a.valorTotal);
-  
-  // Logar amostra do resultado
-  console.log("Resultado do processamento de vendedores:", 
-    resultado.length > 0 ? 
-    resultado.slice(0, 2).map(v => ({id: v.id, nome: v.nome, nome_vendedor: v.nome_vendedor})) : 
-    "Nenhum vendedor processado");
-  
-  // Converter para array e ordenar por valor total (decrescente)
-  return resultado;
 }
 
 function processQuantidadeVendas(vendas: any) {
@@ -94,7 +87,11 @@ function processQuantidadeVendas(vendas: any) {
   const vendasPorDia = new Map();
   
   if (vendas && Array.isArray(vendas.data)) {
+    // Processar vendas em uma única passagem para melhor performance
     vendas.data.forEach((venda: any) => {
+      // Verificar se o status da venda está nos status válidos
+      if (!STATUS_VALIDOS.includes(venda.nome_situacao)) return;
+      
       totalVendas += 1;
       const valor = parseFloat(venda.valor_liquido || venda.valor_total || "0");
       valorTotal += valor;
@@ -134,7 +131,11 @@ function processProdutosMaisVendidos(vendas: any) {
   const produtosContagem = new Map();
   
   if (vendas && Array.isArray(vendas.data)) {
+    // Manter contagem em uma única passagem para melhor performance
     vendas.data.forEach((venda: any) => {
+      // Verificar se o status da venda está nos status válidos
+      if (!STATUS_VALIDOS.includes(venda.nome_situacao)) return;
+      
       // Verificar se venda tem produtos
       if (venda && venda.produtos && Array.isArray(venda.produtos)) {
         venda.produtos.forEach((produto: any) => {
@@ -172,13 +173,44 @@ function processProdutosMaisVendidos(vendas: any) {
   return result.length > 0 ? [{ produtos: result }] : [];
 }
 
+// Função para fazer processamento pesado em background
+function preloadRelatedData(dataInicio: string, dataFim: string) {
+  // Pré-carregar dados de vendedores
+  const vendedoresKey = `${CachePrefix.VENDEDORES}${dataInicio}:${dataFim}`;
+  preloadCache(vendedoresKey, async () => {
+    const session = await getServerSession(authOptions);
+    const userId = session?.user?.id;
+    
+    // Iniciar a busca de vendedores para este período
+    return await BetelTecnologiaService.buscarVendedores({
+      dataInicio: new Date(dataInicio),
+      dataFim: new Date(dataFim)
+    });
+  }, 'low');
+  
+  // Pré-carregar dados de produtos
+  const produtosKey = `${CachePrefix.PRODUTOS}${dataInicio}:${dataFim}`;
+  preloadCache(produtosKey, async () => {
+    // Iniciar a busca de produtos para este período
+    return await BetelTecnologiaService.buscarProdutosVendidos({
+      dataInicio: new Date(dataInicio),
+      dataFim: new Date(dataFim)
+    });
+  }, 'low');
+}
+
 export async function GET(request: NextRequest) {
   try {
-    const searchParams = request.nextUrl.searchParams;
-    const dataInicio = searchParams.get('dataInicio');
-    const dataFim = searchParams.get('dataFim');
-
-    // Validar parâmetros obrigatórios
+    // Ativar debug apenas se parâmetro ?debug=true estiver presente
+    const debug = request.nextUrl.searchParams.get('debug') === 'true';
+    
+    // Forçar atualização do cache se o parâmetro nocache estiver presente
+    const forceUpdate = request.nextUrl.searchParams.has('nocache');
+    
+    // Parâmetros obrigatórios
+    const dataInicio = request.nextUrl.searchParams.get('dataInicio');
+    const dataFim = request.nextUrl.searchParams.get('dataFim');
+    
     if (!dataInicio || !dataFim) {
       return NextResponse.json(
         { 
@@ -191,33 +223,43 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    console.log(`Buscando vendas de ${dataInicio} até ${dataFim}`);
+    console.log(`Buscando vendas de ${dataInicio} até ${dataFim}${forceUpdate ? ' (ignorando cache)' : ''}`);
+
+    // Extrair as partes da data no formato YYYY-MM-DD diretamente da string de entrada
+    // para evitar problemas de conversão de timezone
+    let formattedDataInicio: string;
+    let formattedDataFim: string;
 
     // Tentar realizar o parsing das datas
-    let dataInicioObj: Date;
-    let dataFimObj: Date;
-    
     try {
-      // Tentar primeiro no formato ISO
-      dataInicioObj = new Date(dataInicio);
-      dataFimObj = new Date(dataFim);
-      
-      // Verificar se as datas são válidas
-      if (isNaN(dataInicioObj.getTime()) || isNaN(dataFimObj.getTime())) {
-        // Tentar no formato dd/MM/yyyy que pode vir da UI
-        dataInicioObj = parse(dataInicio, 'dd/MM/yyyy', new Date(), { locale: ptBR });
-        dataFimObj = parse(dataFim, 'dd/MM/yyyy', new Date(), { locale: ptBR });
+      if (dataInicio.includes('-') && dataInicio.length === 10) {
+        // Formato já é YYYY-MM-DD
+        formattedDataInicio = dataInicio;
+      } else {
+        // Tentar converter de outro formato para YYYY-MM-DD
+        const dataInicioObj = parse(dataInicio, 'dd/MM/yyyy', new Date(), { locale: ptBR });
+        if (isNaN(dataInicioObj.getTime())) {
+          throw new Error('Formato de data inicial inválido');
+        }
+        formattedDataInicio = format(dataInicioObj, 'yyyy-MM-dd');
       }
-      
-      // Verificar novamente se as datas são válidas
-      if (isNaN(dataInicioObj.getTime()) || isNaN(dataFimObj.getTime())) {
-        throw new Error('Formato de data inválido');
+
+      if (dataFim.includes('-') && dataFim.length === 10) {
+        // Formato já é YYYY-MM-DD
+        formattedDataFim = dataFim;
+      } else {
+        // Tentar converter de outro formato para YYYY-MM-DD
+        const dataFimObj = parse(dataFim, 'dd/MM/yyyy', new Date(), { locale: ptBR });
+        if (isNaN(dataFimObj.getTime())) {
+          throw new Error('Formato de data final inválido');
+        }
+        formattedDataFim = format(dataFimObj, 'yyyy-MM-dd');
       }
     } catch (error) {
       console.error('Erro ao processar datas:', error);
       return NextResponse.json(
         { 
-          erro: 'Formato de data inválido. Use o formato ISO ou dd/MM/yyyy',
+          erro: 'Formato de data inválido. Use o formato ISO (YYYY-MM-DD) ou dd/MM/yyyy',
           vendas: [],
           totalVendas: 0,
           totalValor: 0
@@ -226,91 +268,205 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Ajustar as datas para incluir todo o período
-    dataInicioObj.setHours(0, 0, 0, 0);
-    dataFimObj.setHours(23, 59, 59, 999);
-
-    console.log('Datas processadas:', {
-      dataInicio: dataInicioObj.toISOString(),
-      dataFim: dataFimObj.toISOString()
-    });
-
-    try {
-      console.log('Buscando vendas da API externa...');
-      const vendasResponse = await BetelTecnologiaService.buscarVendas({
-        dataInicio: dataInicioObj,
-        dataFim: dataFimObj
+    // Criar objetos Date com as datas formatadas (apenas para o serviço da API)
+    const dataInicioObj = new Date(`${formattedDataInicio}T00:00:00.000Z`);
+    const dataFimObj = new Date(`${formattedDataFim}T23:59:59.999Z`);
+    
+    // Criar strings ISO para a API
+    const dataInicioISO = `${formattedDataInicio}T00:00:00.000Z`;
+    const dataFimISO = `${formattedDataFim}T23:59:59.999Z`;
+    
+    if (debug) {
+      console.log('Datas processadas para a API:', {
+        dataInicio: dataInicioISO,
+        dataFim: dataFimISO,
+        formattedDataInicio,
+        formattedDataFim
       });
-
-      // Verificar se houve erro
-      if (vendasResponse.erro) {
-        console.warn('Erro na API externa:', vendasResponse.erro);
-        
-        // Se o erro está relacionado a credenciais, retornar mensagem específica
-        if (
-          vendasResponse.erro.includes('Token de acesso não configurado') || 
-          vendasResponse.erro.includes('Token secreto não configurado') ||
-          vendasResponse.erro.includes('credenciais inválidas')
-        ) {
-          return NextResponse.json(
-            { 
-              erro: 'É necessário configurar as credenciais da API externa. Verifique as variáveis de ambiente GESTAO_CLICK_ACCESS_TOKEN e GESTAO_CLICK_SECRET_ACCESS_TOKEN.',
-              vendas: [],
-              totalVendas: 0,
-              totalValor: 0
-            },
-            { status: 401 }
-          );
-        }
-        
-        // Outros erros da API
-        return NextResponse.json(
-          { 
-            erro: `Erro na API externa: ${vendasResponse.erro}`,
-            vendas: [],
-            totalVendas: 0,
-            totalValor: 0
-          },
-          { status: 500 }
-        );
-      }
-
-      // Se não encontrou vendas
-      if (vendasResponse.vendas.length === 0) {
-        return NextResponse.json(
-          {
-            vendas: [],
-            totalVendas: 0,
-            totalValor: 0,
-            mensagem: 'Nenhuma venda encontrada no período especificado.'
-          },
-          { status: 200 }
-        );
-      }
-
-      // Retornar dados das vendas
-      return NextResponse.json({
-        vendas: vendasResponse.vendas,
-        totalVendas: vendasResponse.totalVendas,
-        totalValor: vendasResponse.totalValor
-      });
-    } catch (error) {
-      console.error('Erro ao processar requisição de vendas:', error);
-      return NextResponse.json(
-        { 
-          erro: `Erro interno ao processar requisição: ${error instanceof Error ? error.message : 'Erro desconhecido'}`,
-          vendas: [],
-          totalVendas: 0,
-          totalValor: 0
-        },
-        { status: 500 }
-      );
     }
+
+    const cacheKey = `${CachePrefix.DASHBOARD}vendas:${formattedDataInicio}:${formattedDataFim}:v5`; // Versão atualizada do cache
+
+    // Usar a versão aprimorada do serviço de cache (ignorando cache se forceUpdate for true)
+    const resultado = await getCachedData(
+      cacheKey,
+      async () => {
+        console.log('Buscando vendas da API externa...');
+
+        // Buscar vendas
+        const vendas = await BetelTecnologiaService.buscarVendas({
+          dataInicio: dataInicioObj,
+          dataFim: dataFimObj
+        });
+
+        // Iniciar o preload de dados relacionados em background
+        preloadRelatedData(formattedDataInicio, formattedDataFim);
+
+        console.log(`Total de vendas recebidas da API: ${vendas.vendas.length}`);
+        
+        if (debug) {
+          // Dados para debug
+          const statusCount = new Map();
+          vendas.vendas.forEach(venda => {
+            const status = venda.nome_situacao || 'Sem status';
+            statusCount.set(status, (statusCount.get(status) || 0) + 1);
+          });
+          
+          console.log('Distribuição de status nas vendas:');
+          statusCount.forEach((count, status) => {
+            console.log(`- ${status}: ${count} vendas`);
+          });
+        }
+
+        // Filtrar as vendas para garantir que apenas as com status válidos e ESTRITAMENTE dentro do período sejam incluídas
+        const vendasFiltradas = vendas.vendas.filter(venda => {
+          // Verificar se tem status válido
+          const temStatusValido = STATUS_VALIDOS.includes(venda.nome_situacao || '');
+          
+          // CORREÇÃO: Verificar se a data está ESTRITAMENTE dentro do período solicitado
+          const dataVenda = venda.data || '';
+          // Comparar exatamente com as strings de data formatadas para garantir consistência
+          const estaDentroDoPeriodo = dataVenda >= formattedDataInicio && dataVenda <= formattedDataFim;
+          
+          const incluir = temStatusValido && estaDentroDoPeriodo;
+          
+          if (debug) {
+            console.log(`Venda ${venda.id} [${dataVenda}]: ${incluir ? 'incluída' : 'excluída'}`, {
+              status: venda.nome_situacao,
+              temStatusValido,
+              dataVenda,
+              estaDentroDoPeriodo,
+              formattedDataInicio,
+              formattedDataFim
+            });
+          }
+          
+          return incluir;
+        });
+        
+        console.log(`Vendas após filtragem: ${vendasFiltradas.length} de ${vendas.vendas.length}`);
+        
+        const totalVendasFiltradas = vendasFiltradas.length;
+        
+        // Recalcular o valor total apenas das vendas filtradas - com maior precisão
+        const totalValorFiltrado = parseFloat(vendasFiltradas.reduce((acc, venda) => {
+          // Garantir que usamos um número válido para o valor total
+          const valorVenda = typeof venda.valor_total === 'string' ? 
+            parseFloat(venda.valor_total.replace(',', '.')) : 
+            parseFloat(String(venda.valor_total || 0));
+          
+          // Verificar se o valor é um número válido antes de somar
+          if (!isNaN(valorVenda)) {
+            return acc + valorVenda;
+          }
+          return acc;
+        }, 0).toFixed(2));
+
+        // Calcular informações financeiras adicionais
+        let totalCusto = 0;
+        let totalDescontos = 0;
+        let totalFretes = 0;
+
+        vendasFiltradas.forEach((venda: any) => {
+          // Processar custo
+          if (venda.valor_custo) {
+            const custoParsed = typeof venda.valor_custo === 'string' ? 
+              parseFloat(venda.valor_custo.replace(',', '.')) : 
+              parseFloat(String(venda.valor_custo || 0));
+            
+            if (!isNaN(custoParsed)) {
+              totalCusto += custoParsed;
+            }
+          }
+          
+          // Processar descontos
+          if (venda.desconto_valor) {
+            const descontoParsed = typeof venda.desconto_valor === 'string' ? 
+              parseFloat(venda.desconto_valor.replace(',', '.')) : 
+              parseFloat(String(venda.desconto_valor || 0));
+            
+            if (!isNaN(descontoParsed)) {
+              totalDescontos += descontoParsed;
+            }
+          }
+          
+          // Processar fretes
+          if (venda.valor_frete) {
+            const freteParsed = typeof venda.valor_frete === 'string' ? 
+              parseFloat(venda.valor_frete.replace(',', '.')) : 
+              parseFloat(String(venda.valor_frete || 0));
+            
+            if (!isNaN(freteParsed)) {
+              totalFretes += freteParsed;
+            }
+          }
+        });
+
+        // Calcular lucro
+        const lucroTotal = totalValorFiltrado - totalCusto - totalDescontos + totalFretes;
+        const margemLucro = totalValorFiltrado > 0 ? (lucroTotal / totalValorFiltrado) * 100 : 0;
+
+        if (debug) {
+          console.log('Cálculos financeiros:', {
+            totalValorFiltrado,
+            totalCusto,
+            totalDescontos,
+            totalFretes,
+            lucroTotal,
+            margemLucro: margemLucro.toFixed(2) + '%'
+          });
+        }
+
+        // Retornar dados filtrados e calculados com precisão
+        return {
+          vendas: vendasFiltradas, // Incluir apenas vendas filtradas por status e data
+          totalVendas: totalVendasFiltradas,
+          totalValor: totalValorFiltrado,
+          financeiro: {
+            custo: totalCusto,
+            descontos: totalDescontos,
+            fretes: totalFretes,
+            lucro: lucroTotal,
+            margemLucro
+          }
+        };
+      },
+      CACHE_TTL_VENDAS, // TTL personalizado para vendas
+      forceUpdate // Ignorar cache se forceUpdate for true
+    );
+
+    // CORREÇÃO: Não aplicar filtro novamente, usar os dados do resultado diretamente
+    // Isso evita reintroduzir vendas que possam ter sido filtradas anteriormente
+    const vendasFiltradas = resultado.vendas;
+    const totalVendasFiltradas = vendasFiltradas.length;
+    const totalValorFiltrado = resultado.totalValor;
+    const financeiro = resultado.financeiro;
+
+    if (debug) {
+      console.log(`Totais finais: ${totalVendasFiltradas} vendas, R$ ${totalValorFiltrado}`);
+      console.log('Financeiro final:', financeiro);
+    }
+
+    // Retornar os dados filtrados
+    return NextResponse.json({
+      vendas: vendasFiltradas,
+      totalVendas: totalVendasFiltradas,
+      totalValor: totalValorFiltrado,
+      financeiro: financeiro,
+      debug: debug ? {
+        dataInicioFormatada: formattedDataInicio,
+        dataFimFormatada: formattedDataFim,
+        statusValidos: STATUS_VALIDOS,
+        totalAntesFiltragem: resultado.vendas.length,
+        totalAposFiltragem: totalVendasFiltradas
+      } : undefined
+    });
   } catch (error) {
-    console.error('Erro ao processar requisição de vendas:', error);
+    console.error('Erro ao buscar dados do dashboard:', error);
     return NextResponse.json(
       { 
-        erro: `Erro interno ao processar requisição: ${error instanceof Error ? error.message : 'Erro desconhecido'}`,
+        erro: 'Erro ao processar requisição', 
+        mensagem: error instanceof Error ? error.message : 'Erro desconhecido',
         vendas: [],
         totalVendas: 0,
         totalValor: 0

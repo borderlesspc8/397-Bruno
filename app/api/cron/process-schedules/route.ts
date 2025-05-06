@@ -6,11 +6,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ImportSchedulerService } from "@/app/_services/import-scheduler-service";
 
+// Configuração para forçar o comportamento dinâmico
+export const dynamic = "force-dynamic";
+
+
 // Chave de acesso para autenticar chamadas ao endpoint
 const CRON_API_KEY = process.env.CRON_API_KEY;
 
 // Força comportamento dinâmico para este endpoint
-export const dynamic = "force-dynamic";
 
 /**
  * GET /api/cron/process-schedules

@@ -1,5 +1,3 @@
-"use server";
-
 /**
  * API de Conciliação Automática de Parcelas com Machine Learning
  * 
@@ -21,6 +19,10 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/_lib/auth";
 import { MLReconciliationService } from "@/app/_services/ml-reconciliation-service";
 import { logger } from "@/app/_services/logger";
+
+// Configuração para forçar o comportamento dinâmico
+export const dynamic = "force-dynamic";
+
 
 // Chave secreta para autenticação de serviços internos
 const API_SECRET_KEY = process.env.API_SECRET_KEY || 'contarapida_internal_api_key';

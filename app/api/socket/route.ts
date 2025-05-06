@@ -6,6 +6,10 @@ import { db } from '@/app/_lib/db';
 import SocketService from '@/app/_services/socket-service';
 import { authOptions } from '@/app/_lib/auth-options';
 
+// Configuração para forçar o comportamento dinâmico
+export const dynamic = "force-dynamic";
+
+
 // Variável global para armazenar a instância do servidor socket.io
 let io: ServerIO;
 
