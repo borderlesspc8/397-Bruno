@@ -67,7 +67,7 @@ jobs:
       
       - name: Instalar dependências
         if: steps.npm-cache.outputs.cache-hit != 'true'
-        run: npm ci
+        run: npm install
       
       - name: Gerar cliente Prisma
         run: npx prisma generate
@@ -105,6 +105,10 @@ jobs:
       - name: Executar testes E2E
         if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
         run: npm run test:e2e
+      
+      # Garantir que os diretórios existam para evitar erros no upload
+      - name: Criar diretórios para artefatos
+        run: mkdir -p playwright-report coverage
       
       - name: Armazenar artefatos de testes
         uses: actions/upload-artifact@v4

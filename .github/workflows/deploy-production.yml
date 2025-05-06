@@ -54,7 +54,7 @@ jobs:
       
       - name: Instalar dependências
         if: steps.npm-cache.outputs.cache-hit != 'true'
-        run: npm ci
+        run: npm install
       
       - name: Gerar cliente Prisma
         run: npx prisma generate
@@ -97,6 +97,10 @@ jobs:
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/contarapida_test
       
+      # Garantir que os diretórios existam para evitar erros no upload
+      - name: Criar diretórios para artefatos
+        run: mkdir -p test-results
+      
       - name: Armazenar artefatos de teste
         uses: actions/upload-artifact@v4
         if: always()
@@ -137,7 +141,7 @@ jobs:
       
       - name: Instalar dependências
         if: steps.npm-cache.outputs.cache-hit != 'true'
-        run: npm ci
+        run: npm install
       
       - name: Gerar cliente Prisma
         run: npx prisma generate
