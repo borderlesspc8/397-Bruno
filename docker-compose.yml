@@ -1,70 +1,131 @@
+# Configuração Docker Compose para ContaRapida
+# Nota: A partir do Docker Compose v2, o atributo 'version' não é mais necessário
+
 version: '3.8'
 
 services:
-  app:
-    image: ${DOCKER_USERNAME:-usuario}/contarapida:${TAG:-latest}
-    restart: always
-    ports:
-      - "${PORT:-3000}:3000"
-    depends_on:
-      - postgres
-      - redis
-    environment:
-      - DATABASE_URL=postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/contarapida
-      - REDIS_URL=redis://redis:6379
-      - NODE_ENV=production
-      - NEXTAUTH_URL=${NEXTAUTH_URL:-http://localhost:3000}
-      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
-    networks:
-      - contarapida-network
-    volumes:
-      - uploads:/app/uploads
-    
-  postgres:
-    image: postgres:15
-    restart: always
-    ports:
-      - "${POSTGRES_PORT:-5432}:5432"
-    environment:
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
-      - POSTGRES_DB=contarapida
-    volumes:
-      - postgres-data:/var/lib/postgresql/data
-    networks:
-      - contarapida-network
-    
-  redis:
-    image: redis:7
-    restart: always
-    command: redis-server --appendonly yes
-    ports:
-      - "${REDIS_PORT:-6379}:6379"
-    volumes:
-      - redis-data:/data
-    networks:
-      - contarapida-network
-
-  nginx:
-    image: nginx:alpine
-    restart: always
+  # Traefik - Proxy reverso e gerenciador HTTPS
+  traefik:
+    image: traefik:v2.10
+    container_name: traefik
+    command:
+      - "--api.insecure=false"
+      - "--api.dashboard=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--certificatesresolvers.letsencryptresolver.acme.tlschallenge=true"
+      - "--certificatesresolvers.letsencryptresolver.acme.email=${ACME_EMAIL:-admin@contarapida.com}"
+      - "--certificatesresolvers.letsencryptresolver.acme.storage=/letsencrypt/acme.json"
+      - "--log.level=INFO"
     ports:
       - "80:80"
       - "443:443"
     volumes:
-      - ./nginx/conf.d:/etc/nginx/conf.d
-      - ./nginx/ssl:/etc/nginx/ssl
-      - ./nginx/www:/var/www/html
-    depends_on:
-      - app
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+      - "traefik-certificates:/letsencrypt"
     networks:
       - contarapida-network
+    restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.traefik-dashboard.rule=Host(`traefik.${DOMAIN:-localhost}`)"
+      - "traefik.http.routers.traefik-dashboard.service=api@internal"
+      - "traefik.http.routers.traefik-dashboard.entrypoints=websecure"
+      - "traefik.http.routers.traefik-dashboard.tls.certresolver=letsencryptresolver"
+      - "traefik.http.routers.traefik-dashboard.middlewares=traefik-auth"
+      - "traefik.http.middlewares.traefik-auth.basicauth.users=${TRAEFIK_BASIC_AUTH:-admin:$$apr1$$talBPKvT$$zT3sAYOwMXXPx2jAlfMTQ1}" # admin:admin por padrão, altere!
+
+  # Aplicação principal ContaRapida
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: contarapida-app
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - NEXT_TELEMETRY_DISABLED=1
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL}
+      - NEXTAUTH_URL=${NEXTAUTH_URL:-https://${DOMAIN}}
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:-suachavesecretaforte}
+      - DOMAIN=${DOMAIN:-contarapida.example.com}
+      - RESEND_API_KEY=${RESEND_API_KEY:-re_dummy_key}
+      - GROQ_API_KEY=${GROQ_API_KEY:-gsk_dummy_key}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-sk_dummy_key}
+      - GESTAO_CLICK_ACCESS_TOKEN=${GESTAO_CLICK_ACCESS_TOKEN:-dummy_token}
+      - GESTAO_CLICK_SECRET_ACCESS_TOKEN=${GESTAO_CLICK_SECRET_ACCESS_TOKEN:-dummy_secret}
+    volumes:
+      - app-logs:/app/logs
+      - app-uploads:/app/public/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - contarapida-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 40s
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.contarapida.rule=Host(`${DOMAIN:-localhost}`)"
+      - "traefik.http.routers.contarapida.entrypoints=websecure"
+      - "traefik.http.routers.contarapida.tls.certresolver=letsencryptresolver"
+      - "traefik.http.services.contarapida.loadbalancer.server.port=3000"
+      - "traefik.http.services.contarapida.loadbalancer.passHostHeader=true"
+      - "traefik.docker.network=contarapida-network"
+
+  # PostgreSQL
+  postgres:
+    image: postgres:16-alpine
+    container_name: contarapida-postgres
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
+      - POSTGRES_DB=${POSTGRES_DB:-contarapida}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    restart: unless-stopped
+    networks:
+      - contarapida-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-contarapida}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # Redis
+  redis:
+    image: redis:7-alpine
+    container_name: contarapida-redis
+    command: redis-server --appendonly yes
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
+    networks:
+      - contarapida-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
 networks:
   contarapida-network:
     driver: bridge
 
 volumes:
+  traefik-certificates:
   postgres-data:
   redis-data:
-  uploads:
+  app-logs:
+  app-uploads:
