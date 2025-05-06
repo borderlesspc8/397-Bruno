@@ -69,7 +69,7 @@ const localStorageMock = {
 
 // Configurar o ambiente global corretamente
 if (typeof window === 'undefined') {
-  global.window = Object.create(window);
+  global.window = Object.create(null);
   global.window.document = {
     createElement: jest.fn(),
     getElementById: jest.fn(),
