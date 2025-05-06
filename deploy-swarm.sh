@@ -45,14 +45,9 @@ DOMAIN=contarapida.exemplo.com
 ACME_EMAIL=admin@exemplo.com
 TRAEFIK_BASIC_AUTH=admin:\$apr1\$talBPKvT\$zT3sAYOwMXXPx2jAlfMTQ1 # admin:admin (altere para produção!)
 
-# Configurações do Banco de Dados PostgreSQL
-POSTGRES_USER=postgres
-POSTGRES_PASSWORD=$(openssl rand -base64 12)
-POSTGRES_DB=contarapida
-DATABASE_URL=postgresql://\${POSTGRES_USER}:\${POSTGRES_PASSWORD}@postgres:5432/\${POSTGRES_DB}
-
-# Redis
-REDIS_URL=redis://redis:6379
+# Configurações de conexão a serviços externos
+DATABASE_URL=postgresql://postgres:postgres@postgres-host:5432/contarapida
+REDIS_URL=redis://redis-host:6379
 
 # NextAuth
 NEXTAUTH_URL=https://\${DOMAIN}
@@ -74,29 +69,29 @@ read -p "" build_image
 
 if [[ "$build_image" == "s" || "$build_image" == "S" ]]; then
     echo -e "${YELLOW}Construindo imagem Docker...${NC}"
-    docker build -t contarapida:latest .
+    docker build -t mkadev/dashboard_personalprime:latest .
     
     echo -e "${GREEN}Imagem construída com sucesso.${NC}"
 else
     echo -e "${YELLOW}Pulando etapa de construção da imagem.${NC}"
-    echo -e "${YELLOW}Certifique-se de que a imagem 'contarapida:latest' já existe.${NC}"
+    echo -e "${YELLOW}Usando a imagem mkadev/dashboard_personalprime:latest do Docker Hub.${NC}"
 fi
 
-# Verificar se a rede já existe
-NETWORK_EXISTS=$(docker network ls --filter name=contarapida-network --format "{{.Name}}" | grep -c "contarapida-network" || true)
+# Verificar se a rede AcceleraNet já existe
+NETWORK_EXISTS=$(docker network ls --filter name=AcceleraNet --format "{{.Name}}" | grep -c "AcceleraNet" || true)
 if [ "$NETWORK_EXISTS" -eq 0 ]; then
-    echo -e "${YELLOW}Criando rede overlay 'contarapida-network'...${NC}"
-    docker network create --driver overlay --attachable contarapida-network
+    echo -e "${YELLOW}Criando rede overlay 'AcceleraNet'...${NC}"
+    docker network create --driver overlay --attachable AcceleraNet
     echo -e "${GREEN}Rede criada com sucesso.${NC}"
 else
-    echo -e "${GREEN}Rede 'contarapida-network' já existe.${NC}"
+    echo -e "${GREEN}Rede 'AcceleraNet' já existe.${NC}"
 fi
 
 # Carregar variáveis de ambiente
 export $(grep -v '^#' .env | xargs)
 
-# Criar volumes se não existirem
-for VOLUME in traefik-certificates postgres-data redis-data app-logs app-uploads; do
+# Criar volumes de logs e uploads se não existirem
+for VOLUME in app-logs app-uploads; do
     VOLUME_EXISTS=$(docker volume ls --filter name=$VOLUME --format "{{.Name}}" | grep -c "$VOLUME" || true)
     if [ "$VOLUME_EXISTS" -eq 0 ]; then
         echo -e "${YELLOW}Criando volume '$VOLUME'...${NC}"
@@ -105,26 +100,26 @@ for VOLUME in traefik-certificates postgres-data redis-data app-logs app-uploads
 done
 
 # Implantar a stack
-echo -e "${YELLOW}Implantando stack ContaRapida no Swarm...${NC}"
-docker stack deploy -c docker-stack.yml contarapida
+echo -e "${YELLOW}Implantando stack Dashboard Personalprime no Swarm...${NC}"
+docker stack deploy -c docker-stack.yml dashboard_personalprime
 
 # Verificar status
 echo -e "${YELLOW}Verificando status dos serviços...${NC}"
 sleep 5
-docker stack services contarapida
+docker stack services dashboard_personalprime
 
 echo -e "${GREEN}"
 echo "==============================================="
 echo "       IMPLANTAÇÃO CONCLUÍDA"
 echo "==============================================="
 echo -e "${NC}"
-echo "A aplicação ContaRapida foi implantada com sucesso no Docker Swarm!"
-echo "Acesse: https://${DOMAIN:-contarapida.exemplo.com}"
+echo "A aplicação Dashboard Personalprime foi implantada com sucesso no Docker Swarm!"
+echo "Acesse: https://${DOMAIN:-dashboard.lojapersonalprime.com}"
 echo ""
-echo "Para visualizar os serviços: docker stack services contarapida"
-echo "Para visualizar os containers: docker stack ps contarapida"
-echo "Para visualizar os logs: docker service logs contarapida_app"
-echo "Para remover a stack: docker stack rm contarapida"
+echo "Para visualizar os serviços: docker stack services dashboard_personalprime"
+echo "Para visualizar os containers: docker stack ps dashboard_personalprime"
+echo "Para visualizar os logs: docker service logs dashboard_personalprime_app"
+echo "Para remover a stack: docker stack rm dashboard_personalprime"
 echo ""
-echo -e "${YELLOW}IMPORTANTE: Se esta é sua primeira implantação, pode levar alguns minutos para que o Traefik"
-echo -e "obtenha os certificados SSL e configure os serviços corretamente.${NC}" 
+echo -e "${YELLOW}IMPORTANTE: Se esta é sua primeira implantação, pode levar alguns minutos para que"
+echo -e "o Traefik configure os serviços corretamente.${NC}" 

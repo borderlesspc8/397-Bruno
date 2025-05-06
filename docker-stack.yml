@@ -7,9 +7,6 @@ services:
   # Aplicação principal ContaRapida
   app:
     image: mkadev/dashboard_personalprime:latest
-    depends_on:
-      - postgres
-      - redis
     networks:
       - AcceleraNet
     environment:
@@ -46,55 +43,10 @@ services:
         - "traefik.http.services.contarapida.loadbalancer.passHostHeader=true"
         - "traefik.docker.network=AcceleraNet"
 
-  # PostgreSQL
-  postgres:
-    image: postgres:16-alpine
-    environment:
-      - POSTGRES_USER=${POSTGRES_USER:-postgres}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
-      - POSTGRES_DB=${POSTGRES_DB:-contarapida}
-    volumes:
-      - postgres-data:/var/lib/postgresql/data
-    networks:
-      - AcceleraNet
-    deploy:
-      replicas: 1
-      placement:
-        constraints:
-          - node.role == manager
-      restart_policy:
-        condition: on-failure
-      resources:
-        limits:
-          cpus: '0.3'
-          memory: 256M
-
-  # Redis
-  redis:
-    image: redis:7-alpine
-    command: redis-server --appendonly yes
-    volumes:
-      - redis-data:/data
-    networks:
-      - AcceleraNet
-    deploy:
-      replicas: 1
-      placement:
-        constraints:
-          - node.role == manager
-      restart_policy:
-        condition: on-failure
-      resources:
-        limits:
-          cpus: '0.2'
-          memory: 128M
-
 networks:
   AcceleraNet:
     external: true
 
 volumes:
-  postgres-data:
-  redis-data:
   app-logs:
   app-uploads: 
