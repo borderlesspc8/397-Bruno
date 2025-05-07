@@ -191,7 +191,7 @@ export default function AuthPage() {
 
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error || "Erro ao registrar");
+        throw new Error(data.message || data.error || "Erro ao registrar");
       }
 
       setFormSuccess("Cadastro realizado");
