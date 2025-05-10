@@ -446,7 +446,7 @@ export default function DashboardVendas() {
             </CardContent>
           </Card>
         ) : (
-          <DashboardSummary totais={dadosSummary} metas={metasAtuais} />
+          <DashboardSummary totais={dadosSummary} metas={metasAtuais} vendedores={vendedores} />
         )}
       
         <Card>

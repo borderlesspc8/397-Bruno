@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { prisma } from "@/app/_lib/prisma";
-import { hash, compare } from "bcrypt";
+import { hash, compare } from "bcryptjs";
 import { z } from "zod";
 
 // Schema de validação para alteração de senha

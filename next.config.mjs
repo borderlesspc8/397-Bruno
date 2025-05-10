@@ -2,7 +2,6 @@
  * @type {import('next').NextConfig}
  */
 const nextConfig = {
-  output: 'standalone',
   reactStrictMode: true,
   // Habilitar o uso simultâneo dos diretórios app e pages
   experimental: {
@@ -121,6 +120,16 @@ const nextConfig = {
         // Redirecionar requisições do avatar PNG para SVG
         source: '/images/default-avatar.png',
         destination: '/images/default-avatar.svg',
+      },
+    ];
+  },
+  // Configuração de redirecionamentos
+  async redirects() {
+    return [
+      {
+        source: '/',
+        destination: '/dashboard',
+        permanent: true,
       },
     ];
   },

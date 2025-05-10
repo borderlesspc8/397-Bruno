@@ -1,13 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { CalendarIcon } from "lucide-react";
+import { NumericFormat } from "react-number-format";
 
 import { Button } from "@/app/_components/ui/button";
 import {
@@ -22,11 +22,12 @@ import {
 import { Input } from "@/app/_components/ui/input";
 import { Textarea } from "@/app/_components/ui/textarea";
 import { 
-  Popover, 
-  PopoverContent, 
-  PopoverTrigger 
-} from "@/app/_components/ui/popover";
-import { Calendar } from "@/app/_components/ui/calendar";
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from "@/app/_components/ui/select";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/app/_components/ui/card";
 import { useToast } from "@/app/_components/ui/use-toast";
 import { cn } from "@/app/_lib/utils";
@@ -57,10 +58,31 @@ interface FormularioMetaProps {
   id?: string;
 }
 
+// Nova função utilitária para gerar opções de meses
+function generateMonthOptions() {
+  const currentYear = new Date().getFullYear();
+  const years = [currentYear - 1, currentYear, currentYear + 1, currentYear + 2];
+  const options = [];
+
+  for (const year of years) {
+    for (let month = 0; month < 12; month++) {
+      const date = new Date(year, month, 1);
+      const value = date.toISOString();
+      const label = format(date, "MMMM 'de' yyyy", { locale: ptBR });
+      options.push({ value, label, date });
+    }
+  }
+
+  return options;
+}
+
 export function FormularioMeta({ id }: FormularioMetaProps) {
   const router = useRouter();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  
+  // Gerar opções de meses uma vez
+  const monthOptions = useMemo(() => generateMonthOptions(), []);
   
   // Definir formulário
   const form = useForm<MetaFormValues>({
@@ -175,18 +197,6 @@ export function FormularioMeta({ id }: FormularioMetaProps) {
     }
   };
 
-  // Gerar opções de anos para o calendário
-  const renderOpcoesAnos = () => {
-    const anoAtual = new Date().getFullYear();
-    const anos = [];
-    
-    for (let i = anoAtual - 5; i <= anoAtual + 2; i++) {
-      anos.push(i);
-    }
-    
-    return anos;
-  };
-
   // Função para formatar valor monetário ao digitar
   const formatarValorMonetario = (e: React.ChangeEvent<HTMLInputElement>) => {
     // Permitir excluir tudo
@@ -230,36 +240,28 @@ export function FormularioMeta({ id }: FormularioMetaProps) {
                 render={({ field }) => (
                   <FormItem className="flex flex-col">
                     <FormLabel>Mês de Referência</FormLabel>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <FormControl>
-                          <Button
-                            variant="outline"
-                            className={cn(
-                              "w-full pl-3 text-left font-normal",
-                              !field.value && "text-muted-foreground"
-                            )}
-                          >
-                            {field.value ? (
-                              format(field.value, "MMMM 'de' yyyy", { locale: ptBR })
-                            ) : (
-                              <span>Selecione o mês</span>
-                            )}
-                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                          </Button>
-                        </FormControl>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                          mode="single"
-                          selected={field.value}
-                          onSelect={field.onChange}
-                          disabled={(date) => date > new Date()}
-                          initialFocus
-                          captionLayout="dropdown-buttons"
-                        />
-                      </PopoverContent>
-                    </Popover>
+                    <Select
+                      value={field.value instanceof Date ? field.value.toISOString() : undefined}
+                      onValueChange={(value) => {
+                        // Converter string ISO para objeto Date
+                        field.onChange(new Date(value));
+                      }}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Selecione o mês">
+                          {field.value instanceof Date 
+                            ? format(field.value, "MMMM 'de' yyyy", { locale: ptBR })
+                            : "Selecione o mês"}
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        {monthOptions.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                     <FormDescription>
                       Selecione o mês para o qual esta meta é válida.
                     </FormDescription>
@@ -276,17 +278,20 @@ export function FormularioMeta({ id }: FormularioMetaProps) {
                     <FormItem>
                       <FormLabel>Meta Mensal (R$)</FormLabel>
                       <FormControl>
-                        <Input
+                        <NumericFormat
+                          customInput={Input}
+                          thousandSeparator="."
+                          decimalSeparator=","
+                          decimalScale={2}
+                          fixedDecimalScale
+                          allowNegative={false}
+                          prefix="R$ "
                           placeholder="0,00"
-                          {...field}
-                          value={field.value === 0 ? "" : `R$ ${field.value.toLocaleString("pt-BR", {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2,
-                          })}`}
-                          onChange={(e) => {
-                            const valor = e.target.value.replace(/\D/g, "");
-                            field.onChange(valor ? parseFloat(valor) / 100 : 0);
+                          value={field.value}
+                          onValueChange={(values) => {
+                            field.onChange(values.value);
                           }}
+                          className="w-full"
                         />
                       </FormControl>
                       <FormMessage />
@@ -301,17 +306,20 @@ export function FormularioMeta({ id }: FormularioMetaProps) {
                     <FormItem>
                       <FormLabel>Meta Salvio (R$)</FormLabel>
                       <FormControl>
-                        <Input
+                        <NumericFormat
+                          customInput={Input}
+                          thousandSeparator="."
+                          decimalSeparator=","
+                          decimalScale={2}
+                          fixedDecimalScale
+                          allowNegative={false}
+                          prefix="R$ "
                           placeholder="0,00"
-                          {...field}
-                          value={field.value === 0 ? "" : `R$ ${field.value.toLocaleString("pt-BR", {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2,
-                          })}`}
-                          onChange={(e) => {
-                            const valor = e.target.value.replace(/\D/g, "");
-                            field.onChange(valor ? parseFloat(valor) / 100 : 0);
+                          value={field.value}
+                          onValueChange={(values) => {
+                            field.onChange(values.value);
                           }}
+                          className="w-full"
                         />
                       </FormControl>
                       <FormMessage />
@@ -326,17 +334,20 @@ export function FormularioMeta({ id }: FormularioMetaProps) {
                     <FormItem>
                       <FormLabel>Meta Coordenador (R$)</FormLabel>
                       <FormControl>
-                        <Input
+                        <NumericFormat
+                          customInput={Input}
+                          thousandSeparator="."
+                          decimalSeparator=","
+                          decimalScale={2}
+                          fixedDecimalScale
+                          allowNegative={false}
+                          prefix="R$ "
                           placeholder="0,00"
-                          {...field}
-                          value={field.value === 0 ? "" : `R$ ${field.value.toLocaleString("pt-BR", {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2,
-                          })}`}
-                          onChange={(e) => {
-                            const valor = e.target.value.replace(/\D/g, "");
-                            field.onChange(valor ? parseFloat(valor) / 100 : 0);
+                          value={field.value}
+                          onValueChange={(values) => {
+                            field.onChange(values.value);
                           }}
+                          className="w-full"
                         />
                       </FormControl>
                       <FormMessage />

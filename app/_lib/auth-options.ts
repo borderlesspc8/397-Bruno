@@ -4,7 +4,7 @@ import EmailProvider from "next-auth/providers/email";
 import { prisma } from "./prisma";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import { SubscriptionPlan } from "../types";
-import { compare } from "bcrypt";
+import { compare } from "bcryptjs";
 import { isDemoMode, demoConfig } from "./config";
 import { User } from "next-auth";
 import { sendEmail } from "./email";
@@ -248,10 +248,40 @@ export const authOptions: NextAuthOptions = {
     async redirect({ url, baseUrl }) {
       // Personaliza os redirecionamentos para garantir que a verificação funcione
       if (url.startsWith('/api/auth/callback') || url.startsWith('/auth/verify')) {
-        return `${baseUrl}/auth/verify`;
+        return url;
       }
-      if (url.startsWith(baseUrl)) return url;
-      return baseUrl;
+      
+      // Garantir que a URL base seja sempre o domínio correto
+      const safeBaseUrl = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || baseUrl;
+      
+      // Se a URL já é externa, verificar se é uma URL válida para o domínio permitido
+      if (url.startsWith('http')) {
+        // Extrair o hostname da URL
+        try {
+          const urlObj = new URL(url);
+          const baseUrlObj = new URL(safeBaseUrl);
+          
+          // Verificar se o hostname da URL está dentro do domínio permitido
+          if (urlObj.hostname === baseUrlObj.hostname) {
+            return url;
+          }
+          
+          // Se não for um domínio permitido, redirecionar para o dashboard
+          console.log(`Redirecionamento bloqueado para domínio não permitido: ${urlObj.hostname}`);
+          return `${safeBaseUrl}/dashboard`;
+        } catch (e) {
+          console.error("Erro ao analisar URL:", e);
+          return `${safeBaseUrl}/dashboard`;
+        }
+      }
+      
+      // Se a URL começa com '/', é uma URL relativa
+      if (url.startsWith('/')) {
+        return `${safeBaseUrl}${url}`;
+      }
+      
+      // Para outros casos, redirecionar para o dashboard
+      return `${safeBaseUrl}/dashboard`;
     },
   },
   debug: process.env.NODE_ENV !== "production", // Habilitar apenas em desenvolvimento

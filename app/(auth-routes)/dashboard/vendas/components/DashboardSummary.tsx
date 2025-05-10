@@ -38,9 +38,17 @@ interface DashboardSummaryProps {
     metaMensal?: number;
     metaSalvio?: number;
   };
+  vendedores?: Array<{
+    id: string;
+    nome: string;
+    faturamento: number;
+    vendas: number;
+    ticketMedio: number;
+    lojaNome?: string;
+  }>;
 }
 
-export const DashboardSummary: React.FC<DashboardSummaryProps> = React.memo(({ totais, metas }) => {
+export const DashboardSummary: React.FC<DashboardSummaryProps> = React.memo(({ totais, metas, vendedores }) => {
   // Dados do lucro e informações associadas
   const {
     lucro,
@@ -122,23 +130,63 @@ export const DashboardSummary: React.FC<DashboardSummaryProps> = React.memo(({ t
   const metasInfo = useMemo(() => {
     if (!metas) return null;
     
-    const faturamentoAtual = totais.faturamento || 0;
+    const faturamentoTotal = totais.faturamento || 0;
     const metaMensal = metas.metaMensal || 0;
     const metaSalvio = metas.metaSalvio || 0;
 
+    // Calculamos o faturamento sem as vendas de ADMINISTRATIVO e Personal Prime MATRIZ
+    // Este valor será usado para calcular o progresso da meta mensal
+    let faturamentoSemAdministrativo = faturamentoTotal;
+    
+    // Se temos dados de vendedores, filtramos o faturamento
+    if (vendedores && vendedores.length > 0) {
+      // Identificamos vendedores que contenham "ADMINISTRATIVO" ou "MATRIZ" no nome
+      const vendedoresAdministrativos = vendedores.filter(
+        v => {
+          if (!v || !v.nome) return false; // Proteção contra vendedores sem nome
+          
+          const nome = (v.nome || '').toUpperCase();
+          const lojaNome = (v.lojaNome || '').toUpperCase();
+          
+          return (
+            nome.includes('ADMINISTRATIVO') || 
+            nome.includes('PERSONAL PRIME MATRIZ') || 
+            nome.includes('ADMIN') && nome.includes('MATRIZ') ||
+            lojaNome.includes('MATRIZ') && (nome.includes('ADMIN') || nome.includes('ADMINISTRATIVO'))
+          );
+        }
+      );
+      
+      // Log para debug
+      console.log('Vendedores administrativos excluídos da meta mensal:', 
+        vendedoresAdministrativos.map(v => ({nome: v.nome, faturamento: v.faturamento}))
+      );
+      
+      // Subtraímos o faturamento desses vendedores do total para a meta mensal
+      const faturamentoAdministrativo = vendedoresAdministrativos.reduce(
+        (sum, v) => sum + (v.faturamento || 0), 0
+      );
+      
+      faturamentoSemAdministrativo = faturamentoTotal - faturamentoAdministrativo;
+    }
+
     // Percentuais de progresso
-    const progressoMetaMensal = metaMensal > 0 ? Math.min(100, (faturamentoAtual / metaMensal) * 100) : 0;
-    const progressoMetaSalvio = metaSalvio > 0 ? Math.min(100, (faturamentoAtual / metaSalvio) * 100) : 0;
+    // Meta mensal: usa faturamento sem administrativo
+    const progressoMetaMensal = metaMensal > 0 ? Math.min(100, (faturamentoSemAdministrativo / metaMensal) * 100) : 0;
+    // Meta Salvio: usa faturamento total incluindo administrativo
+    const progressoMetaSalvio = metaSalvio > 0 ? Math.min(100, (faturamentoTotal / metaSalvio) * 100) : 0;
     
     return {
       metaMensal,
       metaSalvio,
+      faturamentoTotal,
+      faturamentoSemAdministrativo,
       formattedMetaMensal: formatCurrency(metaMensal),
       formattedMetaSalvio: formatCurrency(metaSalvio),
       progressoMetaMensal,
       progressoMetaSalvio,
     };
-  }, [metas, totais.faturamento]);
+  }, [metas, totais.faturamento, vendedores]);
 
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4">
@@ -212,6 +260,20 @@ export const DashboardSummary: React.FC<DashboardSummaryProps> = React.memo(({ t
                             : "bg-rose-500"
                     }
                   />
+                  <div className="text-xs text-muted-foreground mt-1">
+                    {formatCurrency(metasInfo.faturamentoSemAdministrativo)} de {metasInfo.formattedMetaMensal}
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Info className="h-3 w-3 text-muted-foreground cursor-help inline-block ml-1" />
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p className="max-w-xs">Meta Mensal: {metasInfo.formattedMetaMensal}</p>
+                          <p className="max-w-xs text-xs mt-1">Exclui vendas de "ADMINISTRATIVO" e "PERSONAL PRIME MATRIZ" do cálculo de progresso</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </div>
                 </div>
                 
                 <div className="space-y-1">
@@ -237,6 +299,20 @@ export const DashboardSummary: React.FC<DashboardSummaryProps> = React.memo(({ t
                             : "bg-rose-500"
                     }
                   />
+                  <div className="text-xs text-muted-foreground mt-1">
+                    {formatCurrency(metasInfo.faturamentoTotal)} de {metasInfo.formattedMetaSalvio}
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Info className="h-3 w-3 text-muted-foreground cursor-help inline-block ml-1" />
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p className="max-w-xs">Meta Salvio: {metasInfo.formattedMetaSalvio}</p>
+                          <p className="max-w-xs text-xs mt-1">Inclui todas as vendas no cálculo de progresso, inclusive de setores administrativos</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </div>
                 </div>
               </div>
               

@@ -17,7 +17,7 @@ export default async function WalletsPage() {
     // Em Server Components, precisamos usar URLs absolutas
     // Obtendo a URL base atual da solicitação
     const protocol = process.env.NODE_ENV === 'development' ? 'http' : 'https';
-    const host = headers().get('host') || 'localhost:3000';
+    const host = headers().get('host') || (process.env.NEXT_PUBLIC_APP_URL?.replace(/^https?:\/\//, '') || 'default-host');
     const baseUrl = `${protocol}://${host}`;
     
     // Buscar carteiras através da API para garantir consistência com outras partes da aplicação

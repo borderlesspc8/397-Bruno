@@ -98,6 +98,7 @@ export function VendasPorDiaChart({ dataInicio, dataFim }: VendasPorDiaChartProp
   const [vendasPorDia, setVendasPorDia] = useState<VendaPorDia[]>([]);
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
+  const [diagnostico, setDiagnostico] = useState<any>(null);
 
   // Buscar dados das vendas por dia
   useEffect(() => {
@@ -106,7 +107,8 @@ export function VendasPorDiaChart({ dataInicio, dataFim }: VendasPorDiaChartProp
       setErro(null);
 
       try {
-        const response = await fetch(`/api/dashboard/vendas/diario?dataInicio=${dataInicio.toISOString()}&dataFim=${dataFim.toISOString()}`);
+        // Adicionando parâmetro debug para diagnóstico
+        const response = await fetch(`/api/dashboard/vendas/diario?dataInicio=${dataInicio.toISOString()}&dataFim=${dataFim.toISOString()}&debug=true`);
         
         if (!response.ok) {
           throw new Error(`Erro ao buscar dados: ${response.status}`);
@@ -117,13 +119,20 @@ export function VendasPorDiaChart({ dataInicio, dataFim }: VendasPorDiaChartProp
         if (data.erro) {
           setErro(data.erro);
           setVendasPorDia([]);
+          setDiagnostico(null);
         } else {
           setVendasPorDia(data.vendasPorDia || []);
+          // Salvar informações de diagnóstico
+          if (data.diagnostico) {
+            setDiagnostico(data.diagnostico);
+            console.log('Diagnóstico de vendas por dia:', data.diagnostico);
+          }
         }
       } catch (error) {
         console.error('Erro ao buscar vendas por dia:', error);
         setErro(error instanceof Error ? error.message : 'Erro desconhecido ao buscar dados');
         setVendasPorDia([]);
+        setDiagnostico(null);
       } finally {
         setLoading(false);
       }
@@ -283,7 +292,7 @@ export function VendasPorDiaChart({ dataInicio, dataFim }: VendasPorDiaChartProp
     setLoading(true);
     setErro(null);
     
-    fetch(`/api/dashboard/vendas/diario?dataInicio=${dataInicio.toISOString()}&dataFim=${dataFim.toISOString()}`)
+    fetch(`/api/dashboard/vendas/diario?dataInicio=${dataInicio.toISOString()}&dataFim=${dataFim.toISOString()}&debug=true`)
       .then(response => {
         if (!response.ok) throw new Error(`Erro ao buscar dados: ${response.status}`);
         return response.json();
@@ -292,14 +301,21 @@ export function VendasPorDiaChart({ dataInicio, dataFim }: VendasPorDiaChartProp
         if (data.erro) {
           setErro(data.erro);
           setVendasPorDia([]);
+          setDiagnostico(null);
         } else {
           setVendasPorDia(data.vendasPorDia || []);
+          // Salvar informações de diagnóstico
+          if (data.diagnostico) {
+            setDiagnostico(data.diagnostico);
+            console.log('Diagnóstico de vendas por dia:', data.diagnostico);
+          }
         }
       })
       .catch(error => {
         console.error('Erro ao buscar vendas por dia:', error);
         setErro(error instanceof Error ? error.message : 'Erro desconhecido ao buscar dados');
         setVendasPorDia([]);
+        setDiagnostico(null);
       })
       .finally(() => {
         setLoading(false);
@@ -457,6 +473,18 @@ export function VendasPorDiaChart({ dataInicio, dataFim }: VendasPorDiaChartProp
               <span className="text-muted-foreground">Faturamento Total:</span>{' '}
               <span className="font-medium">{formatCurrency(vendasPorDia.reduce((sum, dia) => sum + dia.totalValor, 0))}</span>
             </div>
+          </div>
+        )}
+        
+        {/* Exibir informações de diagnóstico quando disponível (apenas em modo de debug) */}
+        {diagnostico && diagnostico.totalRecebidas > 0 && (
+          <div className="text-xs text-muted-foreground mt-3 border-t pt-2">
+            <span title="Informações de diagnóstico">
+              Recebidas: {diagnostico.totalRecebidas} | 
+              Processadas: {diagnostico.totalProcessadas} | 
+              Sem data: {diagnostico.totalSemData} | 
+              Datas únicas: {diagnostico.datasUnicas}
+            </span>
           </div>
         )}
       </CardContent>

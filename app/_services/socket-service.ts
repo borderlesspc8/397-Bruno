@@ -29,13 +29,60 @@ export function initSocketServer(server: NetServer): ServerIO {
     return io;
   }
 
+  // Determinar origens permitidas para CORS
+  const getAllowedOrigins = () => {
+    const origins: string[] = [];
+    
+    // Adicionar origens das variáveis de ambiente
+    if (process.env.NEXTAUTH_URL) {
+      origins.push(process.env.NEXTAUTH_URL);
+    }
+    
+    if (process.env.NEXT_PUBLIC_APP_URL) {
+      origins.push(process.env.NEXT_PUBLIC_APP_URL);
+    }
+    
+    // Adicionar domínio principal e variações de protocolo
+    origins.push('https://dashboard.lojapersonalprime.com');
+    origins.push('https://www.dashboard.lojapersonalprime.com');
+    origins.push('http://dashboard.lojapersonalprime.com');
+    
+    // Em desenvolvimento, permitir localhost
+    if (process.env.NODE_ENV === 'development') {
+      // Usar origem relativa em vez de absoluta
+      origins.push('');
+    }
+    
+    // Remover duplicatas
+    const uniqueOrigins = Array.from(new Set(origins));
+    console.log('Origens permitidas para CORS:', uniqueOrigins);
+    
+    // Em produção, permitir todas as origens para resolver problemas de CORS
+    if (process.env.NODE_ENV === 'production') {
+      console.log('Ambiente de produção: permitindo todas as origens para o socket');
+      return '*';
+    }
+    
+    // Se não houver nenhuma origem configurada, permitir todas
+    return uniqueOrigins.length > 0 ? uniqueOrigins : '*';
+  };
+  
+  console.log('Inicializando servidor Socket.IO...');
+  
   io = new ServerIO(server, {
     path: '/api/socket',
     addTrailingSlash: false,
+    pingTimeout: 60000, // 60 segundos
+    pingInterval: 25000, // 25 segundos
     cors: {
-      origin: '*',
+      origin: getAllowedOrigins(),
       methods: ['GET', 'POST'],
+      credentials: true
     },
+    transports: ['polling', 'websocket'], // Prioriza polling que é mais compatível
+    serveClient: false, // Não servir o cliente via servidor
+    connectTimeout: 45000, // 45 segundos de timeout para conectar
+    allowEIO3: true // Permitir versão antiga do protocolo Engine.IO para compatibilidade
   });
 
   // Tratar conexões de socket

@@ -6,7 +6,9 @@ type OrdenacaoVendedor = "faturamento" | "vendas" | "ticket";
 // Vendedores a serem excluídos apenas no ranking de faturamento
 const VENDEDORES_EXCLUIDOS_RANKING = [
   "FERNANDO AUGUSTO LOYO CADETTE FREIRE",
-  "Personal Prime MATRIZ"
+  "FERNANDO LOYO",
+  "Personal Prime MATRIZ",
+  "ADMINISTRATIVO"
 ];
 
 /**

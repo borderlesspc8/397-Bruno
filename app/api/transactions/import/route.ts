@@ -310,8 +310,7 @@ export async function POST(request: NextRequest) {
         }
         
         // Construir URL absoluta para a API
-        const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 
-                       (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000');
+        const baseUrl = (typeof window !== 'undefined' ? window.location.origin : process.env.NEXT_PUBLIC_APP_URL);
         const apiUrl = `${baseUrl}/api/reconciliation/ml/auto`;
         
         // Obter a chave de API para autenticação entre serviços

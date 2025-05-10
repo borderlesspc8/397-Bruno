@@ -1063,7 +1063,7 @@ export class GestaoClickService {
       
       // Construir URL absoluta para a API
       const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 
-                     (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000');
+                     (typeof window !== 'undefined' ? window.location.origin : '');
       const apiUrl = `${baseUrl}/api/transactions/import`;
       console.log(`[GESTAO_CLICK] URL da API de importação: ${apiUrl}`);
       
@@ -2003,7 +2003,7 @@ export class GestaoClickService {
       
       // Construir URL absoluta para a API
       const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 
-                    (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3001');
+                    (typeof window !== 'undefined' ? window.location.origin : '');
       const credentialsApiUrl = `${baseUrl}/api/gestao-click/credentials`;
       console.log(`[GESTAO_CLICK] URL da API de credenciais: ${credentialsApiUrl}`);
       
@@ -2364,7 +2364,7 @@ export class GestaoClickService {
       
       // Construir URL absoluta para a API
       const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 
-                     (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000');
+                     (typeof window !== 'undefined' ? window.location.origin : '');
       const apiUrl = `${baseUrl}/api/transactions/import`;
       
       // Obter a chave de API para autenticação entre serviços

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -98,6 +98,41 @@ interface Vendedor {
   nome: string;
 }
 
+// Função auxiliar para gerar opções de meses
+function generateMonthOptions() {
+  const currentYear = new Date().getFullYear();
+  const years = [currentYear - 1, currentYear, currentYear + 1, currentYear + 2];
+  const options = [];
+
+  // Adicionar opções para o ano atual primeiro
+  const currentYearIndex = years.indexOf(currentYear);
+  if (currentYearIndex !== -1) {
+    // Primeiro mostrar o ano atual
+    const year = years[currentYearIndex];
+    for (let month = 0; month < 12; month++) {
+      const date = new Date(year, month, 1);
+      const value = date.toISOString();
+      const label = format(date, "MMMM 'de' yyyy", { locale: ptBR });
+      options.push({ value, label, date, year });
+    }
+    
+    // Depois outros anos
+    for (let i = 0; i < years.length; i++) {
+      if (i !== currentYearIndex) {
+        const year = years[i];
+        for (let month = 0; month < 12; month++) {
+          const date = new Date(year, month, 1);
+          const value = date.toISOString();
+          const label = format(date, "MMMM 'de' yyyy", { locale: ptBR });
+          options.push({ value, label, date, year });
+        }
+      }
+    }
+  }
+
+  return options;
+}
+
 export default function MetasPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [metas, setMetas] = useState<Meta[]>([]);
@@ -129,6 +164,21 @@ export default function MetasPage() {
     resolver: zodResolver(metaSchema),
     defaultValues,
   });
+  
+  // Gerar opções de meses uma vez
+  const monthOptions = useMemo(() => generateMonthOptions(), []);
+  
+  // Efeito para monitorar mudanças no step
+  useEffect(() => {
+    console.log("Current step changed to:", currentStep);
+    // Force dialog to stay open during step transitions
+    if (isDialogOpen) {
+      const keepDialogOpen = () => setIsDialogOpen(true);
+      // Usar timeout to ensure dialog doesn't close during transitions
+      const timeoutId = setTimeout(keepDialogOpen, 0);
+      return () => clearTimeout(timeoutId);
+    }
+  }, [currentStep, isDialogOpen]);
   
   // Carregar vendedores ao iniciar
   useEffect(() => {
@@ -241,35 +291,51 @@ export default function MetasPage() {
   // Funções de navegação entre etapas
   const nextStep = () => {
     if (currentStep < steps.length - 1) {
+      // Evitar que o modal seja fechado durante a transição
+      setTimeout(() => {
       setCurrentStep(current => current + 1);
+      }, 0);
     }
   };
   
   const prevStep = () => {
     if (currentStep > 0) {
+      // Evitar que o modal seja fechado durante a transição
+      setTimeout(() => {
       setCurrentStep(current => current - 1);
+      }, 0);
     }
   };
   
-  // Verificar se as informações da etapa atual estão válidas
-  const isCurrentStepValid = () => {
+  // Função modificada para verificar a validação final apenas na submissão
+  const isFormValid = () => {
     const formValues = form.getValues();
     
-    // Validar etapa 1 - Informações básicas
-    if (currentStep === 0) {
-      return form.getFieldState('mesReferencia').invalid === false;
+    // Verificar etapa 1
+    if (!(formValues.mesReferencia instanceof Date)) {
+      return false;
     }
     
-    // Validar etapa 2 - Metas gerais
-    if (currentStep === 1) {
-      return (
-        form.getFieldState('metaMensal').invalid === false &&
-        form.getFieldState('metaSalvio').invalid === false &&
-        form.getFieldState('metaCoordenador').invalid === false
+    // Verificar etapa 2
+    if (!formValues.metaMensal || !formValues.metaSalvio || !formValues.metaCoordenador) {
+      return false;
+    }
+    
+    // Verificar etapa 3 (opcional)
+    if (formValues.metasVendedores && formValues.metasVendedores.length > 0) {
+      // Verificar apenas vendedores que tenham algum campo preenchido
+      const vendedoresPreenchidos = formValues.metasVendedores.filter(
+        v => (v.vendedorId && v.vendedorId !== '') || (v.meta && v.meta !== '')
       );
+      
+      // Se houver vendedores com dados, todos precisam estar completos
+      for (const vendedor of vendedoresPreenchidos) {
+        if (!vendedor.vendedorId || vendedor.vendedorId === '' || !vendedor.meta || vendedor.meta === '') {
+          return false;
+        }
+      }
     }
     
-    // Etapa 3 não tem validação obrigatória
     return true;
   };
   
@@ -282,21 +348,70 @@ export default function MetasPage() {
 
   // Lidar com envio do formulário
   const onSubmit = async (data: MetaFormValues) => {
+    console.log("Submetendo formulário, step atual:", currentStep);
+    // Log para debug
+    console.log("Valores do formulário:", data);
+    
+    // Verificar se o formulário está válido antes de enviar
+    if (!isFormValid()) {
+      toast.error("Por favor, verifique se todos os campos obrigatórios estão preenchidos corretamente.");
+      
+      // Identificar qual step tem problemas e navegar para ele
+      const formValues = form.getValues();
+      
+      if (!(formValues.mesReferencia instanceof Date)) {
+        setCurrentStep(0);
+        return;
+      }
+      
+      if (!formValues.metaMensal || !formValues.metaSalvio || !formValues.metaCoordenador) {
+        setCurrentStep(1);
+        return;
+      }
+      
+      // Se chegou até aqui, o problema está no step 3
+      setCurrentStep(2);
+      return;
+    }
+
     setIsLoading(true);
     
     try {
-      // Converter valores para números
+      // Função auxiliar para converter valores de forma correta
+      const converterParaNumero = (valor: string | number): number => {
+        if (typeof valor === 'number') return valor;
+        
+        // Se o valor for vazio, retornar 0
+        if (!valor || valor === '') return 0;
+        
+        // Valor já pode estar em formato numérico com ponto decimal (do NumericFormat.value)
+        if (!isNaN(Number(valor))) {
+          return Number(valor);
+        }
+        
+        // Se ainda houver máscara, remover
+        // Remover prefixo R$ e separadores de milhar
+        const valorLimpo = valor.replace(/[^\d,]/g, '');
+        
+        // Converter vírgula para ponto
+        return Number(valorLimpo.replace(',', '.'));
+      };
+      
+      // Converter valores usando a função auxiliar
       const metaData = {
         ...data,
-        metaMensal: parseFloat(data.metaMensal.replace(/\./g, '').replace(',', '.')),
-        metaSalvio: parseFloat(data.metaSalvio.replace(/\./g, '').replace(',', '.')),
-        metaCoordenador: parseFloat(data.metaCoordenador.replace(/\./g, '').replace(',', '.')),
+        metaMensal: converterParaNumero(data.metaMensal),
+        metaSalvio: converterParaNumero(data.metaSalvio),
+        metaCoordenador: converterParaNumero(data.metaCoordenador),
         metasVendedores: data.metasVendedores?.map(v => ({
           vendedorId: v.vendedorId,
           nome: v.nome,
-          meta: parseFloat(v.meta.replace(/\./g, '').replace(',', '.'))
+          meta: converterParaNumero(v.meta)
         }))
       };
+      
+      // Log para debug após conversão
+      console.log("Valores convertidos:", metaData);
       
       const url = editingMeta 
         ? `/api/dashboard/metas/${editingMeta.id}` 
@@ -336,9 +451,10 @@ export default function MetasPage() {
       }
       
       toast.success(`Meta ${editingMeta ? 'atualizada' : 'cadastrada'} com sucesso!`);
-      form.reset(defaultValues);
+      
+      // Só fecha o diálogo e reseta o formulário após salvar com sucesso
       setIsDialogOpen(false);
-      setEditingMeta(null);
+      resetForm();
     } catch (error) {
       console.error("Erro:", error);
       toast.error(`Erro ao ${editingMeta ? 'atualizar' : 'cadastrar'} meta`);
@@ -357,27 +473,16 @@ export default function MetasPage() {
       ? meta.metasVendedores 
       : [];
     
+    // Reset com valores numéricos convertidos para string sem formatação
     form.reset({
       mesReferencia: meta.mesReferencia,
-      metaMensal: meta.metaMensal.toLocaleString('pt-BR', {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2
-      }),
-      metaSalvio: meta.metaSalvio.toLocaleString('pt-BR', {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2
-      }),
-      metaCoordenador: meta.metaCoordenador.toLocaleString('pt-BR', {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2
-      }),
+      metaMensal: meta.metaMensal.toString(),
+      metaSalvio: meta.metaSalvio.toString(),
+      metaCoordenador: meta.metaCoordenador.toString(),
       metasVendedores: metasVendedores.map(v => ({
         vendedorId: v.vendedorId,
         nome: v.nome,
-        meta: v.meta.toLocaleString('pt-BR', {
-          minimumFractionDigits: 2,
-          maximumFractionDigits: 2
-        })
+        meta: v.meta.toString()
       }))
     });
     setIsDialogOpen(true);
@@ -421,12 +526,21 @@ export default function MetasPage() {
           </p>
         </div>
         
-        <Dialog open={isDialogOpen} onOpenChange={(open) => {
-          setIsDialogOpen(open);
+        <Dialog 
+          open={isDialogOpen} 
+          onOpenChange={(open) => {
+            // Cancelar fechamento do modal durante carregamento ou quando o usuário tenta fechar
+            if (!open && isLoading) {
+              return; // Não permite fechar quando está carregando
+            }
+            
+            // Permitir fechamento apenas quando explicitamente requisitado
           if (!open) {
             resetForm();
           }
-        }}>
+            setIsDialogOpen(open);
+          }}
+        >
           <DialogTrigger asChild>
             <Button onClick={() => {
               resetForm();
@@ -436,7 +550,18 @@ export default function MetasPage() {
             </Button>
           </DialogTrigger>
           
-          <DialogContent className="sm:max-w-[500px]">
+          <DialogContent 
+            className="sm:max-w-[500px]"
+            onInteractOutside={(e) => {
+              // Prevenir fechamento por clique externo em qualquer situação
+              e.preventDefault();
+            }}
+            onEscapeKeyDown={(e) => {
+              // Prevenir fechamento por pressionar ESC em qualquer situação 
+              // (não apenas durante carregamento)
+              e.preventDefault();
+            }}
+          >
             <DialogHeader>
               <DialogTitle>
                 {editingMeta ? "Editar Meta" : "Cadastrar Nova Meta"}
@@ -484,41 +609,47 @@ export default function MetasPage() {
                       control={form.control}
                       name="mesReferencia"
                       render={({ field }) => (
-                        <FormItem className="flex flex-col">
+                        <FormItem className="flex flex-col mb-4">
                           <FormLabel>Mês de Referência</FormLabel>
-                          <Popover>
-                            <PopoverTrigger asChild>
-                              <FormControl>
-                                <Button
-                                  variant="outline"
-                                  className={`w-full pl-3 text-left font-normal ${
-                                    !field.value ? "text-muted-foreground" : ""
-                                  }`}
-                                >
-                                  {field.value ? (
-                                    format(field.value, "MMMM 'de' yyyy", { locale: ptBR })
-                                  ) : (
-                                    <span>Selecione o mês</span>
-                                  )}
-                                  <Calendar className="ml-auto h-4 w-4" />
-                                </Button>
-                              </FormControl>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0" align="start">
-                              <CalendarComponent
-                                mode="single"
-                                selected={field.value}
-                                onSelect={field.onChange}
-                                initialFocus
-                                disabled={(date) => {
-                                  // Permitir apenas a seleção do primeiro dia de cada mês
-                                  return date.getDate() !== 1;
-                                }}
-                              />
-                            </PopoverContent>
-                          </Popover>
+                          <Select
+                            value={field.value instanceof Date ? field.value.toISOString() : undefined}
+                            onValueChange={(value) => {
+                              // Converter string ISO para objeto Date
+                              field.onChange(new Date(value));
+                              
+                              // Manter foco na página para evitar problemas com o modal
+                              // Isso evita que o dialog feche ao selecionar o mês
+                              setTimeout(() => {
+                                // Reforçar que o dialog deve continuar aberto
+                                if (isDialogOpen) {
+                                  setIsDialogOpen(true);
+                                }
+                              }, 0);
+                            }}
+                          >
+                            <SelectTrigger className="w-full h-10">
+                              <SelectValue placeholder="Selecione o mês">
+                                {field.value instanceof Date 
+                                  ? format(field.value, "MMMM 'de' yyyy", { locale: ptBR })
+                                  : "Selecione o mês"}
+                              </SelectValue>
+                            </SelectTrigger>
+                            <SelectContent 
+                              className="max-h-[300px] overflow-y-auto min-w-[240px]"
+                              position="popper"
+                              sideOffset={4}
+                              side="bottom"
+                              align="start"
+                            >
+                              {monthOptions.map((option) => (
+                                <SelectItem key={option.value} value={option.value} className="py-2.5">
+                                  {format(new Date(option.value), "MMMM 'de' yyyy", { locale: ptBR })}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                           <FormDescription>
-                            Selecione o primeiro dia do mês de referência
+                            Selecione o mês para o qual esta meta é válida.
                           </FormDescription>
                           <FormMessage />
                         </FormItem>
@@ -548,6 +679,7 @@ export default function MetasPage() {
                               placeholder="0,00"
                               value={field.value}
                               onValueChange={(values) => {
+                                // Usar apenas o value sem formatação - contém apenas dígitos e ponto decimal
                                 field.onChange(values.value);
                               }}
                               className="w-full"
@@ -579,6 +711,7 @@ export default function MetasPage() {
                               placeholder="0,00"
                               value={field.value}
                               onValueChange={(values) => {
+                                // Usar apenas o value sem formatação
                                 field.onChange(values.value);
                               }}
                               className="w-full"
@@ -607,6 +740,7 @@ export default function MetasPage() {
                               placeholder="0,00"
                               value={field.value}
                               onValueChange={(values) => {
+                                // Usar apenas o value sem formatação
                                 field.onChange(values.value);
                               }}
                               className="w-full"
@@ -728,16 +862,39 @@ export default function MetasPage() {
                   </Button>
                   
                   {currentStep < steps.length - 1 ? (
+                    // Botão Próximo
                     <Button 
                       type="button" 
-                      onClick={nextStep}
-                      disabled={isLoading || !isCurrentStepValid()}
+                      onClick={(e) => {
+                        // Prevenir qualquer comportamento padrão
+                        e.preventDefault();
+                        e.stopPropagation();
+                        
+                        // Garantir que o botão não cause fechamento
+                        const handleNext = () => {
+                          setCurrentStep(current => {
+                            // Verificar se pode avançar
+                            if (current < steps.length - 1) {
+                              return current + 1;
+                            }
+                            return current;
+                          });
+                        };
+                        
+                        // Usar setTimeout para executar após o fim do evento atual
+                        setTimeout(handleNext, 0);
+                      }}
+                      disabled={isLoading}
                     >
                       Próximo
                       <ChevronRight className="ml-2 h-4 w-4" />
                     </Button>
                   ) : (
-                    <Button type="submit" disabled={isLoading}>
+                    // Botão de submissão no último passo
+                    <Button 
+                      type="submit" 
+                      disabled={isLoading}
+                    >
                       {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                       {editingMeta ? "Atualizar Meta" : "Cadastrar Meta"}
                     </Button>

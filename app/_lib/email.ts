@@ -82,7 +82,7 @@ export function getPasswordResetTemplate(resetLink: string): string {
  * Função específica para envio de email de recuperação de senha
  */
 export async function sendPasswordResetEmail(email: string, token: string): Promise<void> {
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL;
   const resetLink = `${baseUrl}/auth/reset-password?token=${token}`;
   
   await sendEmail({

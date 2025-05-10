@@ -67,7 +67,7 @@ export default async function WalletPage({ params }: WalletPageProps) {
   }
 
   // Buscar dados da carteira via API para obter o saldo calculado corretamente
-  const apiUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  const apiUrl = process.env.NEXT_PUBLIC_APP_URL;
   const walletResponse = await fetch(`${apiUrl}/api/wallets/${params.walletId}/details`, {
     headers: {
       Cookie: `next-auth.session-token=${user.id}`,

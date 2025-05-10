@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
 
     // Buscar dados de vendas diretamente
     const vendasResponse = await fetch(
-      `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/dashboard/vendas?dataInicio=${dataInicio}&dataFim=${dataFim}`,
+      `${process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL}/api/dashboard/vendas?dataInicio=${dataInicio}&dataFim=${dataFim}`,
       {
         headers: {
           'Content-Type': 'application/json',

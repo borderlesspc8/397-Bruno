@@ -1,4 +1,4 @@
-# ContaRápida
+# DASHBOARD PERSONAL PRIME
 
 Sistema de gestão financeira para controle e análise de finanças pessoais e empresariais, com dashboard e integrações para controle de vendas.
 
@@ -81,6 +81,65 @@ npm run seed:system
 ```bash
 npm run dev
 ```
+
+## Ambiente Docker
+
+O ContaRápida oferece suporte para execução em ambiente Docker, facilitando a implantação e isolando dependências. A configuração atual está preparada para se conectar a serviços PostgreSQL e Redis existentes no seu ambiente Docker, e utiliza o Traefik como proxy reverso para ambientes de produção.
+
+### Requisitos para Docker
+
+- Docker 20.10.x ou superior
+- Docker Compose 2.x ou superior
+- PostgreSQL existente acessível via rede Docker
+- Redis existente acessível via rede Docker
+- Traefik configurado como proxy reverso (para ambiente de produção)
+
+### Executando com Docker
+
+1. Configure o ambiente Docker:
+```bash
+cp .env.example .env.docker
+```
+
+2. Edite o arquivo `.env.docker` para apontar para seus serviços existentes:
+```bash
+# Ajuste estas URLs para apontar para seus serviços
+DATABASE_URL=postgresql://postgres:123456@postgres:5432/contarapida?schema=public
+REDIS_URL=redis://redis:6379
+
+# Configure o domínio da aplicação (sem https://)
+DOMAIN=dashboard.lojapersonalprime.com
+
+# Configure a URL de acesso completa (com https://)
+NEXTAUTH_URL=https://dashboard.lojapersonalprime.com
+```
+
+3. Inicie a aplicação usando o script de implantação:
+```bash
+chmod +x deploy-docker.sh
+./deploy-docker.sh start
+```
+
+4. Teste a conexão com PostgreSQL e Redis:
+```bash
+./deploy-docker.sh test-conn
+```
+
+5. Verifique a configuração do Traefik:
+```bash
+./deploy-docker.sh check-traefik
+```
+
+6. Configure o banco de dados:
+```bash
+./deploy-docker.sh setup
+```
+
+A aplicação estará disponível em:
+- Ambiente de produção: https://[seu-domínio]
+- Ambiente de desenvolvimento: http://localhost:3000
+
+Para mais detalhes sobre a configuração Docker, consulte o [README-DOCKER.md](README-DOCKER.md).
 
 ## Modo de Demonstração
 
@@ -335,8 +394,7 @@ npm run test:all
 O workflow `deploy-staging.yml` realiza a implantação automática no ambiente de staging quando há pushes para a branch `develop`:
 
 - **Build e verificação de código**
-- **Criação e publicação de imagem Docker**
-- **Deploy automático via SSH para a VPS de staging**
+- **Deploy para ambiente de preview na Vercel**
 - **Notificações de status no Slack**
 
 #### Deploy em Produção
@@ -345,8 +403,7 @@ O workflow `deploy-production.yml` gerencia implantações em produção quando 
 
 - **Testes completos antes do deploy**
 - **Build otimizado para produção**
-- **Criação e publicação de imagem Docker**
-- **Deploy automático via SSH para a VPS de produção**
+- **Deploy para ambiente de produção na Vercel**
 - **Criação automática de tags e releases no GitHub**
 - **Notificações de status no Slack**
 
@@ -370,16 +427,9 @@ O workflow `main.yml` automatiza a mesclagem de pull requests aprovados:
 
 Para o funcionamento completo dos workflows, configure as seguintes secrets no GitHub:
 
-- **DOCKER_USERNAME**: Usuário do Docker Hub
-- **DOCKER_PASSWORD**: Senha ou token do Docker Hub
-- **VPS_HOST**: Endereço IP ou hostname da VPS (staging)
-- **VPS_USERNAME**: Usuário SSH para acesso à VPS (staging)
-- **VPS_SSH_KEY**: Chave SSH privada (staging)
-- **VPS_PORT**: Porta SSH (staging)
-- **VPS_HOST_PROD**: Endereço IP ou hostname da VPS (produção)
-- **VPS_USERNAME_PROD**: Usuário SSH para acesso à VPS (produção)
-- **VPS_SSH_KEY_PROD**: Chave SSH privada (produção)
-- **VPS_PORT_PROD**: Porta SSH (produção)
+- **VERCEL_TOKEN**: Token de API da Vercel
+- **VERCEL_ORG_ID**: ID da organização na Vercel
+- **VERCEL_PROJECT_ID**: ID do projeto na Vercel
 - **CODECOV_TOKEN**: Token para publicação de relatórios de cobertura
 - **SLACK_WEBHOOK_URL**: URL do webhook para notificações no Slack
 

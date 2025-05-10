@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/app/_lib/prisma";
-import { hash } from "bcrypt";
+import { hash } from "bcryptjs";
 import { z } from "zod";
 
 const registerSchema = z.object({

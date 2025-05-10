@@ -19,7 +19,7 @@ const useSocketNotifications = () => {
   const socketInstanceRef = useRef<Socket | null>(null);
   const hasCalledEffectOnceRef = useRef(false);
 
-  // Inicializar conexão com o socket apenas se autenticado
+  // Inicializar conexão com o socket
   useEffect(() => {
     // Evitar que o efeito execute mais de uma vez durante a renderização inicial
     if (hasCalledEffectOnceRef.current) return;
@@ -28,15 +28,8 @@ const useSocketNotifications = () => {
     // Se a sessão ainda está carregando, aguarde
     if (status === 'loading') return;
     
-    // Se não há usuário autenticado, não faz nada
-    if (!session?.user?.id) {
-      console.log('Sem sessão de usuário ativa, socket não será iniciado');
-      return;
-    }
-    
     // Se já tentou conectar sem sucesso, não tenta novamente
     if (connectionAttemptedRef.current || authFailedRef.current) {
-      console.log('Conexão já tentada anteriormente e falhou, não tentando novamente');
       return;
     }
     
@@ -53,74 +46,47 @@ const useSocketNotifications = () => {
         socketInstanceRef.current.removeAllListeners();
       }
       
-      // Criando a conexão do socket
-      const socketInstance = io({
+      // Função para obter a URL segura
+      const getSocketUrl = () => {
+        // Em ambiente de produção, usar sempre a origem atual da janela
+        if (typeof window !== 'undefined') {
+          return window.location.origin;
+        }
+        
+        // Em ambiente de desenvolvimento - usar URL relativa
+        if (process.env.NODE_ENV === 'development') {
+          return '';
+        }
+        
+        // Fallback para produção
+        return 'https://dashboard.lojapersonalprime.com';
+      };
+      
+      const socketUrl = getSocketUrl();
+      console.log(`URL final do socket: ${socketUrl}`);
+      
+      // Criar objeto de autenticação com fallback para usuários não autenticados
+      const authObject = session?.user?.id 
+        ? { userId: session.user.id }
+        : { userId: `anonymous-${Math.random().toString(36).substring(2, 9)}` };
+      
+      const socketInstance = io(socketUrl, {
         path: '/api/socket',
         addTrailingSlash: false,
         autoConnect: true,
         reconnection: true,
-        reconnectionAttempts: 2, // Reduzir para 2 tentativas
-        reconnectionDelay: 3000,
-        timeout: 5000, // Adicionar timeout para falhar mais rápido
-        auth: { userId: session.user.id } // Adicionar autenticação no handshake
+        reconnectionAttempts: 5,
+        reconnectionDelay: 2000,
+        timeout: 10000,
+        transports: ['polling', 'websocket'],
+        auth: authObject
       });
       
       // Armazenar na referência
       socketInstanceRef.current = socketInstance;
   
-      // Tratando conexão do socket
-      socketInstance.on('connect', () => {
-        console.log('Socket conectado');
-        setIsConnected(true);
-        setConnectionError(null);
-        
-        // Autenticar com o servidor
-        socketInstance.emit('authenticate', session.user.id);
-      });
-  
-      // Tratando desconexão
-      socketInstance.on('disconnect', () => {
-        console.log('Socket desconectado');
-        setIsConnected(false);
-      });
-  
-      // Tratando erros de conexão
-      socketInstance.on('connect_error', (err) => {
-        console.error('Erro de conexão do socket:', err);
-        setConnectionError(`Erro de conexão: ${err.message}`);
-        setIsConnected(false);
-        
-        // Marcar erro de autenticação para evitar tentativas repetidas
-        if (err.message.includes('401') || err.message.includes('auth')) {
-          console.log('Erro de autenticação, parando tentativas');
-          authFailedRef.current = true;
-          socketInstance.disconnect();
-        }
-      });
-  
-      // Tratando notificações recebidas
-      socketInstance.on('notification', (notification: Notification) => {
-        console.log('Notificação recebida:', notification);
-        // Verificar se a notificação é válida antes de adicionar
-        if (notification && notification.id) {
-          // Usar setTimeout para evitar problemas com ciclo de renderização
-          setTimeout(() => {
-            addNotification(notification);
-          }, 0);
-        }
-      });
-  
-      // Tratando atualizações do contador de não lidas
-      socketInstance.on('unreadCount', (count: number) => {
-        console.log('Contador atualizado:', count);
-        // Verificar se o contador é um número válido
-        if (typeof count === 'number' && !isNaN(count) && count >= 0) {
-          // Usar setTimeout para evitar problemas com ciclo de renderização
-          setTimeout(() => {
-            updateUnreadCount(count);
-          }, 0);
-        }
-      });
+      // Configurar eventos para a instância
+      setupSocketEvents(socketInstance);
   
       // Armazena a instância do socket
       setSocket(socketInstance);
@@ -130,17 +96,7 @@ const useSocketNotifications = () => {
     
     // Iniciar com um pequeno delay para evitar problemas de renderização
     const timeoutId = setTimeout(() => {
-      const instance = setupSocket();
-      
-      // Retornar função de limpeza
-      return () => {
-        clearTimeout(timeoutId);
-        if (instance) {
-          console.log('Desconectando socket...');
-          instance.disconnect();
-          instance.removeAllListeners();
-        }
-      };
+      setupSocket();
     }, 1000);
     
     // Limpar ao desmontar
@@ -177,8 +133,116 @@ const useSocketNotifications = () => {
     return false;
   }, []);
 
+  // Função para configurar eventos do socket
+  const setupSocketEvents = (socketInstance: Socket) => {
+    // Tratando conexão do socket
+    socketInstance.on('connect', () => {
+      console.log('Socket conectado');
+      setIsConnected(true);
+      setConnectionError(null);
+      
+      // Autenticar com o servidor se houver ID de usuário
+      if (session?.user?.id) {
+        socketInstance.emit('authenticate', session.user.id);
+      } else {
+        // Enviar ID anônimo para autenticação
+        const anonymousId = `anonymous-${Math.random().toString(36).substring(2, 9)}`;
+        socketInstance.emit('authenticate', anonymousId);
+      }
+    });
+
+    // Tratando desconexão
+    socketInstance.on('disconnect', (reason) => {
+      console.log('Socket desconectado:', reason);
+      setIsConnected(false);
+    });
+
+    // Tratando notificações recebidas
+    socketInstance.on('notification', (notification: Notification) => {
+      if (notification && notification.id) {
+        setTimeout(() => {
+          addNotification(notification);
+        }, 0);
+      }
+    });
+
+    // Tratando atualizações do contador de não lidas
+    socketInstance.on('unreadCount', (count: number) => {
+      if (typeof count === 'number' && !isNaN(count) && count >= 0) {
+        setTimeout(() => {
+          updateUnreadCount(count);
+        }, 0);
+      }
+    });
+
+    // Tratando erros de conexão
+    socketInstance.on('connect_error', (err) => {
+      console.error('Erro de conexão do socket:', err);
+      setConnectionError(`Erro de conexão do socket: ${err.message}`);
+      setIsConnected(false);
+      
+      // Se o erro for relacionado a misturas de HTTP/HTTPS ou CORS
+      if (err.message.includes('Failed to construct') || 
+          err.message.includes('xhr poll error') || 
+          err.message.includes('CORS') ||
+          err.message.includes('blocked')) {
+        
+        console.warn('Erro de conexão pode ser devido a misturas de HTTP/HTTPS ou CORS');
+        
+        // Tentar reconectar usando apenas polling
+        socketInstance.disconnect();
+        
+        // Criar nova instância com apenas polling
+        const newSocketInstance = io(window.location.origin, {
+          path: '/api/socket',
+          addTrailingSlash: false,
+          autoConnect: true,
+          reconnection: true,
+          reconnectionAttempts: 2,
+          reconnectionDelay: 3000,
+          timeout: 5000,
+          transports: ['polling'], // Usar apenas polling como último recurso
+          auth: session?.user?.id ? { userId: session.user.id } : { userId: `anonymous-${Math.random().toString(36).substring(2, 9)}` }
+        });
+        
+        // Substituir a instância atual
+        socketInstanceRef.current = newSocketInstance;
+        setSocket(newSocketInstance);
+        
+        // Configurar eventos para a nova instância
+        setupSocketEvents(newSocketInstance);
+        
+        // Conectar a nova instância
+        newSocketInstance.connect();
+      }
+    });
+
+    // Adicionar evento de erro geral
+    socketInstance.on('error', (err) => {
+      console.error('Erro geral do socket:', err);
+      setConnectionError(`Erro geral do socket: ${err.message || 'Erro desconhecido'}`);
+    });
+
+    // Adicionar evento de reconexão
+    socketInstance.io.on('reconnect', (attempt) => {
+      console.log(`Socket reconectado na tentativa ${attempt}`);
+      setIsConnected(true);
+      setConnectionError(null);
+    });
+
+    // Adicionar evento de tentativa de reconexão
+    socketInstance.io.on('reconnect_attempt', (attempt) => {
+      console.log(`Tentativa de reconexão ${attempt}`);
+    });
+
+    // Adicionar evento de erro de reconexão
+    socketInstance.io.on('reconnect_error', (err) => {
+      console.error('Erro de reconexão:', err);
+      setConnectionError(`Erro de reconexão: ${err.message}`);
+    });
+  };
+
   return {
-    socket: socketInstanceRef.current,
     isConnected,
     connectionError,
     sendMessage,

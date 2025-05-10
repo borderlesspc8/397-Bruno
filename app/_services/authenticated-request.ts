@@ -15,7 +15,7 @@ export async function authenticatedRequest(url: string, options: RequestInit = {
   
   // Prepara a URL - se for um caminho relativo, adiciona o host
   const fullUrl = url.startsWith('/') 
-    ? `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}${url}` 
+    ? `${process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL}${url}` 
     : url;
   
   // Fazer a requisição

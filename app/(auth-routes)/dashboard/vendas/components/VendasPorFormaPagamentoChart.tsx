@@ -2,11 +2,19 @@ import { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/app/_components/ui/card';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { CreditCard, DownloadCloud, PieChart, AlertTriangle, RefreshCcw } from 'lucide-react';
+import { CreditCard, DownloadCloud, PieChart, AlertTriangle, RefreshCcw, FileSpreadsheet, Image } from 'lucide-react';
 import { Alert, AlertDescription } from '@/app/_components/ui/alert';
 import { Button } from '@/app/_components/ui/button';
 import { Skeleton } from '@/app/_components/ui/skeleton';
 import { formatCurrency } from '@/app/_utils/format';
+import { 
+  DropdownMenu, 
+  DropdownMenuContent, 
+  DropdownMenuItem, 
+  DropdownMenuTrigger 
+} from '@/app/_components/ui/dropdown-menu';
+import html2canvas from 'html2canvas';
+import ExcelJS from 'exceljs';
 
 // Importações para Chart.js
 import dynamic from 'next/dynamic';
@@ -249,33 +257,154 @@ export function VendasPorFormaPagamentoChart({ dataInicio, dataFim }: VendasPorF
       });
   };
 
-  // Função para exportar dados
-  const exportarDados = () => {
-    // Preparar dados para exportação
-    const dados = formasPagamento.map(item => ({
-      'Forma de Pagamento': item.formaPagamento,
-      'Total de Vendas': item.totalVendas,
-      'Valor Total (R$)': item.totalValor.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
-      'Percentual (%)': item.percentual.toFixed(2) + '%'
-    }));
+  // Função para exportar dados para Excel (XLSX)
+  const exportarExcel = async () => {
+    try {
+      // Criar um novo workbook
+      const workbook = new ExcelJS.Workbook();
+      
+      // Adicionar uma planilha
+      const worksheet = workbook.addWorksheet('Formas de Pagamento');
+      
+      // Definir colunas com largura adequada
+      worksheet.columns = [
+        { header: 'Forma de Pagamento', key: 'formaPagamento', width: 25 },
+        { header: 'Total de Vendas', key: 'totalVendas', width: 15 },
+        { header: 'Valor Total (R$)', key: 'totalValor', width: 18 },
+        { header: 'Percentual (%)', key: 'percentual', width: 15 }
+      ];
+      
+      // Adicionar os dados
+      formasPagamento.forEach(item => {
+        worksheet.addRow({
+          formaPagamento: item.formaPagamento,
+          totalVendas: item.totalVendas,
+          totalValor: item.totalValor,
+          percentual: item.percentual
+        });
+      });
+      
+      // Adicionar linha com total
+      const totalRow = worksheet.addRow({
+        formaPagamento: 'TOTAL',
+        totalVendas: formasPagamento.reduce((sum, item) => sum + item.totalVendas, 0),
+        totalValor: formasPagamento.reduce((sum, item) => sum + item.totalValor, 0),
+        percentual: 100
+      });
+      
+      // Formatar cabeçalho
+      worksheet.getRow(1).font = { bold: true };
+      worksheet.getRow(1).fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FFE0E0E0' }
+      };
+      worksheet.getRow(1).alignment = { vertical: 'middle', horizontal: 'center' };
     
-    // Converter para CSV
-    const headers = Object.keys(dados[0]);
-    const csvContent = [
-      headers.join(','),
-      ...dados.map(row => headers.map(header => row[header as keyof typeof row]).join(','))
-    ].join('\n');
+      // Formatar linha de total
+      totalRow.font = { bold: true };
+      totalRow.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FFFFF2CC' }
+      };
+      
+      // Formatar colunas numéricas
+      for (let i = 2; i <= worksheet.rowCount; i++) {
+        // Formatar números com casas decimais
+        const valorCell = worksheet.getCell(`C${i}`);
+        valorCell.numFmt = '#,##0.00 R$';
+        
+        // Formatar percentuais
+        const percentCell = worksheet.getCell(`D${i}`);
+        percentCell.numFmt = '0.00%';
+        percentCell.value = (percentCell.value as number) / 100; // Converter para decimal para formatação percentual
+        
+        // Alinhar números à direita
+        worksheet.getRow(i).getCell(2).alignment = { horizontal: 'right' };
+        worksheet.getRow(i).getCell(3).alignment = { horizontal: 'right' };
+        worksheet.getRow(i).getCell(4).alignment = { horizontal: 'right' };
+      }
+      
+      // Adicionar bordas a todas as células
+      for (let i = 1; i <= worksheet.rowCount; i++) {
+        for (let j = 1; j <= worksheet.columnCount; j++) {
+          worksheet.getRow(i).getCell(j).border = {
+            top: { style: 'thin' },
+            left: { style: 'thin' },
+            bottom: { style: 'thin' },
+            right: { style: 'thin' }
+          };
+        }
+      }
+      
+      // Adicionar título do relatório acima da tabela
+      worksheet.spliceRows(1, 0, 
+        ['Relatório de Vendas por Forma de Pagamento'],
+        [`Período: ${format(dataInicio, 'dd/MM/yyyy', { locale: ptBR })} a ${format(dataFim, 'dd/MM/yyyy', { locale: ptBR })}`],
+        [''] // Linha em branco
+      );
+      
+      // Formatar título
+      worksheet.getCell('A1').font = { bold: true, size: 14 };
+      worksheet.getCell('A2').font = { italic: true };
+      worksheet.mergeCells('A1:D1');
+      worksheet.mergeCells('A2:D2');
+      worksheet.getCell('A1').alignment = { horizontal: 'center' };
+      worksheet.getCell('A2').alignment = { horizontal: 'center' };
+      
+      // Gerar o arquivo
+      const buffer = await workbook.xlsx.writeBuffer();
     
-    // Criar blob e download
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      // Criar blob e link para download
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
     const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `vendas_por_forma_pagamento_${format(dataInicio, 'dd-MM-yyyy')}_a_${format(dataFim, 'dd-MM-yyyy')}.xlsx`;
+      link.click();
+      
+      // Limpar recursos
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Erro ao exportar para Excel:', error);
+      alert('Não foi possível exportar os dados para Excel. Tente novamente mais tarde.');
+    }
+  };
+
+  // Função para exportar como imagem
+  const exportarImagem = () => {
+    // Obter o elemento do gráfico
+    const graficoElement = document.getElementById('grafico-formas-pagamento');
+    
+    if (!graficoElement) {
+      console.error('Elemento do gráfico não encontrado');
+      return;
+    }
+    
+    // Usar html2canvas para converter o gráfico em uma imagem
+    try {
+      html2canvas(graficoElement, {
+        backgroundColor: null,
+        scale: 2, // Melhor qualidade
+        logging: false,
+      }).then((canvas: HTMLCanvasElement) => {
+        // Converter para imagem PNG
+        const dataUrl = canvas.toDataURL('image/png');
+        
+        // Criar link para download
     const link = document.createElement('a');
-    link.setAttribute('href', url);
-    link.setAttribute('download', `vendas_por_forma_pagamento_${format(dataInicio, 'dd-MM-yyyy')}_a_${format(dataFim, 'dd-MM-yyyy')}.csv`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
+        link.href = dataUrl;
+        link.download = `vendas_por_forma_pagamento_${format(dataInicio, 'dd-MM-yyyy')}_a_${format(dataFim, 'dd-MM-yyyy')}.png`;
     link.click();
-    document.body.removeChild(link);
+      }).catch(err => {
+        console.error('Erro ao gerar imagem:', err);
+        alert('Não foi possível exportar a imagem. Tente novamente mais tarde.');
+      });
+    } catch (error) {
+      console.error('Erro ao exportar imagem:', error);
+      alert('Não foi possível exportar a imagem. Tente novamente mais tarde.');
+    }
   };
 
   // Renderização condicional com base no estado
@@ -373,16 +502,29 @@ export function VendasPorFormaPagamentoChart({ dataInicio, dataFim }: VendasPorF
             </CardDescription>
           </div>
           <div className="flex gap-2 mt-2 sm:mt-0">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
             <Button 
               variant="outline" 
               size="sm"
-              onClick={exportarDados}
               disabled={formasPagamento.length === 0}
               className="flex items-center gap-1"
             >
               <DownloadCloud className="h-4 w-4" />
               <span className="hidden sm:inline">Exportar</span>
             </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={exportarExcel} className="cursor-pointer">
+                  <FileSpreadsheet className="h-4 w-4 mr-2" />
+                  Exportar como Excel
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={exportarImagem} className="cursor-pointer">
+                  <Image className="h-4 w-4 mr-2" />
+                  Exportar como Imagem
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             <Button 
               variant="outline" 
               size="sm"
@@ -397,7 +539,7 @@ export function VendasPorFormaPagamentoChart({ dataInicio, dataFim }: VendasPorF
       </CardHeader>
       <CardContent>
         <div className="h-[300px] flex items-center justify-center">
-          <div className="w-full h-full max-w-[600px] mx-auto">
+          <div className="w-full h-full max-w-[600px] mx-auto" id="grafico-formas-pagamento">
             <Doughnut 
               data={dadosGrafico} 
               options={opcoes} 
