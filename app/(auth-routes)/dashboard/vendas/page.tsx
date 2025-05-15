@@ -27,7 +27,7 @@ import { VendasPorFormaPagamentoChart } from "./components/VendasPorFormaPagamen
 import { RankingVendedoresCard } from "./components/RankingVendedoresCard";
 import { VendasPorDiaCard } from "./components/VendasPorDiaCard";
 import { VendedoresChartImproved } from "./components/VendedoresChartImproved";
-import VendedoresMetaPodium from "./components/VendedoresMetaPodium";
+import { MobileRankingVendedores } from "./components/MobileRankingVendedores";
 
 // Componente com carregamento lazy para otimizar a renderização inicial
 const LazyProdutosMaisVendidos = React.lazy(() => 
@@ -466,10 +466,11 @@ export default function DashboardVendas() {
               />
             </div>
             
-            {/* RankingVendedoresCard visível apenas em dispositivos móveis */}
+            {/* MobileRankingVendedores visível apenas em dispositivos móveis */}
             <div className="lg:hidden">
-              <RankingVendedoresCard 
+              <MobileRankingVendedores 
                 vendedores={vendedores}
+                ordenacao="faturamento"
                 onVendedorClick={handleOpenVendedorDetails}
               />
             </div>
@@ -503,19 +504,13 @@ export default function DashboardVendas() {
               
               <div className="mt-3 sm:mt-4 md:mt-6">
                 <TabsContent value="ranking" className="mt-0">
-                  <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 mb-4">
+                  <div className="grid grid-cols-1 gap-4 mb-4">
                     <RankingVendedoresPodium 
                       vendedores={vendedores}
                       onVendedorClick={handleOpenVendedorDetails}
                     />
                     
-                    <VendedoresMetaPodium 
-                      vendedores={vendedores}
-                    />
-                  </div>
-                  
-                  {/* VendasPorDiaCard exibido em todos os dispositivos */}
-                  <div className="mb-4">
+                    {/* VendasPorDiaCard exibido em todos os dispositivos */}
                     <VendasPorDiaCard 
                       dataInicio={dateRange.from}
                       dataFim={dateRange.to}
