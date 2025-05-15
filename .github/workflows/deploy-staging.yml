@@ -44,6 +44,8 @@ jobs:
       
       - name: Build da aplicação
         run: npm run build
+        env:
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
       
       - name: Compactar arquivos para deploy
         run: tar -czf contarapida-staging.tar.gz .next node_modules public package.json package-lock.json next.config.js prisma

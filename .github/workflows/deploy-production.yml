@@ -144,6 +144,8 @@ jobs:
       
       - name: Build da aplicação
         run: npm run build
+        env:
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
       
       - name: Criar tag de release
         id: tag_version

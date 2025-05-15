@@ -68,6 +68,7 @@ steps:
 
 **Variáveis de ambiente necessárias:**
 - `PORTAINER_WEBHOOK_URL_STAGING`
+- `RESEND_API_KEY`
 
 ### 3. Deploy em Produção (`deploy-production.yml`)
 
@@ -203,6 +204,7 @@ Para o funcionamento correto dos workflows, configure as seguintes secrets no Gi
 | `PORTAINER_WEBHOOK_URL_STAGING` | URL de webhook para deploy no ambiente de staging | Portainer → Stacks → contarapida-staging → Webhooks |
 | `PORTAINER_WEBHOOK_URL_PRODUCTION` | URL de webhook para deploy no ambiente de produção | Portainer → Stacks → contarapida-production → Webhooks |
 | `CODECOV_TOKEN` | Token para relatórios de cobertura | Dashboard do Codecov → Settings → Repository Upload Token |
+| `RESEND_API_KEY` | Chave de API para o serviço de email Resend | Dashboard do Resend → API Keys |
 
 ## Convenções de Commits e Branches
 
@@ -241,4 +243,5 @@ Exemplos:
 - [Workflow Syntax for GitHub Actions](https://docs.github.com/pt/actions/reference/workflow-syntax-for-github-actions)
 - [GitHub Actions Marketplace](https://github.com/marketplace?type=actions)
 - [Portainer Documentation](https://docs.portainer.io/)
-- [Conventional Commits](https://www.conventionalcommits.org/pt-br/v1.0.0/) 
+- [Conventional Commits](https://www.conventionalcommits.org/pt-br/v1.0.0/)
+- [Resend Documentation](https://resend.com/docs) 
