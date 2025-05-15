@@ -10,13 +10,16 @@ import {
   LayoutDashboard, 
   ChartPie, 
   Users,
-  Target 
+  Target,
+  Menu,
+  X
 } from "lucide-react";
 import { Button } from "@/app/_components/ui/button";
 import { SubscriptionPlan } from "@/app/types";
 import { usePathname } from "next/navigation";
 import { cn } from "@/app/_lib/utils";
 import { useState, useRef, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 
 export function FreeNavbar() {
   const { data: session } = useSession();
@@ -25,6 +28,7 @@ export function FreeNavbar() {
   const isBasicPlan = userPlan === SubscriptionPlan.BASIC;
   
   const [menuOpen, setMenuOpen] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   
@@ -52,11 +56,72 @@ export function FreeNavbar() {
   const isVendedoresActive = pathname?.includes('/dashboard/vendedores');
   const isMetasActive = pathname?.includes('/dashboard/metas');
   
+  const MenuLinks = () => (
+    <>
+      <Link 
+        href="/dashboard/vendas" 
+        className={cn(
+          "flex items-center gap-2 px-2 py-1.5 text-sm rounded-sm hover:bg-accent hover:text-accent-foreground",
+          isVendasActive && "bg-secondary/50 font-medium"
+        )}
+        onClick={() => {
+          setMenuOpen(false);
+          setMobileMenuOpen(false);
+        }}
+      >
+        <ChartPie className="h-4 w-4" />
+        <span>Vendas</span>
+      </Link>
+      <Link 
+        href="/dashboard/vendedores" 
+        className={cn(
+          "flex items-center gap-2 px-2 py-1.5 text-sm rounded-sm hover:bg-accent hover:text-accent-foreground",
+          isVendedoresActive && "bg-secondary/50 font-medium"
+        )}
+        onClick={() => {
+          setMenuOpen(false);
+          setMobileMenuOpen(false);
+        }}
+      >
+        <Users className="h-4 w-4" />
+        <span>Vendedores</span>
+      </Link>
+      <Link 
+        href="/dashboard/metas" 
+        className={cn(
+          "flex items-center gap-2 px-2 py-1.5 text-sm rounded-sm hover:bg-accent hover:text-accent-foreground",
+          isMetasActive && "bg-secondary/50 font-medium"
+        )}
+        onClick={() => {
+          setMenuOpen(false);
+          setMobileMenuOpen(false);
+        }}
+      >
+        <Target className="h-4 w-4" />
+        <span>Metas</span>
+      </Link>
+    </>
+  );
+  
   return (
     <div className="free-navbar-container">
       <div className="w-full h-16 px-4 border-b bg-background/95 backdrop-blur-sm flex items-center justify-between">
-        {/* Logo à esquerda */}
+        {/* Menu hamburger mobile */}
         <div className="flex items-center gap-4">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="md:hidden flex items-center justify-center"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          >
+            {mobileMenuOpen ? (
+              <X className="h-5 w-5" />
+            ) : (
+              <Menu className="h-5 w-5" />
+            )}
+          </Button>
+          
+          {/* Logo */}
           <Link href="/dashboard/vendas" className="flex items-center gap-2">
             <Image 
               src="/logo_branca.svg" 
@@ -70,8 +135,8 @@ export function FreeNavbar() {
             </span>
           </Link>
           
-          {/* Menu Dashboards simples com useState */}
-          <div className="relative">
+          {/* Menu Dashboards para desktop */}
+          <div className="relative hidden md:block">
             <Button 
               ref={buttonRef}
               variant={isDashboardActive ? "secondary" : "ghost"} 
@@ -92,39 +157,7 @@ export function FreeNavbar() {
                   animation: "fadeIn 0.2s ease-out",
                 }}
               >
-                <Link 
-                  href="/dashboard/vendas" 
-                  className={cn(
-                    "flex items-center gap-2 px-2 py-1.5 text-sm rounded-sm hover:bg-accent hover:text-accent-foreground",
-                    isVendasActive && "bg-secondary/50 font-medium"
-                  )}
-                  onClick={() => setMenuOpen(false)}
-                >
-                  <ChartPie className="h-4 w-4" />
-                  <span>Vendas</span>
-                </Link>
-                <Link 
-                  href="/dashboard/vendedores" 
-                  className={cn(
-                    "flex items-center gap-2 px-2 py-1.5 text-sm rounded-sm hover:bg-accent hover:text-accent-foreground",
-                    isVendedoresActive && "bg-secondary/50 font-medium"
-                  )}
-                  onClick={() => setMenuOpen(false)}
-                >
-                  <Users className="h-4 w-4" />
-                  <span>Vendedores</span>
-                </Link>
-                <Link 
-                  href="/dashboard/metas" 
-                  className={cn(
-                    "flex items-center gap-2 px-2 py-1.5 text-sm rounded-sm hover:bg-accent hover:text-accent-foreground",
-                    isMetasActive && "bg-secondary/50 font-medium"
-                  )}
-                  onClick={() => setMenuOpen(false)}
-                >
-                  <Target className="h-4 w-4" />
-                  <span>Metas</span>
-                </Link>
+                <MenuLinks />
               </div>
             )}
           </div>
@@ -136,7 +169,23 @@ export function FreeNavbar() {
         </div>
       </div>
       
-     
+      {/* Menu mobile - aparece abaixo da navbar quando ativado */}
+      <AnimatePresence>
+        {mobileMenuOpen && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.2 }}
+            className="md:hidden border-b bg-background/90"
+          >
+            <div className="p-3 space-y-1">
+              <MenuLinks />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+      
       {/* Adiciona estilo de animação */}
       <style jsx global>{`
         @keyframes fadeIn {

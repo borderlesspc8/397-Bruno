@@ -76,38 +76,33 @@ export function LayoutWithNavbar({ children }: LayoutWithNavbarProps) {
         "flex-shrink-0 border-b z-40 bg-background/95 backdrop-blur transition-all duration-200",
         scrolled && "shadow-sm"
       )}>
-        <NavbarContainer />
-      </header>
-      
-      {/* Menu de navegação horizontal - sticky */}
-      <div className={cn(
-        "border-b bg-background/90 backdrop-blur sticky top-0 z-30 flex-shrink-0 transition-all duration-200",
-        scrolled && "shadow-sm"
-      )}>
-        <div className="container max-w-screen-2xl mx-auto">
-          {/* Botão do menu móvel */}
-          <div className="flex items-center justify-between py-2 lg:hidden px-4 border-b">
+        <div className="container max-w-screen-2xl mx-auto px-4">
+          <div className="flex items-center justify-between h-14">
+            {/* Lado esquerdo com logotipo e botão de menu mobile */}
             <div className="flex items-center gap-2">
               <Button
                 variant="ghost"
                 size="icon"
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                className="lg:hidden h-9 w-9 rounded-md text-muted-foreground hover:text-foreground"
                 aria-label={isMobileMenuOpen ? "Fechar menu" : "Abrir menu"}
-                className="h-9 w-9 rounded-md text-muted-foreground hover:text-foreground"
               >
                 {isMobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
               </Button>
-              <h1 className="text-sm font-medium">Menu</h1>
+              
+              {/* Componente completo apenas para desktop */}
+              <div className="hidden lg:block w-full">
+                <NavbarContainer />
+              </div>
+              
+              {/* Versão simplificada para mobile */}
+              <div className="lg:hidden">
+                <h1 className="text-lg font-semibold">Dashboard</h1>
+              </div>
             </div>
             
-            {/* Botões de ações rápidas para mobile */}
-            <div className="flex items-center gap-1">
-              <Button variant="ghost" size="icon" className="h-8 w-8 rounded-md text-muted-foreground">
-                <Search className="h-4 w-4" />
-              </Button>
-              <Button variant="ghost" size="icon" className="h-8 w-8 rounded-md text-muted-foreground">
-                <Bell className="h-4 w-4" />
-              </Button>
+            {/* Botões rápidos para mobile */}
+            <div className="flex items-center gap-2 lg:hidden">
               <Button 
                 variant="ghost" 
                 size="icon" 
@@ -122,30 +117,35 @@ export function LayoutWithNavbar({ children }: LayoutWithNavbarProps) {
                   <Laptop className="h-4 w-4" />
                 )}
               </Button>
+              <Button variant="ghost" size="icon" className="h-8 w-8 rounded-md text-muted-foreground">
+                <Bell className="h-4 w-4" />
+              </Button>
             </div>
           </div>
-          
-          {/* Menu desktop */}
-          <div className="hidden lg:block">
-            <HorizontalNav />
-          </div>
-          
-          {/* Menu móvel com animação */}
-          <AnimatePresence>
-            {isMobileMenuOpen && (
-              <motion.div 
-                className="lg:hidden"
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-                exit={{ opacity: 0, height: 0 }}
-                transition={{ duration: 0.2 }}
-              >
-                <div className="bg-background border-b">
-                  <HorizontalNav />
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+        </div>
+      </header>
+      
+      {/* Menu móvel com animação */}
+      <AnimatePresence>
+        {isMobileMenuOpen && (
+          <motion.div 
+            className="lg:hidden border-b bg-background z-30"
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.2 }}
+          >
+            <div className="container max-w-screen-2xl mx-auto px-4 py-2">
+              <HorizontalNav />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+      
+      {/* Menu desktop */}
+      <div className="hidden lg:block border-b bg-background/90 backdrop-blur">
+        <div className="container max-w-screen-2xl mx-auto">
+          <HorizontalNav />
         </div>
       </div>
 

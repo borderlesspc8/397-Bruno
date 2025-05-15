@@ -55,6 +55,7 @@ interface ProdutoDetalhesModalProps {
   onOpenChange: (open: boolean) => void;
   dataInicio: Date;
   dataFim: Date;
+  onVendaClick?: (venda: any) => void;
 }
 
 export function ProdutoDetalhesModal({ 
@@ -62,7 +63,8 @@ export function ProdutoDetalhesModal({
   open, 
   onOpenChange, 
   dataInicio, 
-  dataFim 
+  dataFim,
+  onVendaClick
 }: ProdutoDetalhesModalProps) {
   const [vendas, setVendas] = useState<VendaItemBasico[]>([]);
   const [totalVendas, setTotalVendas] = useState<number>(0);
@@ -124,9 +126,14 @@ export function ProdutoDetalhesModal({
 
   const abrirVendaDetalhe = async (vendaId: string | number) => {
     try {
-      // Aqui vamos apenas capturar o ID da venda para abrir o modal
-      setVendaSelecionada({ id: vendaId });
-      setVendaModalAberta(true);
+      // Se temos um callback externo para lidar com cliques em vendas, usamos ele
+      if (onVendaClick) {
+        onVendaClick({ id: vendaId });
+      } else {
+        // Caso contrário, abrimos o modal interno
+        setVendaSelecionada({ id: vendaId });
+        setVendaModalAberta(true);
+      }
     } catch (err) {
       console.error('Erro ao buscar detalhe da venda:', err);
     }

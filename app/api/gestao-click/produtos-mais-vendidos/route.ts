@@ -166,34 +166,255 @@ export async function GET(req: NextRequest) {
       // Processar produtos das vendas com lógica corrigida
       const produtosMaisVendidos = processarProdutosMaisVendidos(vendasResult.vendas);
       
-      // Calcular totais
-      const totalProdutos = produtosMaisVendidos.length;
-      const totalVendas = vendasResult.totalVendas;
-      const totalFaturamento = produtosMaisVendidos.reduce((acc, produto) => acc + produto.valor, 0);
+      // Log para debug dos valores unitários dos produtos
+      if (debug) {
+        console.log("===== VALORES UNITÁRIOS DOS PRODUTOS =====");
+        produtosMaisVendidos.forEach(p => {
+          const valorUnitario = p.quantidade > 0 ? (p.valor / p.quantidade) : 0;
+          console.log(`${p.nome}: valor=${p.valor}, quantidade=${p.quantidade}, valorUnitario=${valorUnitario}`);
+        });
+      }
       
-      // Classificar produtos baseado no valor de venda unitário
-      // Se o valor unitário >= 1000, é equipamento, caso contrário é acessório
-      const equipamentos = produtosMaisVendidos.filter(p => {
-        // Obter valor unitário (valor de venda por unidade)
-        const valorUnitario = p.valor / p.quantidade;
-        return valorUnitario >= 1000;
+      // Verificar especificamente produtos de alto valor nas vendas originais
+      if (debug) {
+        console.log("===== BUSCANDO PRODUTOS DE ALTO VALOR NAS VENDAS ORIGINAIS =====");
+        vendasResult.vendas.forEach((venda: any) => {
+          if (venda.produtos && Array.isArray(venda.produtos)) {
+            venda.produtos.forEach((produtoWrapper: any) => {
+              if (produtoWrapper && produtoWrapper.produto) {
+                const produto = produtoWrapper.produto;
+                const nomeProduto = produto.nome_produto || produto.produto || produto.nome || '';
+                const valorTotal = parseFloat(produto.valor_total || '0');
+                const quantidade = parseFloat(produto.quantidade || '1');
+                const valorUnitario = quantidade > 0 ? valorTotal / quantidade : 0;
+                
+                // Verificar se é um produto de alto valor ou contém termos de equipamentos
+                const termosProcurados = ["ESTEIRA", "CROSS", "BIKE", "SPINNING", "LEG", "CADEIRA", "PUXADOR"];
+                const contemTermoEquipamento = termosProcurados.some(termo => 
+                  nomeProduto.toUpperCase().includes(termo)
+                );
+                
+                if (valorUnitario >= 1000 || contemTermoEquipamento) {
+                  console.log(`Produto de alto valor encontrado em venda original: "${nomeProduto}", valor unitário: ${valorUnitario}`);
+                }
+              }
+            });
+          }
+        });
+      }
+      
+      // Processar produtos individuais novamente para garantir que equipamentos sejam detectados
+      const produtosIndividuaisVendas: any[] = [];
+      
+      // Extrair produtos individuais diretamente das vendas originais
+      vendasResult.vendas.forEach((venda: any) => {
+        if (venda.produtos && Array.isArray(venda.produtos)) {
+          venda.produtos.forEach((produtoWrapper: any) => {
+            if (produtoWrapper && produtoWrapper.produto) {
+              const produto = produtoWrapper.produto;
+              const nomeProduto = produto.nome_produto || produto.produto || produto.nome || '';
+              const valorTotal = parseFloat(produto.valor_total || '0');
+              const quantidade = parseFloat(produto.quantidade || '1');
+              const valorCusto = parseFloat(produto.valor_custo || '0');
+              const valorUnitario = quantidade > 0 ? valorTotal / quantidade : 0;
+              
+              // Adicionar ao array de produtos individuais
+              produtosIndividuaisVendas.push({
+                id: produto.produto_id || `auto-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+                nome: nomeProduto,
+                quantidade: quantidade,
+                valor: valorTotal,
+                valorUnitario: valorUnitario,
+                custo: valorCusto * quantidade,
+                margem: valorTotal - (valorCusto * quantidade),
+                margemPercentual: valorTotal > 0 
+                  ? Math.round(((valorTotal - (valorCusto * quantidade)) / valorTotal) * 100)
+                  : 0
+              });
+            }
+          });
+        }
       });
       
-      const acessorios = produtosMaisVendidos.filter(p => {
-        // Obter valor unitário (valor de venda por unidade)
-        const valorUnitario = p.valor / p.quantidade;
-        return valorUnitario < 1000;
+      if (debug) {
+        console.log(`Total de produtos individuais extraídos diretamente das vendas: ${produtosIndividuaisVendas.length}`);
+        
+        // Mostrar produtos com valor unitário alto
+        const produtosAltoValor = produtosIndividuaisVendas.filter(p => p.valorUnitario >= 1000);
+        console.log(`Produtos com valor unitário >= 1000: ${produtosAltoValor.length}`);
+        produtosAltoValor.forEach(p => {
+          console.log(`- ${p.nome}: valorUnitario=${p.valorUnitario}, valor=${p.valor}, quantidade=${p.quantidade}`);
+        });
+      }
+
+      // Lista de termos para identificar equipamentos pelo nome
+      const termosEquipamento = [
+        "ESTEIRA", "BICICLETA", "BIKE", "BANCO", "SMITH", "CROSS", "MULTIESTAÇÃO",
+        "LEG", "HACK", "EXTENSOR", "PECK DECK", "TORRE", "PUXADOR", "REMADA",
+        "CADEIRA EXTENSORA", "CADEIRA FLEXORA", "ERGOMÉTRICA", "ELÍPTICO", "SPINNING",
+        "SUPINO", "RACK", "APARELHO", "MULTIEXERCITADOR", "MÁQUINA", "MAQUINA"
+      ];
+      
+      // Termos que indicam acessórios mesmo contendo palavras de equipamentos
+      const termosAcessorios = [
+        "SILICONE", "LUBRIFICANTE", "CAPA", "PROTETOR", "CORREIA", 
+        "CHAVE", "PARAFUSO", "KIT", "ACESSÓRIO", "ACESSORIO", "PEÇA", "PECA"
+      ];
+      
+      // Verificar se existem produtos específicos na lista que NÃO foram classificados corretamente
+      const nomesEspeciais = ["ESTEIRA", "BIKE SPINNING", "CROSS SMITH", "LEG"];
+      const produtosEspeciais = produtosMaisVendidos.filter(p => 
+        nomesEspeciais.some(termo => p.nome.toUpperCase().includes(termo))
+      );
+      
+      if (debug && produtosEspeciais.length > 0) {
+        console.log("===== PRODUTOS ESPECIAIS ENCONTRADOS =====");
+        produtosEspeciais.forEach(p => {
+          console.log(`${p.nome}: valor=${p.valor}, quantidade=${p.quantidade}, valorUnitario=${p.valorUnitario}`);
+        });
+      }
+      
+      // Combinar produtos extraídos de vendas individuais com os já processados
+      // Evitar duplicação verificando por nome
+      const nomesExistentes = new Set(produtosMaisVendidos.map(p => p.nome.toLowerCase()));
+      
+      // Filtrar produtos individuais que não existem na lista principal
+      const produtosIndividuaisUnicos = produtosIndividuaisVendas.filter(
+        p => !nomesExistentes.has(p.nome.toLowerCase())
+      );
+      
+      // Verificar produtos importantes para garantir que estão incluídos
+      const produtosImportantes = produtosIndividuaisVendas.filter(p => 
+        nomesEspeciais.some(termo => p.nome.toUpperCase().includes(termo))
+      );
+      
+      if (debug) {
+        console.log(`Produtos importantes encontrados nas vendas individuais: ${produtosImportantes.length}`);
+        produtosImportantes.forEach(p => {
+          console.log(`- ${p.nome}: valorUnitario=${p.valorUnitario}`);
+        });
+      }
+      
+      // Mesclar os produtos das duas fontes
+      const produtosFinais = [...produtosMaisVendidos, ...produtosImportantes];
+      
+      // Identificar equipamentos por valor unitário OU nome do produto
+      const equipamentos = produtosFinais.filter(p => {
+        // Produtos sem quantidade válida não são considerados
+        if (p.quantidade <= 0) return false;
+        
+        // Verificar valor unitário (valor por unidade)
+        const valorUnitario = p.valorUnitario || (p.quantidade > 0 ? p.valor / p.quantidade : 0);
+        const ehEquipamentoPorValor = valorUnitario >= 1000;
+        
+        // Se for equipamento pelo valor, sim, independente do nome
+        if (ehEquipamentoPorValor) {
+          if (debug) {
+            console.log(`EQUIPAMENTO POR VALOR: ${p.nome}, valorUnitario=${valorUnitario}`);
+          }
+          return true;
+        }
+        
+        // Se NÃO for equipamento pelo valor, verificar por nome
+        // Mas só classificar como equipamento se não contiver termos de acessórios
+        const nomeUpperCase = p.nome.toUpperCase();
+        
+        // Verificar primeiro se contém termos de acessórios
+        const contemTermoAcessorio = termosAcessorios.some(termo => 
+          nomeUpperCase.includes(termo)
+        );
+        
+        // Se contém termos de acessórios, não é equipamento
+        if (contemTermoAcessorio) {
+          if (debug) {
+            console.log(`NÃO É EQUIPAMENTO (TERMO ACESSÓRIO): ${p.nome}`);
+          }
+          return false;
+        }
+        
+        // Agora verificar se contém termos de equipamentos
+        const contemTermoEquipamento = termosEquipamento.some(termo => 
+          // Verificar se o termo é uma palavra completa ou parte bem definida do nome
+          // Evitar falsos positivos como "SILICONE PARA ESTEIRA" que não é um equipamento
+          nomeUpperCase.includes(` ${termo} `) || 
+          nomeUpperCase.startsWith(`${termo} `) || 
+          nomeUpperCase.endsWith(` ${termo}`) ||
+          nomeUpperCase === termo
+        );
+        
+        // Para debug
+        if (debug && contemTermoEquipamento) {
+          console.log(`EQUIPAMENTO POR NOME: ${p.nome}, valorUnitario=${valorUnitario}`);
+        }
+        
+        return contemTermoEquipamento;
       });
+      
+      // Produtos que não são equipamentos são classificados como acessórios
+      const acessorios = produtosFinais.filter(p => {
+        // Produtos sem quantidade válida não são considerados
+        if (p.quantidade <= 0) return false;
+        
+        // Verificar valor unitário (valor por unidade)
+        const valorUnitario = p.valorUnitario || (p.quantidade > 0 ? p.valor / p.quantidade : 0);
+        const ehEquipamentoPorValor = valorUnitario >= 1000;
+        
+        // Se for equipamento pelo valor, não é acessório
+        if (ehEquipamentoPorValor) {
+          return false;
+        }
+        
+        // Verificar por nome (mesma lógica do equipamento, mas invertida)
+        const nomeUpperCase = p.nome.toUpperCase();
+        
+        // Verificar primeiro se contém termos de acessórios
+        const contemTermoAcessorio = termosAcessorios.some(termo => 
+          nomeUpperCase.includes(termo)
+        );
+        
+        // Se contém termos de acessórios, é acessório
+        if (contemTermoAcessorio) {
+          return true;
+        }
+        
+        // Verificar se contém termos de equipamentos
+        const contemTermoEquipamento = termosEquipamento.some(termo => 
+          nomeUpperCase.includes(` ${termo} `) || 
+          nomeUpperCase.startsWith(`${termo} `) || 
+          nomeUpperCase.endsWith(` ${termo}`) ||
+          nomeUpperCase === termo
+        );
+        
+        // Se não contém termos de equipamentos, é acessório
+        return !contemTermoEquipamento;
+      });
+      
+      // Remover duplicados por nome
+      const equipamentosUnicos = removerDuplicadosPorNome(equipamentos);
+      const acessoriosUnicos = removerDuplicadosPorNome(acessorios);
+      
+      // Adicionar dados de debug
+      const dadosRetorno = {
+        produtos: produtosFinais,
+        equipamentos: equipamentosUnicos,
+        acessorios: acessoriosUnicos,
+        totalProdutos: produtosFinais.length,
+        totalVendas: vendasResult.totalVendas,
+        totalFaturamento: produtosFinais.reduce((acc, produto) => acc + produto.valor, 0)
+      };
+      
+      if (debug) {
+        Object.assign(dadosRetorno, {
+          debug: {
+            totalEquipamentos: equipamentosUnicos.length,
+            totalAcessorios: acessoriosUnicos.length,
+            totalProdutosFinais: produtosFinais.length
+          }
+        });
+      }
       
       // Retornar dados formatados para o componente
-      return NextResponse.json({
-        produtos: produtosMaisVendidos,
-        equipamentos,
-        acessorios,
-        totalProdutos,
-        totalVendas,
-        totalFaturamento
-      });
+      return NextResponse.json(dadosRetorno);
     } catch (error) {
       console.error("Erro ao processar produtos mais vendidos:", error);
       return NextResponse.json({ 
@@ -253,6 +474,14 @@ function processarProdutosMaisVendidos(vendas: any[]) {
           
           let categoria = produto.categoria || "Não categorizado";
           
+          // Valor unitário = valor total dividido pela quantidade
+          let valorUnitario = quantidade > 0 ? valorTotal / quantidade : 0;
+          
+          // Log para debug - identificar valores unitários altos
+          if (valorUnitario >= 1000) {
+            console.log(`Potencial equipamento encontrado: ${nomeProduto}, valor unitário: ${valorUnitario}`);
+          }
+          
           // Definir chave de identificação
           const chaveIdentificacao = (produtoId ? produtoId.toString() : '') || nomeProduto.toLowerCase().trim();
           
@@ -295,7 +524,8 @@ function processarProdutosMaisVendidos(vendas: any[]) {
               valor: 0,
               custo: 0,
               margem: 0,
-              margemPercentual: 'N/A' // Valor padrão quando não há informação de custo
+              margemPercentual: 'N/A', // Valor padrão quando não há informação de custo
+              valorUnitario: 0 // Inicializa o valorUnitario
             });
             
             // Registrar o nome do produto para facilitar a detecção de duplicatas
@@ -308,6 +538,9 @@ function processarProdutosMaisVendidos(vendas: any[]) {
           const produtoInfo = produtosContagem.get(chaveIdentificacao);
           produtoInfo.quantidade += quantidade;
           produtoInfo.valor += valorTotal;
+          
+          // Atualizar o valorUnitario a cada adição
+          produtoInfo.valorUnitario = produtoInfo.quantidade > 0 ? produtoInfo.valor / produtoInfo.quantidade : 0;
           
           // Calcular custo, margem e margem percentual baseados na disponibilidade do custo real
           if (valorCusto > 0) {
@@ -502,7 +735,8 @@ function processarArrayProdutos(
               valor: 0,
               custo: 0,
               margem: 0,
-              margemPercentual: 'N/A' // Valor padrão quando não há informação de custo
+              margemPercentual: 'N/A', // Valor padrão quando não há informação de custo
+              valorUnitario: 0 // Inicializa o valorUnitario
             });
             
             // Registrar o nome do produto para facilitar a detecção de duplicatas
@@ -515,6 +749,9 @@ function processarArrayProdutos(
           const produtoInfo = produtosContagem.get(chaveIdentificacao);
           produtoInfo.quantidade += quantidade;
           produtoInfo.valor += valorTotal;
+          
+          // Atualizar o valorUnitario a cada adição
+          produtoInfo.valorUnitario = produtoInfo.quantidade > 0 ? produtoInfo.valor / produtoInfo.quantidade : 0;
           
           // Calcular custo, margem e margem percentual baseados na disponibilidade do custo real
           if (valorCusto > 0) {
@@ -626,4 +863,29 @@ function extrairValorNumerico(objeto: any, camposPossiveis: string[]): number {
   }
   
   return 0;
+}
+
+/**
+ * Remove produtos duplicados pelo nome
+ */
+function removerDuplicadosPorNome(produtos: any[]): any[] {
+  const mapaDeNomes = new Map();
+  
+  produtos.forEach(produto => {
+    const nomeLowerCase = produto.nome.toLowerCase();
+    
+    // Se este nome já existe, mantenha o produto com maior valor
+    if (mapaDeNomes.has(nomeLowerCase)) {
+      const produtoExistente = mapaDeNomes.get(nomeLowerCase);
+      
+      // Substitua somente se o novo produto tiver maior valor
+      if (produto.valor > produtoExistente.valor) {
+        mapaDeNomes.set(nomeLowerCase, produto);
+      }
+    } else {
+      mapaDeNomes.set(nomeLowerCase, produto);
+    }
+  });
+  
+  return Array.from(mapaDeNomes.values());
 } 

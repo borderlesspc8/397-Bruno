@@ -160,11 +160,11 @@ export function DateRangeSelector({ onDateRangeChange }: DateRangeSelectorProps)
   ];
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex flex-wrap items-center gap-2">
       <DateRangePicker
         dateRange={dateRange}
         onDateRangeChange={applyDateRange}
-        className="w-auto min-w-[220px]"
+        className="w-full xs:w-auto min-w-[220px] transition-all duration-300 shadow-sm rounded-md bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-primary/50 focus-within:ring-2 focus-within:ring-primary/20"
       />
       
       <PositionedPopover
@@ -172,25 +172,29 @@ export function DateRangeSelector({ onDateRangeChange }: DateRangeSelectorProps)
           <Button 
             variant="outline" 
             size="sm" 
-            className="gap-1 items-center h-9"
+            className="gap-1 items-center h-9 shadow-sm rounded-md border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 hover:border-primary/50 transition-all duration-300"
           >
-            <span className="sr-only">Períodos</span>
-            <ChevronDown className="h-4 w-4 text-[#faba33]" />
+            <Calendar className="h-4 w-4 text-primary mr-1 hidden xs:inline-block" />
+            <span className="text-sm font-medium text-gray-700 dark:text-gray-300 hidden sm:inline-block">Períodos</span>
+            <ChevronDown className="h-4 w-4 text-primary" />
           </Button>
         }
         align="end"
       >
-        <div className="p-2 w-[180px]">
-          <p className="text-sm mb-2 font-medium px-2 text-[#faba33]">Períodos</p>
-          {periodPresets.map((preset) => (
-            <button
-              key={preset.name}
-              onClick={preset.handler}
-              className="w-full text-left px-2 py-1.5 text-sm rounded hover:bg-amber-50 dark:hover:bg-amber-950/30"
-            >
-              {preset.name}
-            </button>
-          ))}
+        <div className="p-3 w-[220px] bg-white dark:bg-gray-800 shadow-lg rounded-lg border border-gray-200 dark:border-gray-700">
+          <p className="text-sm mb-3 font-medium px-2 text-primary border-b border-gray-100 dark:border-gray-700 pb-2">Períodos Rápidos</p>
+          <div className="space-y-1">
+            {periodPresets.map((preset) => (
+              <button
+                key={preset.name}
+                onClick={preset.handler}
+                className="w-full text-left px-3 py-2 text-sm rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 transition-colors duration-200 flex items-center"
+              >
+                <Calendar className="h-4 w-4 text-primary mr-2" />
+                {preset.name}
+              </button>
+            ))}
+          </div>
         </div>
       </PositionedPopover>
     </div>

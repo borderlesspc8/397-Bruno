@@ -3,7 +3,6 @@
 import React, { useState, useEffect, useCallback, Suspense, useMemo } from "react";
 import { PageContainer } from "@/app/_components/page-container";
 import { DashboardSummary } from "./components/DashboardSummary";
-import { VendedoresChart } from "./components/VendedoresChart";
 import { VendedoresTable } from "./components/VendedoresTable";
 import RankingVendedoresPodium from "../vendedores/components/RankingVendedoresPodium";
 import { DateRangeSelector } from "./_components/DateRangeSelector";
@@ -15,6 +14,9 @@ import { VendedoresService } from "@/app/_services/vendedores";
 import { Vendedor } from "@/app/_services/betelTecnologia";
 import { calcularLucroVendas, calcularVariacaoPercentual } from "@/app/_utils/calculoFinanceiro";
 import { CalculoFinanceiroService } from "@/app/_services/calculoFinanceiroService";
+import { DashboardHeader } from "@/app/(auth-routes)/dashboard/_components/DashboardHeader";
+import { Skeleton } from "@/app/_components/ui/skeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/_components/ui/tabs";
 
 // Importamos os componentes refatorados
 import { VendedorDetalhesModal } from "./components/VendedorDetalhesModal";
@@ -22,12 +24,16 @@ import { VendaDetalheModal } from "./components/VendaDetalheModal";
 import { ProdutosMaisVendidos } from "./components/ProdutosMaisVendidos";
 import { VendasPorDiaChart } from "./components/VendasPorDiaChart";
 import { VendasPorFormaPagamentoChart } from "./components/VendasPorFormaPagamentoChart";
-
-// Componentes para tabs
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/_components/ui/tabs";
+import { RankingVendedoresCard } from "./components/RankingVendedoresCard";
+import { VendasPorDiaCard } from "./components/VendasPorDiaCard";
+import { VendedoresChartImproved } from "./components/VendedoresChartImproved";
 
 // Componente com carregamento lazy para otimizar a renderização inicial
-const LazyProdutosMaisVendidos = React.lazy(() => import('./components/ProdutosMaisVendidos').then(mod => ({ default: mod.ProdutosMaisVendidos })));
+const LazyProdutosMaisVendidos = React.lazy(() => 
+  import('./components/ProdutosMaisVendidos').then(mod => ({ 
+    default: mod.ProdutosMaisVendidos 
+  }))
+);
 const LazyComoNosConheceuProdutos = React.lazy(() => import('./components/ComoNosConheceuProdutos').then(mod => ({ default: mod.ComoNosConheceuProdutos })));
 
 // Cache para evitar requisições duplicadas
@@ -88,12 +94,25 @@ const fetchWithCache = async (endpoint: string, params: Record<string, string>) 
   return data;
 };
 
+// Componente de carregamento para exibir durante carregamento de dados
+const LoadingSkeleton = () => (
+  <div className="space-y-4">
+    <Skeleton className="h-[200px] w-full rounded-lg" />
+    <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+      <Skeleton className="h-[180px] rounded-lg" />
+      <Skeleton className="h-[180px] rounded-lg" />
+      <Skeleton className="h-[180px] rounded-lg" />
+      <Skeleton className="h-[180px] rounded-lg" />
+    </div>
+  </div>
+);
+
 export default function DashboardVendas() {
   const today = new Date();
   const currentMonth = today.getMonth();
   const currentYear = today.getFullYear();
   
-  // Período de datas padrão: mês atual completo (abril), garantindo que começa no dia 1
+  // Período de datas padrão: mês atual completo
   const [dateRange, setDateRange] = useState<{ from: Date; to: Date }>({
     from: new Date(currentYear, currentMonth, 1), // Primeiro dia do mês atual
     to: endOfMonth(new Date(currentYear, currentMonth, 1)) // Último dia do mês atual
@@ -200,7 +219,7 @@ export default function DashboardVendas() {
         };
       }
       
-      // Armazenar em cache
+      // Salvar em cache
       dataCache.set(cacheKey, {
         data: metaAtual,
         timestamp: Date.now()
@@ -394,13 +413,6 @@ export default function DashboardVendas() {
     fetchDadosDashboard(newDateRange.from, newDateRange.to);
   }, [fetchDadosDashboard]);
   
-  // Renderização do seletor de datas
-  const renderDateRangeSelector = useMemo(() => (
-    <div className="flex justify-end w-full mb-4">
-      <DateRangeSelector onDateRangeChange={handleDateRangeChange} />
-    </div>
-  ), [handleDateRangeChange]);
-  
   // Abrir modal de detalhes do vendedor
   const handleOpenVendedorDetails = useCallback((vendedor: Vendedor, index?: number) => {
     setVendedorSelecionado({
@@ -417,192 +429,115 @@ export default function DashboardVendas() {
     setVendaModalAberto(true);
   }, []);
 
-  // Handler para upload de foto (necessário para o RankingVendedoresPodium)
-  const handleAbrirUploadFoto = useCallback((vendedor: Vendedor) => {
-    // Aqui você pode implementar a lógica para abrir o modal de upload de foto
-    // ou apenas usar o mesmo modal de detalhes do vendedor como fallback
-    handleOpenVendedorDetails(vendedor);
-  }, [handleOpenVendedorDetails]);
-  
-  // Handler para trocar de tab - com lazy loading
-  const handleTabChange = useCallback((tab: string) => {
-    setActiveTab(tab);
-  }, []);
-  
   return (
-    <PageContainer
-      title="Dashboard de Vendas"
-      description="Visualize e analise dados de vendas, atendimentos e performance."
-      actions={renderDateRangeSelector}
-    >
-      <div className="grid gap-6">
-        {/* Sumário do dashboard */}
-        {loading ? (
-          <Card className="bg-gradient-to-r from-amber-50 to-amber-100 dark:from-amber-950/30 dark:to-amber-900/20 border-[#faba33]/20">
-            <CardContent className="pt-6">
-              <div className="flex justify-center items-center h-[100px]">
-                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#faba33]"></div>
-              </div>
-            </CardContent>
-          </Card>
-        ) : (
-          <DashboardSummary totais={dadosSummary} metas={metasAtuais} vendedores={vendedores} />
-        )}
-      
-        <Card>
-          <CardContent className="pt-6">
-            <Tabs defaultValue="ranking" onValueChange={handleTabChange}>
-              <TabsList className="mb-4">
-                <TabsTrigger value="ranking">Ranking de Vendas</TabsTrigger>
-                <TabsTrigger value="produtos">Produtos Mais Vendidos</TabsTrigger>
-                <TabsTrigger value="como-nos-conheceu">Como nos Conheceu</TabsTrigger>
-              </TabsList>
-              
-              <TabsContent value="ranking" className="mt-4">
-                <div className="grid grid-cols-1 gap-6">
-                  {loadingVendedores ? (
-                    <Card>
-                      <CardHeader>
-                        <CardDescription>
-                          Carregando dados...
-                        </CardDescription>
-                      </CardHeader>
-                      <CardContent className="h-[500px]">
-                        <div className="flex items-center justify-center h-full">
-                          <div className="text-center">
-                            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#faba33] mx-auto mb-4"></div>
-                            <p className="text-muted-foreground">Carregando dados de vendedores...</p>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ) : erroVendedores ? (
-                    <Card>
-                      <CardHeader>
-                        <CardDescription>
-                          Erro ao carregar dados
-                        </CardDescription>
-                      </CardHeader>
-                      <CardContent className="h-[500px]">
-                        <div className="flex items-center justify-center h-full text-red-500">
-                          <p>{erroVendedores}</p>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ) : (
-                    <>
-                      {/* Componente RankingVendedoresPodium com React.memo para evitar re-renderizações desnecessárias */}
-                      <Card>
-                        <RankingVendedoresPodium 
-                          vendedores={vendedores}
-                          onUploadFoto={handleAbrirUploadFoto}
-                          onVendedorClick={handleOpenVendedorDetails}
-                          erro={erroVendedores}
-                        />
-                      </Card>
-                      
-                      {/* Componente VendedoresChart com lazy loading e suspense */}
-                      <Suspense fallback={
-                        <Card>
-                          <div className="flex items-center justify-center h-96">
-                            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#faba33]"></div>
-                          </div>
-                        </Card>
-                      }>
-                        <Card>
-                          <VendedoresChart 
-                            vendedores={vendedores} 
-                          />
-                        </Card>
-                      </Suspense>
-                      
-                      {/* Tabela de vendedores */}
-                      <Card>
-                        <CardHeader>
-                          <CardTitle>Listagem de Vendedores</CardTitle>
-                          <CardDescription>
-                            Detalhes de vendas por vendedor no período de {format(dateRange.from, "dd/MM/yyyy", { locale: ptBR })} a {format(dateRange.to, "dd/MM/yyyy", { locale: ptBR })}.
-                          </CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                          <VendedoresTable 
-                            vendedores={vendedores} 
-                            onClickVendedor={handleOpenVendedorDetails}
-                          />
-                        </CardContent>
-                      </Card>
-                      
-                      {/* Gráfico de vendas por dia */}
-                      <Suspense fallback={
-                        <Card>
-                          <div className="flex items-center justify-center h-96">
-                            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#faba33]"></div>
-                          </div>
-                        </Card>
-                      }>
-                        <VendasPorDiaChart
-                          dataInicio={dateRange.from}
-                          dataFim={dateRange.to}
-                        />
-                      </Suspense>
-                      
-                      {/* Gráfico de vendas por forma de pagamento */}
-                      <Suspense fallback={
-                        <Card>
-                          <div className="flex items-center justify-center h-96">
-                            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#faba33]"></div>
-                          </div>
-                        </Card>
-                      }>
-                        <VendasPorFormaPagamentoChart
-                          dataInicio={dateRange.from}
-                          dataFim={dateRange.to}
-                        />
-                      </Suspense>
-                    </>
-                  )}
-                </div>
-              </TabsContent>
-              
-              <TabsContent value="produtos" className="mt-4">
-                {activeTab === "produtos" ? (
-                  <Suspense fallback={
-                    <Card>
-                      <div className="flex items-center justify-center h-96">
-                        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#faba33]"></div>
-                      </div>
-                    </Card>
-                  }>
-                    <LazyProdutosMaisVendidos
-                      dataInicio={dateRange.from}
-                      dataFim={dateRange.to}
-                    />
-                  </Suspense>
-                ) : null}
-              </TabsContent>
-              
-              <TabsContent value="como-nos-conheceu" className="mt-4">
-                {activeTab === "como-nos-conheceu" ? (
-                  <Suspense fallback={
-                    <Card>
-                      <div className="flex items-center justify-center h-96">
-                        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#faba33]"></div>
-                      </div>
-                    </Card>
-                  }>
-                    <LazyComoNosConheceuProdutos
-                      dataInicio={dateRange.from}
-                      dataFim={dateRange.to}
-                    />
-                  </Suspense>
-                ) : null}
-              </TabsContent>
-            </Tabs>
-          </CardContent>
-        </Card>
+    <PageContainer>
+      <DashboardHeader 
+        title="Dashboard de Vendas" 
+        description="Análise de desempenho e métricas de vendas"
+        dateRange={dateRange}
+      />
+
+      <div className="mb-3 sm:mb-4 md:mb-6 flex flex-col xs:flex-row justify-between gap-2 sm:gap-4 items-start xs:items-center">
+        <div className="text-[10px] xs:text-xs sm:text-sm text-gray-600 dark:text-gray-400 w-full xs:w-auto">
+          Dados de {format(dateRange.from, "dd 'de' MMMM", { locale: ptBR })} até {format(dateRange.to, "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
+        </div>
+        <div className="w-full xs:w-auto">
+          <DateRangeSelector onDateRangeChange={handleDateRangeChange} />
+        </div>
       </div>
       
-      {/* Modais de detalhes */}
+      {loading ? (
+        <LoadingSkeleton />
+      ) : (
+        <>
+          <DashboardSummary 
+            totais={dadosSummary} 
+            metas={metasAtuais} 
+            vendedores={vendedores} 
+          />
+          
+          <div className="grid grid-cols-1 gap-3">
+            {/* VendedoresChart visível apenas em telas grandes */}
+            <div className="hidden lg:block">
+              <VendedoresChartImproved 
+                vendedores={vendedores}
+                onVendedorClick={handleOpenVendedorDetails}
+              />
+            </div>
+            
+            {/* RankingVendedoresCard visível apenas em dispositivos móveis */}
+            <div className="lg:hidden">
+              <RankingVendedoresCard 
+                vendedores={vendedores}
+                onVendedorClick={handleOpenVendedorDetails}
+              />
+            </div>
+          </div>
+          
+          <div className="mt-3 sm:mt-4 md:mt-6">
+            <Tabs defaultValue={activeTab} onValueChange={setActiveTab} className="w-full">
+              <div className="border-b border-gray-200 dark:border-gray-800 overflow-x-auto">
+                <TabsList className="bg-transparent h-10 sm:h-12 p-0 w-full justify-start space-x-2 sm:space-x-4 flex-nowrap">
+                  <TabsTrigger 
+                    value="ranking" 
+                    className="px-1 py-2 sm:py-3 data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:font-medium rounded-none h-full whitespace-nowrap text-xs sm:text-sm"
+                  >
+                    <span className="hidden xs:inline">Ranking e Vendas Diárias</span>
+                    <span className="xs:hidden">Ranking</span>
+                  </TabsTrigger>
+                  <TabsTrigger 
+                    value="pagamentos" 
+                    className="px-1 py-2 sm:py-3 data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:font-medium rounded-none h-full whitespace-nowrap text-xs sm:text-sm"
+                  >
+                    Formas de Pagamento
+                  </TabsTrigger>
+                  <TabsTrigger 
+                    value="produtos" 
+                    className="px-1 py-2 sm:py-3 data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:font-medium rounded-none h-full whitespace-nowrap text-xs sm:text-sm"
+                  >
+                    Produtos Vendidos
+                  </TabsTrigger>
+                </TabsList>
+              </div>
+              
+              <div className="mt-3 sm:mt-4 md:mt-6">
+                <TabsContent value="ranking" className="mt-0">
+                  <div className="grid grid-cols-1 gap-4 mb-4">
+                    <RankingVendedoresPodium 
+                      vendedores={vendedores}
+                      onVendedorClick={handleOpenVendedorDetails}
+                    />
+                    
+                    {/* VendasPorDiaCard exibido em todos os dispositivos */}
+                    <VendasPorDiaCard 
+                      dataInicio={dateRange.from}
+                      dataFim={dateRange.to}
+                    />
+                  </div>
+                </TabsContent>
+                
+                <TabsContent value="pagamentos" className="mt-0">
+                  <VendasPorFormaPagamentoChart 
+                    dataInicio={dateRange.from}
+                    dataFim={dateRange.to}
+                  />
+                </TabsContent>
+                
+                <TabsContent value="produtos" className="mt-0">
+                  <Suspense fallback={<LoadingSkeleton />}>
+                    <LazyProdutosMaisVendidos 
+                      dataInicio={dateRange.from}
+                      dataFim={dateRange.to}
+                      onVendaClick={abrirDetalhesVenda}
+                    />
+                  </Suspense>
+                </TabsContent>
+              </div>
+            </Tabs>
+          </div>
+        </>
+      )}
+      
       {modalAberto && vendedorSelecionado && (
         <VendedorDetalhesModal
           vendedor={vendedorSelecionado}

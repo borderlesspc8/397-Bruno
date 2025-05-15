@@ -174,7 +174,8 @@ export function getSocketStatus() {
   };
 }
 
-export default {
+// Exportar as funções individualmente
+export {
   initSocketServer,
   sendNotificationToUser,
   updateUnreadCount,

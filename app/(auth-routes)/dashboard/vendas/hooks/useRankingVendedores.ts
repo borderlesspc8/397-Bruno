@@ -18,14 +18,14 @@ const VENDEDORES_EXCLUIDOS_RANKING = [
  * @param vendedores Lista completa de vendedores
  * @param ordenacao Critério de ordenação
  * @param limite Número máximo de vendedores a retornar
- * @param isRankingComponent Flag para indicar se está no componente de Ranking de Vendas
+ * @param filtrarVendedoresEspeciais Flag para indicar se os vendedores especiais devem ser filtrados
  * @returns Lista ordenada e limitada de vendedores
  */
 export const useRankingVendedores = (
   vendedores: Vendedor[],
   ordenacao: OrdenacaoVendedor = "faturamento",
   limite: number = 10,
-  isRankingComponent: boolean = false
+  filtrarVendedoresEspeciais: boolean = true
 ) => {
   // Garantir que vendedores é sempre um array, mesmo se undefined
   const vendedoresSeguro = useMemo(() => vendedores || [], [vendedores]);
@@ -40,12 +40,12 @@ export const useRankingVendedores = (
     let vendedoresFiltrados = [...vendedoresSeguro]
       .filter(v => v); // Remover possíveis entradas undefined/null
     
-    // Aplicar filtro adicional apenas no componente de Ranking de Vendas e quando a ordenação for por faturamento
-    if (isRankingComponent && ordenacao === "faturamento") {
+    // Aplicar filtro adicional quando solicitado E quando a ordenação for por faturamento
+    if (filtrarVendedoresEspeciais && ordenacao === "faturamento") {
       vendedoresFiltrados = vendedoresFiltrados.filter(vendedor => {
         // Verificar se o nome do vendedor contém algum dos nomes da lista de exclusão
         return !VENDEDORES_EXCLUIDOS_RANKING.some(nomeExcluido => 
-          vendedor.nome.toUpperCase().includes(nomeExcluido.toUpperCase())
+          vendedor.nome?.toUpperCase().includes(nomeExcluido.toUpperCase())
         );
       });
     }
@@ -64,7 +64,7 @@ export const useRankingVendedores = (
         }
       })
       .slice(0, limite);
-  }, [vendedoresSeguro, ordenacao, limite, isRankingComponent]);
+  }, [vendedoresSeguro, ordenacao, limite, filtrarVendedoresEspeciais]);
 
   // Memoiza o cálculo do total conforme a ordenação - com tratamento de erro
   const totalOrdenacao = useMemo(() => {
@@ -105,19 +105,25 @@ export const useRankingVendedores = (
     }
   }, [ordenacao]);
 
-  // Memoiza a descrição com base na ordenação
+  // Memoiza a descrição com base na ordenação e filtragem
   const descricao = useMemo(() => {
+    let baseDescription = "";
     switch (ordenacao) {
       case "faturamento":
-        return "Ordenado por valor total";
+        baseDescription = "Ordenado por valor total";
+        break;
       case "vendas":
-        return "Ordenado por quantidade de vendas";
+        baseDescription = "Ordenado por quantidade de vendas";
+        break;
       case "ticket":
-        return "Ordenado por ticket médio";
+        baseDescription = "Ordenado por ticket médio";
+        break;
       default:
-        return "Ordenado por valor total";
+        baseDescription = "Ordenado por valor total";
     }
-  }, [ordenacao]);
+    
+    return baseDescription;
+  }, [ordenacao, filtrarVendedoresEspeciais]);
 
   return {
     vendedoresOrdenados,

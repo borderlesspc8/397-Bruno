@@ -15,7 +15,7 @@ export class ValidationService {
 
     let numericValue: number;
     if (typeof amount === "string") {
-      // Converter string para número, considerando formatos como "1.000,50"
+     
       const normalizedValue = amount
         .replace(/\./g, "")  // Remover pontos de milhares
         .replace(",", ".");  // Substituir vírgula decimal por ponto

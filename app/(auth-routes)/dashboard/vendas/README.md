@@ -159,3 +159,99 @@ O código foi reorganizado da seguinte forma:
 - **Menor uso de recursos**: Redução na quantidade de dados transferidos pela rede
 - **Melhor experiência de usuário**: Feedback visual melhorado durante carregamento
 - **Código mais sustentável**: Melhor separação de responsabilidades e maior testabilidade 
+
+## Otimizações de Responsividade e Material Design
+
+Este dashboard foi refinado seguindo princípios do Material Design para melhor experiência em dispositivos móveis e diferentes tamanhos de tela. Abaixo estão as principais melhorias implementadas:
+
+### Princípios Gerais Aplicados
+
+1. **Sistema de Elevação Consistente**
+   - Cards com sombras suaves (`shadow-sm`) para indicar elevação
+   - Transições suaves ao passar o mouse (`hover:shadow-lg`)
+   - Consistência visual em todos os componentes
+
+2. **Paleta de Cores Refinada**
+   - Uso de cores do Material Design com boa separação visual
+   - Melhor contraste entre texto e fundo
+   - Suporte completo a modo claro e escuro
+
+3. **Tipografia Responsiva**
+   - Tamanhos de fonte adaptáveis para diferentes dispositivos
+   - Hierarquia clara de informação
+
+4. **Espaçamento Consistente**
+   - Grid responsivo com gap adaptativo
+   - Margens e padding seguindo escala de 4px do Material Design
+
+5. **Feedback Visual**
+   - Estados de hover bem definidos
+   - Indicadores visuais para ações
+
+6. **Layout Fluido**
+   - Reorganização de elementos em telas menores
+   - Uso de Flexbox e Grid para layouts adaptáveis
+
+### Componentes Refinados
+
+#### DateRangeSelector
+- Melhoria no design do seletor de datas
+- Melhor visualização de opções em telas pequenas
+- Adição de ícones para melhor compreensão visual
+
+#### VendedoresTable
+- Nova apresentação visual para o ranking
+- Badges para destacar posições
+- Layout responsivo para diferentes dispositivos
+- Melhor visualização de dados em telas pequenas
+
+#### VendedoresChart
+- Cores adaptadas do Material Design
+- Melhor legibilidade em diferentes tamanhos de tela
+- Tooltips mais informativos
+- Alternar entre visualizações de gráfico de barras e pizza
+
+#### DashboardSummary
+- Cards mais claros e informativos
+- Melhor visualização de metas
+- Indicadores de progresso visuais
+- Layout adaptável
+
+#### Página Principal
+- Estrutura organizada com grid responsivo
+- Tabs em estilo Material Design
+- Componente de carregamento (skeleton) para melhor UX
+- Cabeçalho adaptável
+
+### Responsividade
+
+O dashboard agora se adapta a diversos tamanhos de tela:
+- **Dispositivos móveis**: Layout em coluna única, elementos empilhados
+- **Tablets**: 2 colunas para cards principais
+- **Desktop**: 4 colunas para cards principais, mais espaço para visualizações
+
+### Acessibilidade
+
+- Melhor contraste de cores
+- Estrutura semântica adequada
+- Estados focáveis para navegação por teclado
+- Texto alternativo para elementos visuais
+
+### Modo Escuro
+
+Todos os componentes agora possuem suporte completo ao modo escuro, com:
+- Cores de background ajustadas
+- Contraste de texto apropriado
+- Cores de elementos gráficos adaptadas
+
+## Uso dos Componentes
+
+Consulte os arquivos individuais para detalhes de implementação. Todos os componentes seguem uma estrutura consistente e utilizam os mesmos princípios de design.
+
+## Performance
+
+Os componentes foram otimizados para melhor performance:
+- Memoização de componentes (React.memo)
+- Uso de useMemo para valores calculados
+- Carregamento assíncrono (lazy loading) para componentes pesados
+- Skeleton loaders para melhor percepção de carregamento 

@@ -1,15 +1,9 @@
-import { VendedoresChart } from "./VendedoresChart";
+import { VendedoresChartImproved } from "./VendedoresChartImproved";
 import { VendedoresTable } from "./VendedoresTable";
-
-interface VendedorData {
-  nome: string;
-  faturamento: number;
-  vendas: number;
-  ticketMedio: number;
-}
+import { Vendedor } from "@/app/_services/betelTecnologia";
 
 interface VendedoresPanelProps {
-  vendedores: VendedorData[];
+  vendedores: Vendedor[];
 }
 
 export function VendedoresPanel({ vendedores }: VendedoresPanelProps) {
@@ -17,7 +11,7 @@ export function VendedoresPanel({ vendedores }: VendedoresPanelProps) {
   
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      <VendedoresChart vendedores={vendedores} />
+      <VendedoresChartImproved vendedores={vendedores} />
       <VendedoresTable vendedores={vendedores} />
     </div>
   );
