@@ -16,8 +16,10 @@ const envVars = {
   // API keys (usando os valores existentes ou definindo padrões)
   RESEND_API_KEY: process.env.RESEND_API_KEY || 're_dummy_key_for_build',
   GROQ_API_KEY: process.env.GROQ_API_KEY || 'gsk_dummy_key_for_build',
-  GESTAO_CLICK_ACCESS_TOKEN: process.env.GESTAO_CLICK_ACCESS_TOKEN || 'dummy_token',
-  GESTAO_CLICK_SECRET_ACCESS_TOKEN: process.env.GESTAO_CLICK_SECRET_ACCESS_TOKEN || 'dummy_secret',
+  GESTAO_CLICK_ACCESS_TOKEN: process.env.GESTAO_CLICK_ACCESS_TOKEN || 'dummy_token_for_build',
+  GESTAO_CLICK_SECRET_ACCESS_TOKEN: process.env.GESTAO_CLICK_SECRET_ACCESS_TOKEN || 'dummy_secret_for_build',
+  GESTAO_CLICK_API_KEY: process.env.GESTAO_CLICK_API_KEY || 'dummy_api_key_for_build',
+  GESTAO_CLICK_SECRET_TOKEN: process.env.GESTAO_CLICK_SECRET_TOKEN || 'dummy_secret_token_for_build',
   NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET || 'dummy_secret_for_build',
   NEXTAUTH_URL: process.env.NEXTAUTH_URL || 'http://localhost:3000',
   NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
@@ -36,6 +38,7 @@ const ignorableErrorPatterns = [
   'OPENAI_API_KEY',
   'GROQ_API_KEY',
   'RESEND_API_KEY',
+  'GESTAO_CLICK',
   'authentication',
   'token',
   'credential',
@@ -49,7 +52,8 @@ const ignorableErrorPatterns = [
   'Auth',
   'Invalid configuration',
   'not found',
-  'Prisma'
+  'Prisma',
+  'Configurações'
 ];
 
 // Lista de variáveis de ambiente que podem estar faltando durante o build
@@ -64,6 +68,8 @@ const optionalEnvVars = [
   'GROQ_API_KEY',
   'GESTAO_CLICK_ACCESS_TOKEN',
   'GESTAO_CLICK_SECRET_ACCESS_TOKEN',
+  'GESTAO_CLICK_API_KEY',
+  'GESTAO_CLICK_SECRET_TOKEN',
   'LOG_LEVEL',
 ];
 

@@ -206,6 +206,8 @@ Para o funcionamento correto dos workflows, configure as seguintes secrets no Gi
 | `CODECOV_TOKEN` | Token para relatórios de cobertura | Dashboard do Codecov → Settings → Repository Upload Token |
 | `RESEND_API_KEY` | Chave de API para o serviço de email Resend | Dashboard do Resend → API Keys |
 | `GROQ_API_KEY` | Chave de API para o serviço de IA Groq | Dashboard do Groq → API Keys |
+| `GESTAO_CLICK_ACCESS_TOKEN` | Token de acesso para a API do Gestão Click | Portal do Gestão Click → API → Tokens |
+| `GESTAO_CLICK_SECRET_ACCESS_TOKEN` | Token secreto para a API do Gestão Click | Portal do Gestão Click → API → Tokens |
 
 ## Convenções de Commits e Branches
 
