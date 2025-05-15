@@ -141,24 +141,33 @@ export function VendedoresChartImproved({ vendedores, onVendedorClick }: Vendedo
       let metaVendedor = 0;
       let percentualMeta = 0;
       
-      if (metaAtual && metaAtual.metasVendedores) {
+      if (metaAtual) {
         // Normalizar o nome do vendedor
         const nomeNormalizado = vendedor.nome.toUpperCase();
-        let vendedorId = "";
         
-        // Identificar o ID do vendedor com base no nome
-        Object.entries(VENDEDORES_MAPEAMENTO).forEach(([nome, id]) => {
-          if (nomeNormalizado.includes(nome)) {
-            vendedorId = id;
-          }
-        });
-        
-        // Buscar meta do vendedor pelo ID
-        const vendedorMeta = metaAtual.metasVendedores.find(mv => mv.vendedorId === vendedorId);
-        
-        if (vendedorMeta) {
-          metaVendedor = vendedorMeta.meta;
+        // Caso especial para o Fernando (usa a meta de Coordenador)
+        if (nomeNormalizado.includes("FERNANDO")) {
+          metaVendedor = metaAtual.metaCoordenador;
           percentualMeta = metaVendedor > 0 ? (vendedor.faturamento / metaVendedor) * 100 : 0;
+        } 
+        // Para os demais vendedores, buscar no array metasVendedores
+        else if (metaAtual.metasVendedores) {
+          let vendedorId = "";
+          
+          // Identificar o ID do vendedor com base no nome
+          Object.entries(VENDEDORES_MAPEAMENTO).forEach(([nome, id]) => {
+            if (nomeNormalizado.includes(nome)) {
+              vendedorId = id;
+            }
+          });
+          
+          // Buscar meta do vendedor pelo ID
+          const vendedorMeta = metaAtual.metasVendedores.find(mv => mv.vendedorId === vendedorId);
+          
+          if (vendedorMeta) {
+            metaVendedor = vendedorMeta.meta;
+            percentualMeta = metaVendedor > 0 ? (vendedor.faturamento / metaVendedor) * 100 : 0;
+          }
         }
       }
       
