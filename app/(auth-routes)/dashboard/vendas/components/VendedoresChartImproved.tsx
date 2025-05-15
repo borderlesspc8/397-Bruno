@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/app/_components/ui/card';
 import { formatCurrency } from '@/app/_utils/format';
-import { BadgeCheck, TrendingUp } from 'lucide-react';
+import { BadgeCheck, TrendingUp, Target } from 'lucide-react';
 import { cn } from '@/app/_lib/utils';
 import { Vendedor as VendedorBetel } from '@/app/_services/betelTecnologia';
 
@@ -10,6 +10,28 @@ interface VendedoresChartImprovedProps {
   vendedores: VendedorBetel[];
   onVendedorClick?: (vendedor: VendedorBetel, index?: number) => void;
 }
+
+// Interface para metas
+interface Meta {
+  id: string;
+  mesReferencia: Date;
+  metaMensal: number;
+  metaSalvio: number;
+  metaCoordenador: number;
+  metasVendedores?: Array<{
+    vendedorId: string;
+    nome: string;
+    meta: number;
+  }>;
+}
+
+// Objeto de mapeamento entre nomes de vendedores e IDs usados no sistema de metas
+const VENDEDORES_MAPEAMENTO = {
+  "MARCUS VINICIUS MACEDO": "marcus-vinicius",
+  "DIULY MORAES": "diuly-moraes",
+  "BRUNA RAMOS": "bruna-ramos",
+  "FERNANDO LOYO": "fernando-loyo"
+};
 
 // Cores no estilo Material Design
 const COLORS = [
@@ -27,47 +49,140 @@ const COLORS = [
 
 export function VendedoresChartImproved({ vendedores, onVendedorClick }: VendedoresChartImprovedProps) {
   const [isClient, setIsClient] = useState(false);
+  const [metas, setMetas] = useState<Meta[]>([]);
+  const [metaAtual, setMetaAtual] = useState<Meta | null>(null);
+  const [isLoadingMetas, setIsLoadingMetas] = useState(false);
 
   // Garantir que o componente só renderize completamente no cliente
   useEffect(() => {
     setIsClient(true);
   }, []);
 
-  // Preparar dados para o componente
-  const dadosFormatados = useMemo(() => {
+  // Buscar metas do servidor
+  useEffect(() => {
+    const carregarMetas = async () => {
+      setIsLoadingMetas(true);
+      try {
+        const response = await fetch("/api/dashboard/metas");
+        if (response.ok) {
+          const data = await response.json();
+          
+          // Converter datas para objetos Date
+          const metasFormatadas = data.map((meta: any) => ({
+            ...meta,
+            mesReferencia: new Date(meta.mesReferencia)
+          }));
+          
+          setMetas(metasFormatadas);
+          
+          // Obter a meta mais recente (considerando o mês atual)
+          const hoje = new Date();
+          const mesAtual = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+          
+          // Tenta encontrar a meta para o mês atual
+          let metaDoMesAtual = metasFormatadas.find((meta: Meta) => 
+            meta.mesReferencia.getMonth() === mesAtual.getMonth() && 
+            meta.mesReferencia.getFullYear() === mesAtual.getFullYear()
+          );
+          
+          // Se não encontrar meta para o mês atual, pega a meta mais recente
+          if (!metaDoMesAtual && metasFormatadas.length > 0) {
+            metaDoMesAtual = metasFormatadas.sort((a: Meta, b: Meta) => 
+              new Date(b.mesReferencia).getTime() - new Date(a.mesReferencia).getTime()
+            )[0];
+          }
+          
+          setMetaAtual(metaDoMesAtual || null);
+        } else {
+          console.error("Erro ao carregar metas:", await response.text());
+        }
+      } catch (error) {
+        console.error("Erro ao carregar metas:", error);
+      } finally {
+        setIsLoadingMetas(false);
+      }
+    };
+    
+    carregarMetas();
+  }, []);
+
+  // Filtrar vendedores específicos (Marcus, Diuly, Bruna e Fernando)
+  const vendedoresFiltrados = useMemo(() => {
     if (!vendedores || vendedores.length === 0) return [];
+    
+    // Filtrar apenas os vendedores de interesse
+    return vendedores.filter(vendedor => {
+      const nomeNormalizado = vendedor.nome.toUpperCase();
+      return (
+        nomeNormalizado.includes("MARCUS") || 
+        nomeNormalizado.includes("DIULY") || 
+        nomeNormalizado.includes("BRUNA") || 
+        nomeNormalizado.includes("FERNANDO")
+      );
+    });
+  }, [vendedores]);
+
+  // Preparar dados para o componente, incluindo metas
+  const dadosFormatados = useMemo(() => {
+    if (!vendedoresFiltrados || vendedoresFiltrados.length === 0) return [];
 
     // Ordenar vendedores por valor de vendas (decrescente)
-    const vendedoresOrdenados = [...vendedores]
-      .sort((a, b) => b.faturamento - a.faturamento)
-      .slice(0, 10); // Limitar a 10 vendedores para melhor visualização
+    const vendedoresOrdenados = [...vendedoresFiltrados]
+      .sort((a, b) => b.faturamento - a.faturamento);
 
     // Calcular o total de vendas para referência percentual
     const totalVendas = vendedoresOrdenados.reduce((acc, curr) => acc + curr.faturamento, 0);
 
-    // Preparar dados formatados com percentuais e cores
+    // Preparar dados formatados com percentuais, metas e cores
     return vendedoresOrdenados.map((vendedor, index) => {
       const percentual = totalVendas > 0 ? (vendedor.faturamento / totalVendas) * 100 : 0;
+      
+      // Buscar meta do vendedor
+      let metaVendedor = 0;
+      let percentualMeta = 0;
+      
+      if (metaAtual && metaAtual.metasVendedores) {
+        // Normalizar o nome do vendedor
+        const nomeNormalizado = vendedor.nome.toUpperCase();
+        let vendedorId = "";
+        
+        // Identificar o ID do vendedor com base no nome
+        Object.entries(VENDEDORES_MAPEAMENTO).forEach(([nome, id]) => {
+          if (nomeNormalizado.includes(nome)) {
+            vendedorId = id;
+          }
+        });
+        
+        // Buscar meta do vendedor pelo ID
+        const vendedorMeta = metaAtual.metasVendedores.find(mv => mv.vendedorId === vendedorId);
+        
+        if (vendedorMeta) {
+          metaVendedor = vendedorMeta.meta;
+          percentualMeta = metaVendedor > 0 ? (vendedor.faturamento / metaVendedor) * 100 : 0;
+        }
+      }
       
       return {
         ...vendedor,
         valor: vendedor.faturamento,
         percentual: percentual,
         color: COLORS[index % COLORS.length],
+        meta: metaVendedor,
+        percentualMeta: percentualMeta
       };
     });
-  }, [vendedores]);
+  }, [vendedoresFiltrados, metaAtual]);
 
   // Calcular totais
   const totais = useMemo(() => {
-    if (!vendedores || vendedores.length === 0) 
+    if (!vendedoresFiltrados || vendedoresFiltrados.length === 0) 
       return { valorTotal: 0, vendasTotal: 0 };
     
     return {
-      valorTotal: vendedores.reduce((acc, curr) => acc + curr.faturamento, 0),
-      vendasTotal: vendedores.reduce((acc, curr) => acc + curr.vendas, 0)
+      valorTotal: vendedoresFiltrados.reduce((acc, curr) => acc + curr.faturamento, 0),
+      vendasTotal: vendedoresFiltrados.reduce((acc, curr) => acc + curr.vendas, 0)
     };
-  }, [vendedores]);
+  }, [vendedoresFiltrados]);
 
   if (!isClient) {
     return null; // Evita renderização no servidor
@@ -80,10 +195,10 @@ export function VendedoresChartImproved({ vendedores, onVendedorClick }: Vendedo
           <div>
             <CardTitle className="flex items-center gap-2 text-lg font-medium text-gray-800 dark:text-white">
               <TrendingUp className="h-5 w-5 text-amber-500" />
-              Top Vendedores
+              Evolução Vendas vs Metas
             </CardTitle>
             <CardDescription className="text-gray-600 dark:text-gray-400 text-sm">
-              Top 10 vendedores com maior faturamento no período
+              Acompanhamento de vendedores em relação às metas
             </CardDescription>
           </div>
           
@@ -96,7 +211,11 @@ export function VendedoresChartImproved({ vendedores, onVendedorClick }: Vendedo
       </CardHeader>
       
       <CardContent className="p-0 py-2">
-        {vendedores.length === 0 ? (
+        {isLoadingMetas ? (
+          <div className="flex items-center justify-center h-[300px]">
+            <p className="text-gray-500 dark:text-gray-400">Carregando dados...</p>
+          </div>
+        ) : vendedoresFiltrados.length === 0 ? (
           <div className="flex items-center justify-center h-[300px]">
             <p className="text-gray-500 dark:text-gray-400">Nenhum vendedor encontrado no período selecionado</p>
           </div>
@@ -132,7 +251,7 @@ export function VendedoresChartImproved({ vendedores, onVendedorClick }: Vendedo
                       {vendedor.lojaNome && ` • ${vendedor.lojaNome}`}
                     </div>
                     
-                    {/* Barra de progresso */}
+                    {/* Barra de progresso de vendas totais */}
                     <div className="mt-2 w-full h-2 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
                       <div 
                         className="h-full rounded-full transition-all duration-500 group-hover:opacity-90"
@@ -143,6 +262,42 @@ export function VendedoresChartImproved({ vendedores, onVendedorClick }: Vendedo
                         }} 
                       />
                     </div>
+                    
+                    {/* Barra de progresso em relação à meta */}
+                    {vendedor.meta > 0 && (
+                      <div className="mt-2 relative w-full">
+                        <div className="flex items-center justify-between text-xs mb-1">
+                          <span className="flex items-center text-gray-600 dark:text-gray-400">
+                            <Target className="h-3 w-3 mr-1" /> Meta: {formatCurrency(vendedor.meta)}
+                          </span>
+                          <span className={cn(
+                            "font-medium",
+                            vendedor.percentualMeta >= 100 
+                              ? "text-green-600 dark:text-green-400" 
+                              : vendedor.percentualMeta >= 70 
+                                ? "text-amber-600 dark:text-amber-400"
+                                : "text-red-600 dark:text-red-400"
+                          )}>
+                            {vendedor.percentualMeta.toFixed(1)}%
+                          </span>
+                        </div>
+                        <div className="w-full h-1.5 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
+                          <div 
+                            className={cn(
+                              "h-full rounded-full transition-all duration-500",
+                              vendedor.percentualMeta >= 100 
+                                ? "bg-green-500" 
+                                : vendedor.percentualMeta >= 70 
+                                  ? "bg-amber-500"
+                                  : "bg-red-500"
+                            )}
+                            style={{ 
+                              width: `${Math.min(Math.max(vendedor.percentualMeta, 3), 100)}%`,
+                            }} 
+                          />
+                        </div>
+                      </div>
+                    )}
                   </div>
                   
                   {/* Valor e percentual */}
