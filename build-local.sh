@@ -17,25 +17,44 @@ if [ ! -f ".env" ]; then
     cat > .env << EOF
 # Variáveis de ambiente para build e execução
 
-# Configurações gerais
-NODE_ENV=production
-NEXT_TELEMETRY_DISABLED=1
+      # Configurações essenciais da aplicação
+      NODE_ENV=production
+      NEXT_TELEMETRY_DISABLED=1
+      NEXT_SHARP_PATH=/app/node_modules/sharp
+      NEXT_PUBLIC_ASSET_PREFIX=https://dashboard.lojapersonalprime.com
+      NEXT_ASSET_PREFIX=https://dashboard.lojapersonalprime.com
+      # Conexões de banco de dados e cache
+      DATABASE_URL=postgresql://postgres:aff05699b9de3a6ea2596c4971059bd8@10.0.1.12:5432/dashboard_personalprime?schema=public&connection_limit=5&pool_timeout=10
+      REDIS_URL=redis://redis:6379
 
-# URLs de conexão
-DATABASE_URL=postgresql://postgres:postgres@postgres:5432/contarapida
-REDIS_URL=redis://redis:6379
+      # Configuração de Email
+      RESEND_API_KEY=re_CuMtc78g_2ckFBFpwMonohLh3Su4XXCnt 
+      EMAIL_SERVER_HOST=smtp.resend.com
+      EMAIL_SERVER_PORT=587
+      EMAIL_SERVER_USER=apikey
+      EMAIL_SERVER_PASSWORD=re_CuMtc78g_2ckFBFpwMonohLh3Su4XXCnt
+      EMAIL_FROM=noreply@acceleracrm.com.br
+      # Autenticação e domínio
+      NEXTAUTH_URL=https://dashboard.lojapersonalprime.com
+      NEXTAUTH_SECRET=af088b5bec7db27c5cefe494d4d7bf63183d8d333f21a66e960712336e80d4ca
+      DOMAIN=localhost
+      NEXTAUTH_DEBUG=true
 
-# Configurações de domínio
-DOMAIN=dashboard.lojapersonalprime.com
-NEXTAUTH_URL=https://dashboard.lojapersonalprime.com
-NEXTAUTH_SECRET=sua_chave_secreta_forte
+      # Configuração do ERP Gestão Click
+      GESTAO_CLICK_API_URL=https://api.beteltecnologia.com
+      GESTAO_CLICK_ACCESS_TOKEN=35f6a8f4b1f80e1a0c2bb0c85fb6f071ba92e82b
+      GESTAO_CLICK_SECRET_ACCESS_TOKEN=823e5135fab01a057328fbd0a8a99f17aa38933d
 
-# APIs externas (dummy para build)
-RESEND_API_KEY=re_dummy_key
-GROQ_API_KEY=gsk_dummy_key
-OPENAI_API_KEY=sk_dummy_key
-GESTAO_CLICK_ACCESS_TOKEN=dummy_token
-GESTAO_CLICK_SECRET_ACCESS_TOKEN=dummy_secret
+      # Configuração do ERP Gestão Click (desativada para teste)
+      AUTO_IMPORT_ENABLED=true
+      DEMO_MODE=false
+      
+      # Configuração de Email (simplificada para teste)
+      EMAIL_FROM=noreply@example.com
+      NEXT_PUBLIC_APP_URL=https://dashboard.lojapersonalprime.com
+      
+      # Configuração de Metadata para Next.js
+      NEXT_PUBLIC_METADATA_BASE_URL=https://dashboard.lojapersonalprime.com
 EOF
     echo -e "${GREEN}Arquivo .env criado com sucesso!${NC}"
 fi
