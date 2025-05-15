@@ -1,6 +1,6 @@
 import { db } from "@/app/_lib/db";
 import { NotificationPriority, NotificationType } from "@prisma/client";
-import SocketService from "./socket-service";
+import { isUserConnected, sendNotificationToUser, updateUnreadCount } from "./socket-service";
 
 export interface CreateNotificationParams {
   userId: string;
@@ -42,8 +42,8 @@ export class NotificationService {
       });
 
       // Enviar notificação em tempo real se o usuário estiver conectado
-      if (SocketService.isUserConnected(params.userId)) {
-        SocketService.sendNotificationToUser(params.userId, notification);
+      if (isUserConnected(params.userId)) {
+        sendNotificationToUser(params.userId, notification);
       }
 
       // Atualizar contador de notificações não lidas
@@ -139,8 +139,8 @@ export class NotificationService {
       });
 
       // Atualizar contador de notificações não lidas (será zero)
-      if (SocketService.isUserConnected(userId)) {
-        SocketService.updateUnreadCount(userId, 0);
+      if (isUserConnected(userId)) {
+        updateUnreadCount(userId, 0);
       }
 
       return { success: true, count: result.count };
@@ -244,8 +244,8 @@ export class NotificationService {
       });
 
       // Enviar atualização em tempo real se o usuário estiver conectado
-      if (SocketService.isUserConnected(userId)) {
-        SocketService.updateUnreadCount(userId, count);
+      if (isUserConnected(userId)) {
+        updateUnreadCount(userId, count);
       }
 
       return { success: true, count };
