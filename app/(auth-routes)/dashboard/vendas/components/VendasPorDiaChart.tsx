@@ -61,6 +61,14 @@ interface VendasPorDiaChartProps {
   dataFim: Date;
 }
 
+// Definir tipos para o contexto do tooltip e Chart.js
+interface TooltipContext {
+  dataset: {
+    label: string;
+  };
+  raw: number;
+}
+
 export function VendasPorDiaChart({ dataInicio, dataFim }: VendasPorDiaChartProps) {
   const [vendasPorDia, setVendasPorDia] = useState<VendaPorDia[]>([]);
   const [loading, setLoading] = useState(true);
@@ -179,7 +187,7 @@ export function VendasPorDiaChart({ dataInicio, dataFim }: VendasPorDiaChartProp
       },
       tooltip: {
         callbacks: {
-          label: function(context: any) {
+          label: function(context: TooltipContext) {
             let label = context.dataset.label || '';
             let value = context.raw;
             
@@ -204,7 +212,7 @@ export function VendasPorDiaChart({ dataInicio, dataFim }: VendasPorDiaChartProp
         },
         ticks: {
           color: '#AAA',
-          callback: function(value: any) {
+          callback: function(value: number) {
             return formatCurrency(value);
           }
         },
@@ -261,20 +269,20 @@ export function VendasPorDiaChart({ dataInicio, dataFim }: VendasPorDiaChartProp
     return (
       <div className="mt-4">
         <Alert variant="destructive">
-          <AlertTriangle className="h-4 w-4" />
+            <AlertTriangle className="h-4 w-4" />
           <AlertDescription className="ml-2">
-            {erro}
-            <Button 
+                {erro}
+              <Button 
               onClick={recarregarDados} 
               size="sm" 
-              variant="outline" 
-              className="ml-2"
-            >
+                variant="outline" 
+                className="ml-2"
+              >
               <RefreshCcw className="h-3 w-3 mr-1" />
               Tentar novamente
-            </Button>
-          </AlertDescription>
-        </Alert>
+              </Button>
+            </AlertDescription>
+          </Alert>
       </div>
     );
   }
@@ -300,12 +308,12 @@ export function VendasPorDiaChart({ dataInicio, dataFim }: VendasPorDiaChartProp
 
   return (
     <div className="h-[350px] w-full">
-      <Chart
-        type="bar"
-        data={dadosGrafico as any}
-        options={opcoes}
+          <Chart 
+            type="bar"
+        data={dadosGrafico}
+            options={opcoes} 
         aria-label="Gráfico de vendas por dia"
-      />
-    </div>
+          />
+        </div>
   );
 } 

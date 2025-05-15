@@ -3,28 +3,22 @@
 import React, { useState, useEffect, useCallback, Suspense, useMemo } from "react";
 import { PageContainer } from "@/app/_components/page-container";
 import { DashboardSummary } from "./components/DashboardSummary";
-import { VendedoresTable } from "./components/VendedoresTable";
 import RankingVendedoresPodium from "../vendedores/components/RankingVendedoresPodium";
 import { DateRangeSelector } from "./_components/DateRangeSelector";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/app/_components/ui/card";
-import { format, startOfMonth, endOfMonth } from "date-fns";
+import { format, endOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { BetelTecnologiaService } from "@/app/_services/betelTecnologia";
 import { VendedoresService } from "@/app/_services/vendedores";
 import { Vendedor } from "@/app/_services/betelTecnologia";
-import { calcularLucroVendas, calcularVariacaoPercentual } from "@/app/_utils/calculoFinanceiro";
-import { CalculoFinanceiroService } from "@/app/_services/calculoFinanceiroService";
+import { calcularVariacaoPercentual } from "@/app/_utils/calculoFinanceiro";
 import { DashboardHeader } from "@/app/(auth-routes)/dashboard/_components/DashboardHeader";
 import { Skeleton } from "@/app/_components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/_components/ui/tabs";
+import dynamic from "next/dynamic";
 
 // Importamos os componentes refatorados
 import { VendedorDetalhesModal } from "./components/VendedorDetalhesModal";
 import { VendaDetalheModal } from "./components/VendaDetalheModal";
-import { ProdutosMaisVendidos } from "./components/ProdutosMaisVendidos";
-import { VendasPorDiaChart } from "./components/VendasPorDiaChart";
 import { VendasPorFormaPagamentoChart } from "./components/VendasPorFormaPagamentoChart";
-import { RankingVendedoresCard } from "./components/RankingVendedoresCard";
 import { VendasPorDiaCard } from "./components/VendasPorDiaCard";
 import { VendedoresChartImproved } from "./components/VendedoresChartImproved";
 import { MobileRankingVendedores } from "./components/MobileRankingVendedores";
@@ -35,7 +29,6 @@ const LazyProdutosMaisVendidos = React.lazy(() =>
     default: mod.ProdutosMaisVendidos 
   }))
 );
-const LazyComoNosConheceuProdutos = React.lazy(() => import('./components/ComoNosConheceuProdutos').then(mod => ({ default: mod.ComoNosConheceuProdutos })));
 
 // Cache para evitar requisições duplicadas
 const dataCache = new Map();
@@ -53,6 +46,15 @@ interface Meta {
     nome: string;
     meta: number;
   }>;
+}
+
+// Interface para dados de vendas
+interface VendaItem {
+  id: string;
+  valor_custo?: string;
+  desconto_valor?: string;
+  valor_frete?: string;
+  [key: string]: any;
 }
 
 // Função para gerar chave de cache
@@ -108,6 +110,14 @@ const LoadingSkeleton = () => (
   </div>
 );
 
+// Interface para tipos de dados
+interface RespostaAPI {
+  id: string;
+  nome: string;
+  vendas: number;
+  valor: number;
+}
+
 export default function DashboardVendas() {
   const today = new Date();
   const currentMonth = today.getMonth();
@@ -149,14 +159,14 @@ export default function DashboardVendas() {
   });
 
   const [vendedores, setVendedores] = useState<Vendedor[]>([]);
-  const [loadingVendedores, setLoadingVendedores] = useState(true);
-  const [erroVendedores, setErroVendedores] = useState<string | null>(null);
+  const [setLoadingVendedores] = useState(true);
+  const [setErroVendedores] = useState<string | null>(null);
   
   // Estados para gerenciar modais
   const [modalAberto, setModalAberto] = useState(false);
   const [vendaModalAberto, setVendaModalAberto] = useState(false);
-  const [vendedorSelecionado, setVendedorSelecionado] = useState<any>(null);
-  const [vendaSelecionada, setVendaSelecionada] = useState<any>(null);
+  const [vendedorSelecionado, setVendedorSelecionado] = useState<Vendedor | null>(null);
+  const [vendaSelecionada, setVendaSelecionada] = useState<VendaItem | null>(null);
   
   // Tab ativa
   const [activeTab, setActiveTab] = useState("ranking");
@@ -282,18 +292,13 @@ export default function DashboardVendas() {
     
     try {
       // Buscar dados em paralelo para otimizar, incluindo as metas
-      const [vendasData, vendasDataAnterior, vendedoresResponse, vendedoresAnteriorResponse, metas] = await Promise.all([
+      const [vendasData, vendasDataAnterior, vendedoresResponse] = await Promise.all([
         // Dados do período atual
         fetchVendas(dateParams),
         // Dados do período anterior para comparação
         fetchVendas(previousDateParams),
         // Vendedores do período atual
         fetchVendedores(dataInicio, dataFim),
-        // Vendedores do período anterior (para referência futura)
-        fetchVendedores(
-          new Date(dataInicio.getFullYear(), dataInicio.getMonth() - 1, 1),
-          endOfMonth(new Date(dataInicio.getFullYear(), dataInicio.getMonth() - 1, 1))
-        ),
         // Metas do mês atual
         fetchMetas()
       ]);
@@ -331,10 +336,10 @@ export default function DashboardVendas() {
         let fretesTotal = 0;
         
         if (vendasData.vendas && Array.isArray(vendasData.vendas)) {
-          vendasData.vendas.forEach((venda: any) => {
-            custoTotal += parseFloat(venda.valor_custo || 0);
-            descontosTotal += parseFloat(venda.desconto_valor || 0);
-            fretesTotal += parseFloat(venda.valor_frete || 0);
+          vendasData.vendas.forEach((venda: VendaItem) => {
+            custoTotal += parseFloat(venda.valor_custo || '0');
+            descontosTotal += parseFloat(venda.desconto_valor || '0');
+            fretesTotal += parseFloat(venda.valor_frete || '0');
           });
         }
         
@@ -350,10 +355,10 @@ export default function DashboardVendas() {
         let fretesAnterior = 0;
         
         if (vendasDataAnterior.vendas && Array.isArray(vendasDataAnterior.vendas)) {
-          vendasDataAnterior.vendas.forEach((venda: any) => {
-            custoAnterior += parseFloat(venda.valor_custo || 0);
-            descontosAnterior += parseFloat(venda.desconto_valor || 0);
-            fretesAnterior += parseFloat(venda.valor_frete || 0);
+          vendasDataAnterior.vendas.forEach((venda: VendaItem) => {
+            custoAnterior += parseFloat(venda.valor_custo || '0');
+            descontosAnterior += parseFloat(venda.desconto_valor || '0');
+            fretesAnterior += parseFloat(venda.valor_frete || '0');
           });
         }
         
@@ -385,7 +390,7 @@ export default function DashboardVendas() {
       setLoading(false);
       setLoadingVendedores(false);
     }
-  }, [dateParams, previousDateParams, fetchVendas, fetchVendedores, fetchMetas]);
+  }, [dateParams, previousDateParams, fetchVendas, fetchVendedores, fetchMetas, setErroVendedores, setLoadingVendedores]);
   
   // Efeito para carregar dados iniciais - com verificação para evitar múltiplas requisições
   useEffect(() => {
@@ -425,7 +430,7 @@ export default function DashboardVendas() {
   }, [vendedores]);
   
   // Abrir modal com detalhes da venda
-  const abrirDetalhesVenda = useCallback((venda: any) => {
+  const abrirDetalhesVenda = useCallback((venda: VendaItem) => {
     setVendaSelecionada(venda);
     setVendaModalAberto(true);
   }, []);
@@ -469,10 +474,10 @@ export default function DashboardVendas() {
             {/* MobileRankingVendedores visível apenas em dispositivos móveis */}
             <div className="lg:hidden">
               <MobileRankingVendedores 
-                vendedores={vendedores}
+                  vendedores={vendedores}
                 ordenacao="faturamento"
                 onVendedorClick={handleOpenVendedorDetails}
-              />
+                />
             </div>
           </div>
           

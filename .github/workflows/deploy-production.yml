@@ -45,10 +45,10 @@ jobs:
       - name: Build da aplicação
         run: npm run build
         env:
-          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
-          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
-          GESTAO_CLICK_ACCESS_TOKEN: ${{ secrets.GESTAO_CLICK_ACCESS_TOKEN }}
-          GESTAO_CLICK_SECRET_ACCESS_TOKEN: ${{ secrets.GESTAO_CLICK_SECRET_ACCESS_TOKEN }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY || 'dummy-key-for-build' }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY || 'dummy-key-for-build' }}
+          GESTAO_CLICK_ACCESS_TOKEN: ${{ secrets.GESTAO_CLICK_ACCESS_TOKEN || 'dummy-token-for-build' }}
+          GESTAO_CLICK_SECRET_ACCESS_TOKEN: ${{ secrets.GESTAO_CLICK_SECRET_ACCESS_TOKEN || 'dummy-token-for-build' }}
       
       - name: Criar tag de release
         id: tag_version
@@ -65,19 +65,22 @@ jobs:
           name: Release ${{ steps.tag_version.outputs.new_tag }}
           body: ${{ steps.tag_version.outputs.changelog }}
       
-      - name: Compactar arquivos para deploy
-        run: tar -czf contarapida-production.tar.gz .next node_modules public package.json package-lock.json next.config.mjs prisma
-
-      - name: Upload dos arquivos para deploy
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-production
-          path: contarapida-production.tar.gz
-          retention-days: 1
-
-      - name: Deploy para VPS via Portainer
-        uses: fjogeleit/http-request-action@v1
-        with:
-          url: ${{ secrets.PORTAINER_WEBHOOK_URL_PRODUCTION }}
-          method: 'POST'
-          preventFailureOnNoResponse: true 
+     
+        run: |
+          echo "==========================================================="
+          echo "AVISO: DEPLOY MANUAL NECESSÁRIO"
+          echo "==========================================================="
+          echo "Como a conta do Portainer é gratuita e não suporta webhooks,"
+          echo "o deploy precisa ser feito manualmente:"
+          echo ""
+          echo "1. Baixe os arquivos de build dos artefatos"
+          echo "   deste workflow em: Actions > Este workflow > Artifacts"
+          echo ""
+          echo "2. Extraia e faça upload dos arquivos no servidor via FTP ou SSH"
+          echo ""
+          echo "3. No servidor, coloque os arquivos no diretório da aplicação:"
+          echo "   /caminho/da/aplicacao/"
+          echo ""
+          echo "4. Reinicie o container no Portainer"
+          echo "   (Stack > contarapida > Redeploy ou Recreate)"
+          echo "===========================================================" 

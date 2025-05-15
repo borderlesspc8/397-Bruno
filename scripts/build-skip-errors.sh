@@ -12,7 +12,6 @@ export NODE_ENV=production
 # API keys dummy (se não estiverem definidas)
 [ -z "$RESEND_API_KEY" ] && export RESEND_API_KEY=re_dummy_key_for_build
 [ -z "$GROQ_API_KEY" ] && export GROQ_API_KEY=gsk_dummy_key_for_build
-[ -z "$OPENAI_API_KEY" ] && export OPENAI_API_KEY=sk_dummy_key_for_build
 [ -z "$GESTAO_CLICK_ACCESS_TOKEN" ] && export GESTAO_CLICK_ACCESS_TOKEN=dummy_token
 [ -z "$GESTAO_CLICK_SECRET_ACCESS_TOKEN" ] && export GESTAO_CLICK_SECRET_ACCESS_TOKEN=dummy_secret
 [ -z "$NEXTAUTH_SECRET" ] && export NEXTAUTH_SECRET=dummy_secret_for_build

@@ -2,7 +2,6 @@ import { Server as NetServer } from 'http';
 import { NextApiRequest } from 'next';
 import { Server as ServerIO } from 'socket.io';
 import { NextApiResponse } from 'next';
-import { Notification as ClientNotification } from '@/app/_hooks/use-notification-store';
 
 export interface ServerProps {
   req: NextApiRequest;
@@ -12,6 +11,17 @@ export interface ServerProps {
 export interface SocketUser {
   userId: string;
   socketId: string;
+}
+
+// Interface para notificação
+export interface Notification {
+  id: string;
+  title: string;
+  message: string;
+  type: string;
+  read: boolean;
+  createdAt: string;
+  [key: string]: any; // Para propriedades adicionais flexíveis
 }
 
 // Armazenar os usuários conectados
@@ -121,7 +131,7 @@ export function initSocketServer(server: NetServer): ServerIO {
 /**
  * Enviar uma notificação para um usuário específico
  */
-export function sendNotificationToUser(userId: string, notification: any) {
+export function sendNotificationToUser(userId: string, notification: Notification) {
   if (!io) {
     console.error('Socket não inicializado');
     return false;
@@ -172,4 +182,4 @@ export function getSocketStatus() {
     connectedUsers: connectedUsers.length,
     users: connectedUsers.map((user) => user.userId),
   };
-} 
+}
