@@ -172,13 +172,4 @@ export function getSocketStatus() {
     connectedUsers: connectedUsers.length,
     users: connectedUsers.map((user) => user.userId),
   };
-}
-
-// Exportar as funções individualmente
-export {
-  initSocketServer,
-  sendNotificationToUser,
-  updateUnreadCount,
-  isUserConnected,
-  getSocketStatus,
-}; 
+} 
