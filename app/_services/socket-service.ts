@@ -2,7 +2,7 @@ import { Server as NetServer } from 'http';
 import { NextApiRequest } from 'next';
 import { Server as ServerIO } from 'socket.io';
 import { NextApiResponse } from 'next';
-import { Notification } from '@/app/_hooks/use-notification-store';
+import { Notification as ClientNotification } from '@/app/_hooks/use-notification-store';
 
 export interface ServerProps {
   req: NextApiRequest;
@@ -121,7 +121,7 @@ export function initSocketServer(server: NetServer): ServerIO {
 /**
  * Enviar uma notificação para um usuário específico
  */
-export function sendNotificationToUser(userId: string, notification: Notification) {
+export function sendNotificationToUser(userId: string, notification: any) {
   if (!io) {
     console.error('Socket não inicializado');
     return false;
