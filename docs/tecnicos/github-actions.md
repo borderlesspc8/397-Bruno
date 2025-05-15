@@ -7,7 +7,7 @@ Esta documentação detalha os workflows de CI/CD (Integração Contínua e Entr
 O ContaRápida utiliza uma estrutura completa de automação que gerencia:
 
 - Testes e validação de código
-- Deploy automatizado para ambientes de staging e produção
+- Deploy automatizado para ambientes de staging e produção via Portainer
 - Revisão automatizada de Pull Requests
 - Mesclagem automática de código aprovado
 
@@ -60,18 +60,14 @@ steps:
   - Cache de dependências
   - Instalação de dependências
   - Geração do cliente Prisma
-  - Instalação da Vercel CLI
-  - Pull das configurações do ambiente de preview
-  - Build do projeto
-  - Deploy para ambiente de preview
-  - Notificação no Slack
+  - Build da aplicação
+  - Compactar arquivos para deploy
+  - Upload dos arquivos para deploy
+  - Deploy para VPS via Portainer
 ```
 
 **Variáveis de ambiente necessárias:**
-- `VERCEL_ORG_ID`
-- `VERCEL_PROJECT_ID`
-- `VERCEL_TOKEN`
-- `SLACK_WEBHOOK_URL`
+- `PORTAINER_WEBHOOK_URL_STAGING`
 
 ### 3. Deploy em Produção (`deploy-production.yml`)
 
@@ -93,13 +89,12 @@ steps:
   - Cache de dependências
   - Instalação de dependências
   - Geração do cliente Prisma
-  - Instalação da Vercel CLI
-  - Pull das configurações do ambiente de produção
-  - Build do projeto (modo produção)
-  - Deploy para ambiente de produção
+  - Build da aplicação
   - Criação de tag de release
   - Criação de release no GitHub
-  - Notificação no Slack
+  - Compactar arquivos para deploy
+  - Upload dos arquivos para deploy
+  - Deploy para VPS via Portainer
 ```
 
 **Automação de versionamento:**
@@ -205,11 +200,9 @@ Para o funcionamento correto dos workflows, configure as seguintes secrets no Gi
 
 | Secret | Descrição | Onde obter |
 |--------|-----------|------------|
-| `VERCEL_TOKEN` | Token de API da Vercel | Dashboard da Vercel → Settings → Tokens |
-| `VERCEL_ORG_ID` | ID da organização na Vercel | Dashboard da Vercel → Settings → General |
-| `VERCEL_PROJECT_ID` | ID do projeto na Vercel | Dashboard da Vercel → Project Settings |
+| `PORTAINER_WEBHOOK_URL_STAGING` | URL de webhook para deploy no ambiente de staging | Portainer → Stacks → contarapida-staging → Webhooks |
+| `PORTAINER_WEBHOOK_URL_PRODUCTION` | URL de webhook para deploy no ambiente de produção | Portainer → Stacks → contarapida-production → Webhooks |
 | `CODECOV_TOKEN` | Token para relatórios de cobertura | Dashboard do Codecov → Settings → Repository Upload Token |
-| `SLACK_WEBHOOK_URL` | URL para notificações no Slack | Dashboard do Slack → Apps → Incoming Webhooks |
 
 ## Convenções de Commits e Branches
 
@@ -247,5 +240,5 @@ Exemplos:
 - [Documentação GitHub Actions](https://docs.github.com/pt/actions)
 - [Workflow Syntax for GitHub Actions](https://docs.github.com/pt/actions/reference/workflow-syntax-for-github-actions)
 - [GitHub Actions Marketplace](https://github.com/marketplace?type=actions)
-- [Vercel CLI](https://vercel.com/docs/cli)
+- [Portainer Documentation](https://docs.portainer.io/)
 - [Conventional Commits](https://www.conventionalcommits.org/pt-br/v1.0.0/) 

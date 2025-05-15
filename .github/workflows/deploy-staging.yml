@@ -13,10 +13,6 @@ jobs:
   build:
     name: Build e Deploy (Staging)
     runs-on: ubuntu-latest
-    
-    env:
-      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
       
     steps:
       - name: Checkout do código
@@ -46,24 +42,22 @@ jobs:
       - name: Gerar cliente Prisma
         run: npx prisma generate
       
-      - name: Instalar Vercel CLI
-        run: npm install --global vercel@latest
+      - name: Build da aplicação
+        run: npm run build
       
-      - name: Pull Vercel Environment Information
-        run: vercel pull --yes --environment=preview --token=${{ secrets.VERCEL_TOKEN }}
-      
-      - name: Build Project Artifacts
-        run: vercel build --token=${{ secrets.VERCEL_TOKEN }}
-      
-      - name: Deploy to Vercel (Staging)
-        run: vercel deploy --prebuilt --token=${{ secrets.VERCEL_TOKEN }}
-      
-      - name: Notificar deploy no Slack
-        uses: 8398a7/action-slack@v3
-        if: always()
+      - name: Compactar arquivos para deploy
+        run: tar -czf contarapida-staging.tar.gz .next node_modules public package.json package-lock.json next.config.js prisma
+
+      - name: Upload dos arquivos para deploy
+        uses: actions/upload-artifact@v4
         with:
-          status: ${{ job.status }}
-          fields: repo,message,commit,author,action,eventName,ref,workflow
-          text: "${{ job.status == 'success' && ':rocket: Deploy para ambiente de staging concluído com sucesso!' || ':x: Deploy para ambiente de staging falhou!' }}"
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }} 
+          name: build-staging
+          path: contarapida-staging.tar.gz
+          retention-days: 1
+
+      - name: Deploy para VPS via Portainer
+        uses: fjogeleit/http-request-action@v1
+        with:
+          url: ${{ secrets.PORTAINER_WEBHOOK_URL_STAGING }}
+          method: 'POST'
+          preventFailureOnNoResponse: true 
