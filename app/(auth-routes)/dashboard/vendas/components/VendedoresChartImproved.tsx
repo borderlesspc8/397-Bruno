@@ -30,7 +30,8 @@ const VENDEDORES_MAPEAMENTO = {
   "MARCUS VINICIUS MACEDO": "marcus-vinicius",
   "DIULY MORAES": "diuly-moraes",
   "BRUNA RAMOS": "bruna-ramos",
-  "FERNANDO LOYO": "fernando-loyo"
+  "FERNANDO LOYO": "fernando-loyo",
+  "ADMINISTRATIVO": "administrativo"
 };
 
 // Cores no estilo Material Design
@@ -106,7 +107,7 @@ export function VendedoresChartImproved({ vendedores, onVendedorClick }: Vendedo
     carregarMetas();
   }, []);
 
-  // Filtrar vendedores específicos (Marcus, Diuly, Bruna e Fernando)
+  // Filtrar vendedores específicos (Marcus, Diuly, Bruna, Fernando e Administrativo)
   const vendedoresFiltrados = useMemo(() => {
     if (!vendedores || vendedores.length === 0) return [];
     
@@ -117,7 +118,8 @@ export function VendedoresChartImproved({ vendedores, onVendedorClick }: Vendedo
         nomeNormalizado.includes("MARCUS") || 
         nomeNormalizado.includes("DIULY") || 
         nomeNormalizado.includes("BRUNA") || 
-        nomeNormalizado.includes("FERNANDO")
+        nomeNormalizado.includes("FERNANDO") ||
+        nomeNormalizado.includes("ADMINISTRATIVO")
       );
     });
   }, [vendedores]);
