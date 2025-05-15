@@ -10,7 +10,7 @@ services:
     image: mkadev/dashboard_personalprime:latest
     working_dir: /app
     # Script com logging detalhado, migração do banco de dados e tolerância a falhas
-    command: ["/bin/sh", "-c", "echo '=== Iniciando ContaRapida ==='; echo 'Aguardando serviços de suporte...'; sleep 20; echo 'Verificando PostgreSQL...'; if nc -z -v postgres 5432; then echo 'PostgreSQL disponível, executando migrações...'; npx prisma db push --accept-data-loss && echo 'Migrações concluídas com sucesso!'; else echo 'ALERTA: PostgreSQL não responde, pulando migrações!'; fi; echo 'Preparando o ambiente standalone...'; if [ -d '.next/standalone/.next/static' ]; then echo 'Arquivos estáticos já preparados'; else echo 'Copiando arquivos estáticos para standalone...'; mkdir -p .next/standalone/.next; cp -r .next/static .next/standalone/.next/; echo 'Copiando pasta public...'; cp -r public .next/standalone/; fi; echo 'Iniciando aplicação no modo standalone...'; cd /app/.next/standalone && NODE_ENV=production HOSTNAME=0.0.0.0 PORT=3000 node server.js"]
+    command: ["/bin/sh", "-c", "echo '=== Iniciando ContaRapida ==='; echo 'Aguardando serviços de suporte...'; sleep 20; echo 'Verificando PostgreSQL...'; if nc -z -v postgres 5432; then echo 'PostgreSQL disponível, executando migrações...'; npx prisma db push --accept-data-loss && echo 'Migrações concluídas com sucesso!'; else echo 'ALERTA: PostgreSQL não responde, pulando migrações!'; fi; echo 'Iniciando aplicação com servidor customizado...'; NODE_ENV=production HOSTNAME=0.0.0.0 PORT=3000 node server.mjs"]
     environment:
       # Configurações essenciais da aplicação
       - NODE_ENV=production
@@ -21,20 +21,32 @@ services:
       # Conexões de banco de dados e cache
       - DATABASE_URL=postgresql://postgres:aff05699b9de3a6ea2596c4971059bd8@10.0.1.12:5432/dashboard_personalprime?schema=public&connection_limit=5&pool_timeout=10
       - REDIS_URL=redis://redis:6379
-      
+
+      # Configuração de Email
+      - RESEND_API_KEY=re_CuMtc78g_2ckFBFpwMonohLh3Su4XXCnt 
+      - EMAIL_SERVER_HOST=smtp.resend.com
+      - EMAIL_SERVER_PORT=587
+      - EMAIL_SERVER_USER=apikey
+      - EMAIL_SERVER_PASSWORD=re_CuMtc78g_2ckFBFpwMonohLh3Su4XXCnt
+      - EMAIL_FROM=noreply@acceleracrm.com.br
       # Autenticação e domínio
       - NEXTAUTH_URL=https://dashboard.lojapersonalprime.com
-      - NEXTAUTH_SECRET=fb37ccdec4e8586dedf69119941f5389929687ca7860ec2bb437e8797ded3f58
+      - NEXTAUTH_SECRET=af088b5bec7db27c5cefe494d4d7bf63183d8d333f21a66e960712336e80d4ca
       - DOMAIN=localhost
       - NEXTAUTH_DEBUG=true
-      
+
+      # Configuração do ERP Gestão Click
+      - GESTAO_CLICK_API_URL=https://api.beteltecnologia.com
+      - GESTAO_CLICK_ACCESS_TOKEN=35f6a8f4b1f80e1a0c2bb0c85fb6f071ba92e82b
+      - GESTAO_CLICK_SECRET_ACCESS_TOKEN=823e5135fab01a057328fbd0a8a99f17aa38933d
+
       # Configuração do ERP Gestão Click (desativada para teste)
-      - AUTO_IMPORT_ENABLED=false
-      - DEMO_MODE=true
+      - AUTO_IMPORT_ENABLED=true
+      - DEMO_MODE=false
       
       # Configuração de Email (simplificada para teste)
       - EMAIL_FROM=noreply@example.com
-      - NEXT_PUBLIC_APP_URL=dashboard.lojapersonalprime.com
+      - NEXT_PUBLIC_APP_URL=https://dashboard.lojapersonalprime.com
       
       # Configuração de Metadata para Next.js
       - NEXT_PUBLIC_METADATA_BASE_URL=https://dashboard.lojapersonalprime.com
@@ -66,10 +78,13 @@ services:
         - traefik.http.services.dashboard_personalprime.loadbalancer.passHostHeader=true
         - traefik.docker.network=AcceleraNet
         - traefik.http.routers.dashboard_personalprime.service=dashboard_personalprime
+        - traefik.http.middlewares.websocket.headers.customRequestHeaders.Origin=https://dashboard.lojapersonalprime.com
+        - traefik.http.routers.dashboard_personalprime.middlewares=websocket
+
     networks:
       - AcceleraNet
     healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:3000/ || exit 0"]
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider https://dashboard.lojapersonalprime.com || exit 0"]
       interval: 30s
       timeout: 10s
       retries: 3
