@@ -51,7 +51,7 @@ jobs:
           GESTAO_CLICK_SECRET_ACCESS_TOKEN: ${{ secrets.GESTAO_CLICK_SECRET_ACCESS_TOKEN }}
       
       - name: Compactar arquivos para deploy
-        run: tar -czf contarapida-staging.tar.gz .next node_modules public package.json package-lock.json next.config.js prisma
+        run: tar -czf contarapida-staging.tar.gz .next node_modules public package.json package-lock.json next.config.mjs prisma
 
       - name: Upload dos arquivos para deploy
         uses: actions/upload-artifact@v4
