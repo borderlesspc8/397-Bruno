@@ -18,7 +18,6 @@ services:
       - DOMAIN=${DOMAIN:-dashboard.lojapersonalprime.com}
       - RESEND_API_KEY=${RESEND_API_KEY:-re_dummy_key}
       - GROQ_API_KEY=${GROQ_API_KEY:-gsk_dummy_key}
-      - OPENAI_API_KEY=${OPENAI_API_KEY:-sk_dummy_key}
       - GESTAO_CLICK_ACCESS_TOKEN=${GESTAO_CLICK_ACCESS_TOKEN:-dummy_token}
       - GESTAO_CLICK_SECRET_ACCESS_TOKEN=${GESTAO_CLICK_SECRET_ACCESS_TOKEN:-dummy_secret}
     volumes:

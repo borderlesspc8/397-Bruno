@@ -60,9 +60,9 @@ services:
       - DOMAIN=${DOMAIN:-contarapida.example.com}
       
       # API keys para serviços externos
-      - RESEND_API_KEY=${RESEND_API_KEY:-re_dummy_key}
+      - NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
+      - RESEND_API_KEY=${RESEND_API_KEY:-re_123456}
       - GROQ_API_KEY=${GROQ_API_KEY:-gsk_dummy_key}
-      - OPENAI_API_KEY=${OPENAI_API_KEY:-sk_dummy_key}
       - GESTAO_CLICK_ACCESS_TOKEN=${GESTAO_CLICK_ACCESS_TOKEN:-dummy_token}
       - GESTAO_CLICK_SECRET_ACCESS_TOKEN=${GESTAO_CLICK_SECRET_ACCESS_TOKEN:-dummy_secret}
     volumes:

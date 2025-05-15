@@ -16,7 +16,6 @@ const envVars = {
   // API keys (usando os valores existentes ou definindo padrões)
   RESEND_API_KEY: process.env.RESEND_API_KEY || 're_dummy_key_for_build',
   GROQ_API_KEY: process.env.GROQ_API_KEY || 'gsk_dummy_key_for_build',
-  OPENAI_API_KEY: process.env.OPENAI_API_KEY || 'sk_dummy_key_for_build',
   GESTAO_CLICK_ACCESS_TOKEN: process.env.GESTAO_CLICK_ACCESS_TOKEN || 'dummy_token',
   GESTAO_CLICK_SECRET_ACCESS_TOKEN: process.env.GESTAO_CLICK_SECRET_ACCESS_TOKEN || 'dummy_secret',
   NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET || 'dummy_secret_for_build',
@@ -51,6 +50,21 @@ const ignorableErrorPatterns = [
   'Invalid configuration',
   'not found',
   'Prisma'
+];
+
+// Lista de variáveis de ambiente que podem estar faltando durante o build
+const optionalEnvVars = [
+  'DATABASE_URL',
+  'MERCADO_PAGO_ACCESS_TOKEN',
+  'GOOGLE_CLIENT_ID',
+  'GOOGLE_CLIENT_SECRET',
+  'NEXTAUTH_URL',
+  'NEXTAUTH_SECRET',
+  'RESEND_API_KEY',
+  'GROQ_API_KEY',
+  'GESTAO_CLICK_ACCESS_TOKEN',
+  'GESTAO_CLICK_SECRET_ACCESS_TOKEN',
+  'LOG_LEVEL',
 ];
 
 // Certificar-se de que o diretório .next exista

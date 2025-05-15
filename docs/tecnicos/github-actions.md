@@ -205,6 +205,7 @@ Para o funcionamento correto dos workflows, configure as seguintes secrets no Gi
 | `PORTAINER_WEBHOOK_URL_PRODUCTION` | URL de webhook para deploy no ambiente de produção | Portainer → Stacks → contarapida-production → Webhooks |
 | `CODECOV_TOKEN` | Token para relatórios de cobertura | Dashboard do Codecov → Settings → Repository Upload Token |
 | `RESEND_API_KEY` | Chave de API para o serviço de email Resend | Dashboard do Resend → API Keys |
+| `GROQ_API_KEY` | Chave de API para o serviço de IA Groq | Dashboard do Groq → API Keys |
 
 ## Convenções de Commits e Branches
 
