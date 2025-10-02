@@ -8,6 +8,7 @@ import { formatCurrency } from "@/app/_utils/format";
 import { User, Upload } from "lucide-react";
 import { VendedorImagensService } from "@/app/_services/vendedorImagens";
 import DefaultAvatar from "@/app/components/DefaultAvatar";
+import { useVendedoresImagens } from "../hooks/useVendedoresImagens";
 
 interface ListaVendedoresProps {
   vendedores: Vendedor[];
@@ -15,40 +16,8 @@ interface ListaVendedoresProps {
 }
 
 export function ListaVendedores({ vendedores, onUploadFoto }: ListaVendedoresProps) {
-  const [imagensVendedores, setImagensVendedores] = useState<Record<string, string>>({});
-  const [carregandoImagens, setCarregandoImagens] = useState(true);
-  
-  // Carregar imagens dos vendedores
-  useEffect(() => {
-    const carregarImagens = async () => {
-      setCarregandoImagens(true);
-      
-      try {
-        const imagePromises = vendedores.map(async (vendedor) => {
-          // Forçar atualização para ignorar o cache
-          const imagemUrl = await VendedorImagensService.buscarImagemVendedor(vendedor.id, true);
-          return { id: vendedor.id, url: imagemUrl };
-        });
-        
-        const imagens = await Promise.all(imagePromises);
-        
-        const imagensMap = imagens.reduce((acc, item) => {
-          acc[item.id] = item.url;
-          return acc;
-        }, {} as Record<string, string>);
-        
-        setImagensVendedores(imagensMap);
-      } catch (error) {
-        console.error("Erro ao carregar imagens dos vendedores:", error);
-      } finally {
-        setCarregandoImagens(false);
-      }
-    };
-    
-    if (vendedores.length > 0) {
-      carregarImagens();
-    }
-  }, [vendedores]);
+  // Usar o hook otimizado para carregar imagens seguindo o padrão da página de vendas
+  const { imagensVendedores } = useVendedoresImagens(vendedores);
   
   // Ordenar vendedores por faturamento
   const vendedoresOrdenados = [...vendedores].sort((a, b) => {

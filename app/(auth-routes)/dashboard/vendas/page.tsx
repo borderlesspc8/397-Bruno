@@ -19,6 +19,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/_components/ui/t
 import dynamic from "next/dynamic";
 import { useAuth } from "@/app/_hooks/useAuth";
 import { useGestaoClickSupabase } from "@/app/_hooks/useGestaoClickSupabase";
+import { useMetas } from "@/app/_hooks/useMetas";
 import { createClient } from "@/app/_lib/supabase";
 
 // Criar instância única do Supabase
@@ -80,6 +81,7 @@ const LoadingSkeleton = () => (
 
 export default function DashboardVendas() {
   const { user, loading: authLoading } = useAuth();
+  const { metas, loading: isLoadingMetas } = useMetas();
   
   // Logs detalhados para debug - OTIMIZADO
   useEffect(() => {
@@ -102,34 +104,72 @@ export default function DashboardVendas() {
     return { from, to };
   });
   
-  // Metas padrão (sem dependência de API externa)
+  // Metas reais do banco de dados
   const metasAtuais = useMemo(() => {
-    // Metas padrão baseadas no mês atual
-    const mesAtual = new Date().getMonth() + 1;
-    const anoAtual = new Date().getFullYear();
+    if (!metas || metas.length === 0) {
+      // Fallback para metas padrão se não houver metas no banco
+      const mesAtual = new Date().getMonth() + 1;
+      const metasPadrao = {
+        1: { metaMensal: 50000, metaSalvio: 30000, metaCoordenador: 40000 },
+        2: { metaMensal: 55000, metaSalvio: 35000, metaCoordenador: 45000 },
+        3: { metaMensal: 60000, metaSalvio: 40000, metaCoordenador: 50000 },
+        4: { metaMensal: 65000, metaSalvio: 45000, metaCoordenador: 55000 },
+        5: { metaMensal: 70000, metaSalvio: 50000, metaCoordenador: 60000 },
+        6: { metaMensal: 75000, metaSalvio: 55000, metaCoordenador: 65000 },
+        7: { metaMensal: 80000, metaSalvio: 60000, metaCoordenador: 70000 },
+        8: { metaMensal: 85000, metaSalvio: 65000, metaCoordenador: 75000 },
+        9: { metaMensal: 90000, metaSalvio: 70000, metaCoordenador: 80000 },
+        10: { metaMensal: 95000, metaSalvio: 75000, metaCoordenador: 85000 },
+        11: { metaMensal: 100000, metaSalvio: 80000, metaCoordenador: 90000 },
+        12: { metaMensal: 120000, metaSalvio: 100000, metaCoordenador: 110000 },
+      };
+      
+      return metasPadrao[mesAtual as keyof typeof metasPadrao] || {
+        metaMensal: 50000,
+        metaSalvio: 30000,
+        metaCoordenador: 40000
+      };
+    }
     
-    // Metas padrão por mês (pode ser configurado posteriormente)
-    const metasPadrao = {
-      1: { metaMensal: 50000, metaSalvio: 30000, metaCoordenador: 40000 }, // Janeiro
-      2: { metaMensal: 55000, metaSalvio: 35000, metaCoordenador: 45000 }, // Fevereiro
-      3: { metaMensal: 60000, metaSalvio: 40000, metaCoordenador: 50000 }, // Março
-      4: { metaMensal: 65000, metaSalvio: 45000, metaCoordenador: 55000 }, // Abril
-      5: { metaMensal: 70000, metaSalvio: 50000, metaCoordenador: 60000 }, // Maio
-      6: { metaMensal: 75000, metaSalvio: 55000, metaCoordenador: 65000 }, // Junho
-      7: { metaMensal: 80000, metaSalvio: 60000, metaCoordenador: 70000 }, // Julho
-      8: { metaMensal: 85000, metaSalvio: 65000, metaCoordenador: 75000 }, // Agosto
-      9: { metaMensal: 90000, metaSalvio: 70000, metaCoordenador: 80000 }, // Setembro
-      10: { metaMensal: 95000, metaSalvio: 75000, metaCoordenador: 85000 }, // Outubro
-      11: { metaMensal: 100000, metaSalvio: 80000, metaCoordenador: 90000 }, // Novembro
-      12: { metaMensal: 120000, metaSalvio: 100000, metaCoordenador: 110000 }, // Dezembro
-    };
+    // Encontrar a meta para o mês atual
+    const hoje = new Date();
+    const mesAtual = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
     
-    return metasPadrao[mesAtual as keyof typeof metasPadrao] || {
+    let metaDoMesAtual = metas.find((meta) => {
+      const mesRef = new Date(meta.mesReferencia);
+      return mesRef.getMonth() === mesAtual.getMonth() && 
+             mesRef.getFullYear() === mesAtual.getFullYear();
+    });
+    
+    // Se não encontrar meta para o mês atual, pega a meta mais recente
+    if (!metaDoMesAtual && metas.length > 0) {
+      metaDoMesAtual = metas.sort((a, b) => 
+        new Date(b.mesReferencia).getTime() - new Date(a.mesReferencia).getTime()
+      )[0];
+    }
+    
+    if (metaDoMesAtual) {
+      console.log('🎯 Meta encontrada:', {
+        mes: metaDoMesAtual.mesReferencia,
+        metaMensal: metaDoMesAtual.metaMensal,
+        metaSalvio: metaDoMesAtual.metaSalvio,
+        metaCoordenador: metaDoMesAtual.metaCoordenador
+      });
+      
+      return {
+        metaMensal: metaDoMesAtual.metaMensal,
+        metaSalvio: metaDoMesAtual.metaSalvio,
+        metaCoordenador: metaDoMesAtual.metaCoordenador
+      };
+    }
+    
+    // Fallback final
+    return {
       metaMensal: 50000,
       metaSalvio: 30000,
       metaCoordenador: 40000
     };
-  }, []);
+  }, [metas]);
 
   // Usar o userId do hook useAuth em vez de buscar separadamente
   const userId = user?.id || null;
@@ -243,15 +283,34 @@ export default function DashboardVendas() {
     let fretesTotal = 0;
     
     if (vendas && Array.isArray(vendas)) {
+      console.log('🔍 [DashboardVendas] Processando vendas para cálculo financeiro:', {
+        totalVendas: vendas.length,
+        primeirasVendas: vendas.slice(0, 3).map(v => ({
+          id: v.id,
+          valor_total: v.valor_total,
+          valor_custo: v.valor_custo,
+          desconto_valor: v.desconto_valor,
+          valor_frete: v.valor_frete
+        }))
+      });
+      
       vendas.forEach((venda: VendaItem) => {
         custoTotal += parseFloat(String(venda.valor_custo || '0'));
         descontosTotal += parseFloat(String(venda.desconto_valor || '0'));
         fretesTotal += parseFloat(String(venda.valor_frete || '0'));
       });
+      
+      console.log('💰 [DashboardVendas] Totais calculados:', {
+        custoTotal,
+        descontosTotal,
+        fretesTotal,
+        totalValor,
+        lucroCalculado: totalValor - custoTotal
+      });
     }
     
-    // Lucro = Faturamento - Custo - Descontos + Fretes
-    const lucroTotal = totalValor - custoTotal - descontosTotal + fretesTotal;
+    // Lucro = Faturamento - Custo - Fretes (descontos removidos)
+    const lucroTotal = totalValor - custoTotal ;
     
     // Calcular margem de lucro
     const margemLucro = totalValor > 0 ? (lucroTotal / totalValor) * 100 : 0;
@@ -292,6 +351,26 @@ export default function DashboardVendas() {
     }
   }, [forceSync]);
 
+  // Função para refresh dos dados sem cache
+  const handleRefreshData = useCallback(async () => {
+    try {
+      console.log('🔄 Iniciando refresh dos dados sem cache...');
+      await forceSync();
+      console.log('✅ Refresh concluído com sucesso');
+    } catch (error) {
+      console.error('❌ Erro no refresh:', error);
+      throw error; // Re-throw para que o DashboardHeader possa tratar o erro
+    }
+  }, [forceSync]);
+
+  // Forçar atualização dos dados para resolver problema do cache
+  useEffect(() => {
+    if (dateRange.from && dateRange.to) {
+      console.log('🔄 Forçando atualização dos dados para resolver cache antigo...');
+      handleForceSync();
+    }
+  }, [dateRange.from, dateRange.to, handleForceSync]);
+
   // Renderizar loading
   if (loading) {
     return (
@@ -330,6 +409,8 @@ export default function DashboardVendas() {
             title="Dashboard de Vendas" 
             description="Análise de desempenho e métricas de vendas"
             dateRange={dateRange}
+            onRefresh={handleRefreshData}
+            isRefreshing={loading}
           />
         </div>
 
@@ -348,7 +429,10 @@ export default function DashboardVendas() {
         {/* Filtros - CORRIGIDOS */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-end">
           <div className="w-full">
-            <DateRangeSelector onDateRangeChange={handleDateRangeChange} />
+            <DateRangeSelector 
+              dateRange={dateRange}
+              onDateRangeChange={handleDateRangeChange} 
+            />
           </div>
           <div className="w-full">
             <SituacaoFilter 

@@ -601,6 +601,18 @@ export class GestaoClickClientService {
             console.log(JSON.stringify(responseData.data[0], null, 2).substring(0, 500) + '...');
             console.log('Propriedades do primeiro objeto:');
             console.log(Object.keys(responseData.data[0] || {}).join(', '));
+            
+            // Log específico para campos financeiros
+            const primeiraVenda = responseData.data[0];
+            console.log('💰 [DEBUG] Campos financeiros na primeira venda:');
+            console.log('  valor_total:', primeiraVenda.valor_total);
+            console.log('  valor_custo:', primeiraVenda.valor_custo);
+            console.log('  desconto_valor:', primeiraVenda.desconto_valor);
+            console.log('  valor_frete:', primeiraVenda.valor_frete);
+            console.log('  desconto:', primeiraVenda.desconto);
+            console.log('  frete:', primeiraVenda.frete);
+            console.log('  custo:', primeiraVenda.custo);
+            console.log('  Todos os campos disponíveis:', Object.keys(primeiraVenda));
           } else {
             console.log('Array de dados vazio. Nenhum resultado encontrado.');
           }

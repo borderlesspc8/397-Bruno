@@ -17,95 +17,44 @@ interface DashboardHeaderProps {
     from: Date;
     to: Date;
   };
+  onRefresh?: () => Promise<void>;
+  isRefreshing?: boolean;
 }
 
-export function DashboardHeader({ title, description, dateRange }: DashboardHeaderProps) {
+export function DashboardHeader({ title, description, dateRange, onRefresh, isRefreshing: externalIsRefreshing }: DashboardHeaderProps) {
   const router = useRouter();
-  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [internalIsRefreshing, setInternalIsRefreshing] = useState(false);
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
   const { user } = useAuth();
   const userName = user?.name || "Usuário";
   const [showFullInfo, setShowFullInfo] = useState(false);
-  // DESABILITADO TEMPORARIAMENTE PARA EVITAR LOOPS
-  // const { refreshData } = useDashboardData(dateRange);
-  const refreshData = () => {
-    console.log('⚠️ refreshData desabilitado temporariamente para evitar loops');
-  };
+  
+  // Usar o estado de refresh externo se fornecido, senão usar o interno
+  const isRefreshing = externalIsRefreshing !== undefined ? externalIsRefreshing : internalIsRefreshing;
   // Estado para controlar a largura da tela, inicialmente null para evitar hydration mismatch
   const [screenWidth, setScreenWidth] = useState<number | null>(null);
   const isMobileView = screenWidth !== null && screenWidth < 640;
 
   const handleRefresh = async () => {
-    // DESABILITADO TEMPORARIAMENTE PARA EVITAR LOOPS
-    console.log('⚠️ DashboardHeader: Refresh desabilitado temporariamente para evitar loops')
-    toast.info("Refresh temporariamente desabilitado", {
-      description: "Sistema otimizado para evitar loops de requisições."
-    });
-    return;
-    
-    setIsRefreshing(true);
-    try {
-      const baseUrl = env.NEXT_PUBLIC_APP_URL;
-
-      // Força revalidação do cache no servidor
-      const response = await fetch(`/api/revalidate`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          path: '/dashboard'
-        }),
-        cache: 'no-store',
-        next: { revalidate: 0 }
-      });
-
-      if (!response.ok) {
-        throw new Error('Falha ao revalidar cache');
+    if (onRefresh) {
+      // Usar a função de refresh externa se fornecida
+      try {
+        await onRefresh();
+        toast.success("Dados atualizados com sucesso!", {
+          description: "Os dados foram recarregados sem cache."
+        });
+      } catch (error) {
+        console.error('Erro ao atualizar dados:', error);
+        toast.error("Erro ao atualizar os dados", {
+          description: "Tente novamente em alguns instantes."
+        });
       }
-
-      // Força o Next.js a revalidar os dados
-      router.refresh();
-
-      // Prepara os parâmetros de data
-      const today = new Date();
-      const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-      const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-      
-      const dataInicio = format(firstDayOfMonth, 'yyyy-MM-dd');
-      const dataFim = format(lastDayOfMonth, 'yyyy-MM-dd');
-
-      // Força uma nova requisição para todas as rotas da API com os parâmetros necessários
-      const apiRoutes = [
-        `${baseUrl}/api/dashboard/vendas?dataInicio=${dataInicio}&dataFim=${dataFim}&forceUpdate=true`,
-        `${baseUrl}/api/dashboard/vendedores?dataInicio=${dataInicio}&dataFim=${dataFim}&forceUpdate=true`,
-        `${baseUrl}/api/dashboard/atendimentos?dataInicio=${dataInicio}&dataFim=${dataFim}&forceUpdate=true`,
-        `${baseUrl}/api/dashboard/consultores?dataInicio=${dataInicio}&dataFim=${dataFim}&forceUpdate=true`,
-        `${baseUrl}/api/dashboard/metas?forceUpdate=true`,
-        `${baseUrl}/api/user/profile?forceUpdate=true`
-      ];
-
-      // Faz requisições paralelas para todas as rotas
-      await Promise.all(apiRoutes.map(route => 
-        fetch(route, { 
-          cache: 'no-store',
-          next: { revalidate: 0 }
-        })
-      ));
-
-      // Força atualização dos dados do dashboard
-      refreshData();
-
-      toast.success("Cache atualizado com sucesso!", {
-        description: "Os dados foram recarregados do servidor."
+    } else {
+      // Fallback para o comportamento antigo se não houver função externa
+      console.log('⚠️ DashboardHeader: Nenhuma função de refresh fornecida')
+      toast.info("Função de refresh não configurada", {
+        description: "Configure a função onRefresh no DashboardHeader."
       });
-    } catch (error) {
-      console.error('Erro ao atualizar cache:', error);
-      toast.error("Erro ao atualizar o cache", {
-        description: "Tente novamente em alguns instantes."
-      });
-    } finally {
-      setTimeout(() => setIsRefreshing(false), 1000);
     }
   };
 
@@ -166,9 +115,10 @@ export function DashboardHeader({ title, description, dateRange }: DashboardHead
                 <button
                   onClick={handleRefresh}
                   disabled={isRefreshing}
-                  className="p-2 rounded-xl bg-muted hover:bg-muted/80 transition-colors disabled:opacity-50"
+                  className="p-2 rounded-xl bg-muted hover:bg-muted/80 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed group"
+                  title={isRefreshing ? "Atualizando dados..." : "Atualizar dados sem cache"}
                 >
-                  <RefreshCw className={`h-4 w-4 text-foreground ${isRefreshing ? 'animate-spin' : ''}`} />
+                  <RefreshCw className={`h-4 w-4 text-foreground transition-transform duration-200 ${isRefreshing ? 'animate-spin' : 'group-hover:rotate-180'}`} />
                 </button>
               </div>
               {description && (
@@ -210,10 +160,16 @@ export function DashboardHeader({ title, description, dateRange }: DashboardHead
                 <div className="p-1.5 bg-gradient-to-br from-orange-100 to-yellow-100 dark:from-orange-900/20 dark:to-yellow-900/20 rounded-lg">
                   <CalendarDays className="h-4 w-4 text-orange-600 dark:text-orange-400" />
                 </div>
-                <div className="flex flex-col">
+                <div className="flex flex-col flex-1">
                   <span className="text-muted-foreground text-xs">Período de análise</span>
                   <span className="text-foreground text-sm font-semibold">{formattedDateRange}</span>
                 </div>
+                {isRefreshing && (
+                  <div className="flex items-center gap-1 text-xs text-orange-600 dark:text-orange-400">
+                    <RefreshCw className="h-3 w-3 animate-spin" />
+                    <span>Atualizando...</span>
+                  </div>
+                )}
               </div>
             )}
           </div>

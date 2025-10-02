@@ -48,7 +48,6 @@ export async function POST(request: NextRequest) {
       '/api/dashboard/vendedores',
       '/api/dashboard/atendimentos',
       '/api/dashboard/consultores',
-      '/api/dashboard/metas',
       '/api/user/profile'
     ];
 

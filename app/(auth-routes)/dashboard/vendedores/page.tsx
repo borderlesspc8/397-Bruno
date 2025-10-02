@@ -7,8 +7,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/app
 import { DateRangeSelector } from "../vendas/_components/DateRangeSelector";
 import { ListaVendedores } from "./components/ListaVendedores";
 import { UploadFotoModal } from "./components/UploadFotoModal";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/_components/ui/tabs";
-import { GaleriaVendedores } from "./components/GaleriaVendedores";
 import { AlertCircle } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/app/_components/ui/alert";
 import { toast } from "@/app/_components/ui/use-toast";
@@ -19,7 +17,6 @@ export default function GerenciamentoVendedores() {
   const [vendedores, setVendedores] = useState<Vendedor[]>([]);
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
-  const [modoVisualizacao, setModoVisualizacao] = useState<"lista" | "galeria">("lista");
   
   // Estado para o vendedor selecionado para upload de foto
   const [vendedorSelecionado, setVendedorSelecionado] = useState<Vendedor | null>(null);
@@ -145,35 +142,20 @@ export default function GerenciamentoVendedores() {
     
     return (
       <div className="space-y-6">
-        {/* Adicionar o pódio antes das abas */}
+        {/* Adicionar o pódio antes da lista */}
         <RankingVendedoresPodium 
           vendedores={vendedores}
           onUploadFoto={handleAbrirUploadFoto}
         />
         
-        <Tabs defaultValue="lista" value={modoVisualizacao} onValueChange={(v) => setModoVisualizacao(v as "lista" | "galeria")}>
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-lg font-medium">Equipe de Vendedores</h2>
-            <TabsList>
-              <TabsTrigger value="lista">Lista</TabsTrigger>
-              <TabsTrigger value="galeria">Galeria</TabsTrigger>
-            </TabsList>
-          </div>
-          
-          <TabsContent value="lista" className="mt-0">
-            <ListaVendedores
-              vendedores={vendedores}
-              onUploadFoto={handleAbrirUploadFoto}
-            />
-          </TabsContent>
-          
-          <TabsContent value="galeria" className="mt-0">
-            <GaleriaVendedores
-              vendedores={vendedores}
-              onUploadFoto={handleAbrirUploadFoto}
-            />
-          </TabsContent>
-        </Tabs>
+        {/* Lista de vendedores */}
+        <div className="space-y-4">
+          <h2 className="text-lg font-medium">Equipe de Vendedores</h2>
+          <ListaVendedores
+            vendedores={vendedores}
+            onUploadFoto={handleAbrirUploadFoto}
+          />
+        </div>
       </div>
     );
   };

@@ -204,34 +204,72 @@ export class GestaoClickSupabaseService {
     vendas: any[],
     userId: string
   ): Promise<VendaIntegrada[]> {
-    return vendas.map(venda => ({
-      id: `gc-${venda.id || Math.random().toString(36).substr(2, 9)}`,
-      cliente_id: venda.cliente_id || `cliente-${Math.random().toString(36).substr(2, 9)}`,
-      cliente_nome: venda.cliente_nome || venda.nome_cliente || 'Cliente não informado',
-      valor_total: parseFloat(venda.valor_total || venda.valor_liquido || '0'),
-      status: this.mapearStatusGestaoClick(venda.nome_situacao),
-      user_id: userId,
-      vendedor_id: venda.vendedor_id ? `gc-${venda.vendedor_id}` : undefined,
-      vendedor_nome: venda.nome_vendedor,
-      data_venda: venda.data || venda.data_venda,
-      produtos: venda.produtos ? venda.produtos.map((produto: any) => ({
-        id: produto.id || Math.random().toString(36).substr(2, 9),
-        nome: produto.descricao || produto.nome || 'Produto não informado',
-        quantidade: parseInt(produto.quantidade || '1'),
-        preco_unitario: parseFloat(produto.valor_unitario || produto.preco_unitario || '0'),
-        total: parseFloat(produto.quantidade || '1') * parseFloat(produto.valor_unitario || produto.preco_unitario || '0')
-      })) : [],
-      external_id: venda.id?.toString(),
-      source: 'gestao-click' as const,
-      metadata: {
-        valor_custo: venda.valor_custo,
-        desconto_valor: venda.desconto_valor,
-        valor_frete: venda.valor_frete,
-        situacao_id: venda.situacao_id,
-        loja_id: venda.loja_id,
-        loja_nome: venda.loja_nome
+    console.log('🔍 [GestaoClickSupabase] Transformando vendas do Gestão Click:', {
+      totalVendas: vendas.length,
+      primeirasVendas: vendas.slice(0, 3).map(v => ({
+        id: v.id,
+        valor_total: v.valor_total,
+        valor_custo: v.valor_custo,
+        desconto_valor: v.desconto_valor,
+        valor_frete: v.valor_frete,
+        camposDisponiveis: Object.keys(v)
+      }))
+    });
+
+    return vendas.map(venda => {
+      const vendaTransformada = {
+        id: `gc-${venda.id || Math.random().toString(36).substr(2, 9)}`,
+        cliente_id: venda.cliente_id || `cliente-${Math.random().toString(36).substr(2, 9)}`,
+        cliente_nome: venda.cliente_nome || venda.nome_cliente || 'Cliente não informado',
+        valor_total: parseFloat(venda.valor_total || venda.valor_liquido || '0'),
+        status: this.mapearStatusGestaoClick(venda.nome_situacao),
+        user_id: userId,
+        vendedor_id: venda.vendedor_id ? `gc-${venda.vendedor_id}` : undefined,
+        vendedor_nome: venda.nome_vendedor,
+        data_venda: venda.data || venda.data_venda,
+        // Adicionar campos financeiros diretamente no objeto principal
+        valor_custo: parseFloat(venda.valor_custo || '0'),
+        desconto_valor: parseFloat(venda.desconto_valor || '0'),
+        valor_frete: parseFloat(venda.valor_frete || '0'),
+        produtos: venda.produtos ? venda.produtos.map((produto: any) => ({
+          id: produto.id || Math.random().toString(36).substr(2, 9),
+          nome: produto.descricao || produto.nome || 'Produto não informado',
+          quantidade: parseInt(produto.quantidade || '1'),
+          preco_unitario: parseFloat(produto.valor_unitario || produto.preco_unitario || '0'),
+          total: parseFloat(produto.quantidade || '1') * parseFloat(produto.valor_unitario || produto.preco_unitario || '0')
+        })) : [],
+        external_id: venda.id?.toString(),
+        source: 'gestao-click' as const,
+        metadata: {
+          valor_custo: venda.valor_custo,
+          desconto_valor: venda.desconto_valor,
+          valor_frete: venda.valor_frete,
+          situacao_id: venda.situacao_id,
+          loja_id: venda.loja_id,
+          loja_nome: venda.loja_nome
+        }
+      };
+
+      // Log das primeiras vendas transformadas
+      if (venda.id && vendas.indexOf(venda) < 3) {
+        console.log(`💰 [GestaoClickSupabase] Venda ${venda.id} transformada:`, {
+          original: {
+            valor_total: venda.valor_total,
+            valor_custo: venda.valor_custo,
+            desconto_valor: venda.desconto_valor,
+            valor_frete: venda.valor_frete
+          },
+          transformada: {
+            valor_total: vendaTransformada.valor_total,
+            valor_custo: vendaTransformada.valor_custo,
+            desconto_valor: vendaTransformada.desconto_valor,
+            valor_frete: vendaTransformada.valor_frete
+          }
+        });
       }
-    }))
+
+      return vendaTransformada;
+    })
   }
 
   /**

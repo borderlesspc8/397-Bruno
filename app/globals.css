@@ -760,7 +760,7 @@ a, button, .interactive {
 
 /* Estilos específicos para o DateRangePicker aprimorado */
 .date-picker-popover {
-  z-index: 9999 !important;
+  z-index: 999999 !important;
   overflow: visible !important;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15) !important;
   border: 1px solid hsl(var(--border)) !important;
@@ -775,7 +775,7 @@ a, button, .interactive {
 
 /* Quando o calendário estiver aberto, garantir que ele fique acima de tudo */
 .date-range-picker-open {
-  z-index: 10000 !important;
+  z-index: 999999 !important;
 }
 
 .dark .date-picker-popover {
@@ -999,7 +999,7 @@ a, button, .interactive {
 
 /* Corrigir o alinhamento do popup do calendário */
 [data-radix-popper-content-wrapper] {
-  z-index: 9999 !important;
+  z-index: 999999 !important;
 }
 
 /* Ajustes para calendário único */
@@ -1097,7 +1097,66 @@ a, button, .interactive {
 
 /* Estilos para garantir que o popup do datepicker seja exibido corretamente */
 [data-radix-popper-content-wrapper] {
-  z-index: 9999 !important;
+  z-index: 999999 !important;
+}
+
+/* Garantir que o popover do calendário apareça acima de TODOS os elementos, incluindo o ranking */
+[data-radix-popper-content-wrapper] * {
+  z-index: 999999 !important;
+}
+
+/* Forçar o popover do calendário a aparecer acima do ranking */
+.podium-container + [data-radix-popper-content-wrapper],
+[data-radix-popper-content-wrapper] {
+  z-index: 999999 !important;
+  position: fixed !important;
+}
+
+/* Regra específica para garantir que o popover apareça acima do ranking de vendas */
+[data-radix-popper-content-wrapper] {
+  z-index: 999999 !important;
+  position: fixed !important;
+  isolation: isolate !important;
+}
+
+/* Garantir que elementos filhos do popover também tenham z-index alto */
+[data-radix-popper-content-wrapper] .rdp,
+[data-radix-popper-content-wrapper] .rdp-month,
+[data-radix-popper-content-wrapper] .rdp-table,
+[data-radix-popper-content-wrapper] .rdp-day {
+  z-index: 999999 !important;
+  position: relative !important;
+}
+
+/* Garantir que o popover apareça acima do pódio com imagem de fundo */
+.podium-container {
+  z-index: 1 !important;
+  position: relative !important;
+}
+
+/* Forçar o popover a aparecer acima do pódio */
+[data-radix-popper-content-wrapper] {
+  z-index: 999999 !important;
+  position: fixed !important;
+  isolation: isolate !important;
+}
+
+/* Garantir que o popover não seja afetado pelo contexto de empilhamento do pódio */
+[data-radix-popper-content-wrapper] {
+  transform: translateZ(0) !important;
+  will-change: transform !important;
+}
+
+/* Garantir que apenas um popover seja visível por vez */
+[data-radix-popper-content-wrapper]:not([data-state="open"]) {
+  display: none !important;
+}
+
+/* Garantir que o popover do calendário tenha posicionamento consistente */
+[data-radix-popper-content-wrapper][data-state="open"] {
+  position: fixed !important;
+  z-index: 999999 !important;
+  transform: translateZ(0) !important;
 }
 
 /* Exceção específica para os calendários que devem ficar centralizados */

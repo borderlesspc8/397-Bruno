@@ -3,20 +3,8 @@ import { formatCurrency } from '@/app/_utils/format';
 import { Target } from 'lucide-react';
 import { cn } from '@/app/_lib/utils';
 import { Vendedor } from '@/app/_services/betelTecnologia';
+import { useMetas } from '@/app/_hooks/useMetas';
 
-// Interface para metas
-interface Meta {
-  id: string;
-  mesReferencia: Date;
-  metaMensal: number;
-  metaSalvio: number;
-  metaCoordenador: number;
-  metasVendedores?: Array<{
-    vendedorId: string;
-    nome: string;
-    meta: number;
-  }>;
-}
 
 // Interface para vendedor com metas
 interface VendedorComMeta extends Vendedor {
@@ -40,80 +28,32 @@ const VENDEDORES_MAPEAMENTO = {
 };
 
 export function MobileRankingVendedores({ vendedores, onVendedorClick }: MobileRankingVendedoresProps) {
-  const [metas, setMetas] = useState<Meta[]>([]);
+  const { metas, loading: isLoadingMetas } = useMetas();
   const [metaAtual, setMetaAtual] = useState<Meta | null>(null);
-  const [isLoadingMetas, setIsLoadingMetas] = useState(false);
 
-  // Carregar metas do servidor - OTIMIZADO COM CACHE
+  // Encontrar a meta atual (mês atual ou mais recente)
   useEffect(() => {
-    // Verificar se já há metas carregadas globalmente
-    if (window.__METAS_CACHE__) {
-      setMetas(window.__METAS_CACHE__);
-      setMetaAtual(window.__META_ATUAL_CACHE__);
-      setIsLoadingMetas(false);
-      return;
-    }
-
-    async function carregarMetas() {
-      setIsLoadingMetas(true);
-      try {
-        const response = await fetch("/api/dashboard/metas", {
-          cache: 'force-cache', // Usar cache para evitar múltiplas chamadas
-          headers: {
-            'Cache-Control': 'max-age=300' // Cache por 5 minutos
-          }
-        });
-        
-        if (!response.ok) {
-          throw new Error(`Erro ao carregar metas: ${response.status}`);
-        }
-        
-        const data = await response.json();
-        
-        // Converter datas e processar metasVendedores
-        const metasFormatadas = data.map((meta: any) => ({
-          ...meta,
-          mesReferencia: new Date(meta.mesReferencia),
-          metasVendedores: Array.isArray(meta.metasVendedores) 
-            ? meta.metasVendedores 
-            : typeof meta.metasVendedores === 'string'
-              ? JSON.parse(meta.metasVendedores)
-              : []
-        }));
-        
-        // Armazenar no cache global
-        window.__METAS_CACHE__ = metasFormatadas;
-        setMetas(metasFormatadas);
-        
-        // Obter a meta mais recente
-        const hoje = new Date();
-        const mesAtual = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
-        
-        let metaDoMesAtual = metasFormatadas.find((meta: Meta) => {
-          const mesRef = new Date(meta.mesReferencia);
-          return mesRef.getMonth() === mesAtual.getMonth() && 
-                 mesRef.getFullYear() === mesAtual.getFullYear();
-        });
-        
-        if (!metaDoMesAtual && metasFormatadas.length > 0) {
-          metaDoMesAtual = metasFormatadas.sort((a: Meta, b: Meta) => 
-            new Date(b.mesReferencia).getTime() - new Date(a.mesReferencia).getTime()
-          )[0];
-        }
-        
-        // Meta atual selecionada
-        const metaAtual = metaDoMesAtual || null;
-        window.__META_ATUAL_CACHE__ = metaAtual;
-        setMetaAtual(metaAtual);
-      } catch (error) {
-        console.error("❌ Mobile - Erro ao carregar metas:", error);
-      } finally {
-        setIsLoadingMetas(false);
-      }
+    if (metas.length === 0) return;
+    
+    const hoje = new Date();
+    const mesAtual = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+    
+    // Tenta encontrar a meta para o mês atual
+    let metaDoMesAtual = metas.find((meta) => {
+      const mesRef = new Date(meta.mesReferencia);
+      return mesRef.getMonth() === mesAtual.getMonth() && 
+             mesRef.getFullYear() === mesAtual.getFullYear();
+    });
+    
+    // Se não encontrar meta para o mês atual, pega a meta mais recente
+    if (!metaDoMesAtual && metas.length > 0) {
+      metaDoMesAtual = metas.sort((a, b) => 
+        new Date(b.mesReferencia).getTime() - new Date(a.mesReferencia).getTime()
+      )[0];
     }
     
-    carregarMetas();
-  }, []);
+    setMetaAtual(metaDoMesAtual || null);
+  }, [metas]);
 
   // Preparar dados dos vendedores com metas
   const vendedoresComMetas = useMemo(() => {

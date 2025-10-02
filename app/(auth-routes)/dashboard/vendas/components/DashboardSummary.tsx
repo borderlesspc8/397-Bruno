@@ -103,28 +103,50 @@ export const DashboardSummary = React.memo(({ totais, metas, vendedores }: Dashb
     infoSecundaria
   } = useMemo(() => {
     const faturamento = parseValueSafe(totais.faturamento);
-    const custo = parseValueSafe(totais.custo);
-    const descontos = parseValueSafe(totais.descontos);
-    const fretes = parseValueSafe(totais.fretes);
+    const custo = parseValueSafe(totais.custo || 0);
+    const descontos = parseValueSafe(totais.descontos || 0);
+    const fretes = parseValueSafe(totais.fretes || 0);
     
+    // Log dos valores para debug
+    console.log('🔍 [DashboardSummary] Valores de entrada:', {
+      faturamento,
+      custo,
+      descontos,
+      fretes,
+      lucroOriginal: totais.lucro,
+      calculoManual: faturamento - custo + fretes,
+      diferenca: totais.lucro ? totais.lucro - (faturamento - custo + fretes) : null,
+      dadosCompletos: totais
+    });
+    
+    // Se o lucro já está definido nos dados, usar ele
+    // Caso contrário, calcular: Faturamento - Custos - Fretes (descontos removidos)
     const lucroCalculado = totais.lucro !== undefined 
       ? parseValueSafe(totais.lucro)
-      : roundToCents(faturamento - custo - descontos + fretes);
+      : roundToCents(faturamento - custo - fretes);
     
+    // Calcular margem de lucro: (Lucro / Faturamento) * 100
     const margemLucroCalculada = faturamento > 0 
       ? roundToCents((lucroCalculado / faturamento) * 100)
       : 0;
     
-    const lucroRemarkTexto = `Margem: ${margemLucroCalculada.toFixed(1)}%`;
+    // Log do cálculo final
+    console.log('💰 [DashboardSummary] Cálculo do lucro:', {
+      formula: `${faturamento} - ${custo} - ${fretes}`,
+      calculoManual: faturamento - custo - fretes,
+      lucroCalculado,
+      margemLucroCalculada: `${margemLucroCalculada.toFixed(2)}%`,
+      usandoLucroOriginal: totais.lucro !== undefined
+    });
+    
     const infoSecundariaTexto = [
-      custo ? `Custo total: ${formatCurrency(custo)}` : null,
-      descontos ? `Descontos: ${formatCurrency(descontos)}` : null
+      custo > 0 ? `Custo total: ${formatCurrency(custo)}` : null,
+      fretes > 0 ? `Fretes: ${formatCurrency(fretes)}` : null
     ].filter(Boolean).join(' • ');
 
     return {
       lucro: lucroCalculado,
       margemLucro: margemLucroCalculada,
-      lucroRemark: lucroRemarkTexto,
       infoSecundaria: infoSecundariaTexto
     };
   }, [totais.faturamento, totais.custo, totais.descontos, totais.fretes, totais.lucro]);

@@ -1,4 +1,5 @@
 import { api } from '@/app/_lib/api';
+import { SupabaseStorageService } from './supabaseStorageService';
 
 interface ImagemVendedorResponse {
   url?: string;
@@ -55,27 +56,72 @@ export class VendedorImagensService {
       if (!forceRefresh && this.cacheImagens.has(vendedorId)) {
         return this.cacheImagens.get(vendedorId) || this.DEFAULT_IMAGE;
       }
-      
-      // Buscar a imagem do vendedor na API
-      const { data } = await api.get<ImagemVendedorResponse>(
-        `/api/dashboard/vendedores/${vendedorId}/imagem`,
-        { params: { t: Date.now() } } // Adicionar timestamp para evitar cache do navegador
-      );
-      
-      if (data.erro || !data.url) {
-        console.warn(`Imagem não encontrada para vendedor ${vendedorId}:`, data.erro);
-        return this.DEFAULT_IMAGE;
+
+      // Primeiro, tentar buscar no Supabase Storage
+      try {
+        const supabaseUrl = await SupabaseStorageService.getImageUrl(vendedorId);
+        if (supabaseUrl) {
+          const urlComTimestamp = supabaseUrl.includes('?') 
+            ? `${supabaseUrl}&t=${Date.now()}` 
+            : `${supabaseUrl}?t=${Date.now()}`;
+          this.cacheImagens.set(vendedorId, urlComTimestamp);
+          return urlComTimestamp;
+        }
+      } catch (supabaseError) {
+        console.warn(`Supabase Storage não disponível para vendedor ${vendedorId}:`, supabaseError);
+      }
+
+      // Fallback: tentar formatos conhecidos localmente
+      const vendedorIdReal = vendedorId.startsWith('gc-') ? vendedorId.replace('gc-', '') : vendedorId;
+      const formatosConhecidos = [
+        `/uploads/vendedores/vendedor_${vendedorIdReal}.png`,
+        `/uploads/vendedores/vendedor_${vendedorIdReal}.jpg`,
+        `/uploads/vendedores/${vendedorIdReal}.jpg`,
+        `/uploads/vendedores/${vendedorIdReal}.png`
+      ];
+
+      // Verificar se algum formato conhecido existe
+      for (const formato of formatosConhecidos) {
+        try {
+          const response = await fetch(formato, { method: 'HEAD' });
+          if (response.ok) {
+            const urlComTimestamp = formato.includes('?') 
+              ? `${formato}&t=${Date.now()}` 
+              : `${formato}?t=${Date.now()}`;
+            this.cacheImagens.set(vendedorId, urlComTimestamp);
+            return urlComTimestamp;
+          }
+        } catch (e) {
+          // Continuar para o próximo formato
+          continue;
+        }
       }
       
-      // Adicionar parâmetro de timestamp à URL para prevenir cache
-      const urlComTimestamp = data.url.includes('?') 
-        ? `${data.url}&t=${Date.now()}` 
-        : `${data.url}?t=${Date.now()}`;
-      
-      // Guardar no cache
-      this.cacheImagens.set(vendedorId, urlComTimestamp);
-      
-      return urlComTimestamp;
+      // Último fallback: tentar a API legada
+      try {
+        const { data } = await api.get<ImagemVendedorResponse>(
+          `/api/dashboard/vendedores/${vendedorId}/imagem`,
+          { params: { t: Date.now() } } // Adicionar timestamp para evitar cache do navegador
+        );
+        
+        if (data.erro || !data.url) {
+          console.warn(`Imagem não encontrada para vendedor ${vendedorId}:`, data.erro);
+          return this.DEFAULT_IMAGE;
+        }
+        
+        // Adicionar parâmetro de timestamp à URL para prevenir cache
+        const urlComTimestamp = data.url.includes('?') 
+          ? `${data.url}&t=${Date.now()}` 
+          : `${data.url}?t=${Date.now()}`;
+        
+        // Guardar no cache
+        this.cacheImagens.set(vendedorId, urlComTimestamp);
+        
+        return urlComTimestamp;
+      } catch (apiError) {
+        console.warn(`API legada não disponível para vendedor ${vendedorId}, usando imagem padrão`);
+        return this.DEFAULT_IMAGE;
+      }
     } catch (error) {
       console.error(`Erro ao buscar imagem do vendedor ${vendedorId}:`, error);
       return this.DEFAULT_IMAGE;
@@ -111,60 +157,82 @@ export class VendedorImagensService {
         console.error('Tipo de arquivo inválido:', imagemFile.type);
         return false;
       }
-      
-      // Criar um FormData para enviar o arquivo
-      const formData = new FormData();
-      formData.append('file', imagemFile);
-      
-      // Adicionar dados de posicionamento se disponíveis
-      if (position) {
-        // Garantir que os valores são números válidos
-        const positionData = {
-          x: typeof position.x === 'number' ? position.x : 0,
-          y: typeof position.y === 'number' ? position.y : 0,
-          scale: typeof position.scale === 'number' ? position.scale : 1,
-          rotation: typeof position.rotation === 'number' ? position.rotation : 0
-        };
+
+      // Primeiro, tentar salvar no Supabase Storage
+      try {
+        const result = await SupabaseStorageService.uploadImage(vendedorId, imagemFile, position);
         
-        console.log('Dados de posicionamento validados:', positionData);
-        formData.append('posicionamento', JSON.stringify(positionData));
-      }
-      
-      // Enviar para a API com timeout mais longo para processamento de imagens
-      const { data } = await api.post<UploadImagemResponse>(
-        `/api/dashboard/vendedores/${vendedorId}/imagem`,
-        formData,
-        {
-          headers: {
-            'Content-Type': 'multipart/form-data'
-          },
-          timeout: 30000 // 30 segundos para permitir o processamento de imagens maiores
+        if (result.success && result.url) {
+          // Atualizar o cache com a nova URL
+          this.cacheImagens.set(vendedorId, result.url);
+          console.log(`Imagem salva com sucesso no Supabase Storage para vendedor ${vendedorId}`);
+          return true;
+        } else {
+          console.warn(`Falha ao salvar no Supabase Storage: ${result.error}`);
         }
-      );
-      
-      // Verificar sucesso - a API retorna success: true ou error
-      if (!data.success && !data.sucesso) {
-        console.error(`Erro ao salvar imagem do vendedor ${vendedorId}:`, data.erro || data.error);
+      } catch (supabaseError) {
+        console.warn(`Erro no Supabase Storage, tentando API legada:`, supabaseError);
+      }
+
+      // Fallback: usar API legada se Supabase falhar
+      try {
+        // Criar um FormData para enviar o arquivo
+        const formData = new FormData();
+        formData.append('file', imagemFile);
+        
+        // Adicionar dados de posicionamento se disponíveis
+        if (position) {
+          // Garantir que os valores são números válidos
+          const positionData = {
+            x: typeof position.x === 'number' ? position.x : 0,
+            y: typeof position.y === 'number' ? position.y : 0,
+            scale: typeof position.scale === 'number' ? position.scale : 1,
+            rotation: typeof position.rotation === 'number' ? position.rotation : 0
+          };
+          
+          console.log('Dados de posicionamento validados:', positionData);
+          formData.append('posicionamento', JSON.stringify(positionData));
+        }
+        
+        // Enviar para a API com timeout mais longo para processamento de imagens
+        const { data } = await api.post<UploadImagemResponse>(
+          `/api/dashboard/vendedores/${vendedorId}/imagem`,
+          formData,
+          {
+            headers: {
+              'Content-Type': 'multipart/form-data'
+            },
+            timeout: 30000 // 30 segundos para permitir o processamento de imagens maiores
+          }
+        );
+        
+        // Verificar sucesso - a API retorna success: true ou error
+        if (!data.success && !data.sucesso) {
+          console.error(`Erro ao salvar imagem do vendedor ${vendedorId}:`, data.erro || data.error);
+          return false;
+        }
+        
+        // Atualizar o cache se houver URL retornada
+        if (data.url || data.filename) {
+          // URL pode estar em 'url' ou 'filename' dependendo da implementação da API
+          const fileUrl = data.url || data.filename || '';
+          
+          // Adicionar parâmetro de timestamp à URL
+          const urlComTimestamp = fileUrl.includes('?') 
+            ? `${fileUrl}&t=${Date.now()}` 
+            : `${fileUrl}?t=${Date.now()}`;
+          
+          this.cacheImagens.set(vendedorId, urlComTimestamp);
+        } else {
+          // Se não retornou URL, limpar o cache para forçar nova busca
+          this.cacheImagens.delete(vendedorId);
+        }
+        
+        return true;
+      } catch (apiError) {
+        console.error(`Erro na API legada para vendedor ${vendedorId}:`, apiError);
         return false;
       }
-      
-      // Atualizar o cache se houver URL retornada
-      if (data.url || data.filename) {
-        // URL pode estar em 'url' ou 'filename' dependendo da implementação da API
-        const fileUrl = data.url || data.filename || '';
-        
-        // Adicionar parâmetro de timestamp à URL
-        const urlComTimestamp = fileUrl.includes('?') 
-          ? `${fileUrl}&t=${Date.now()}` 
-          : `${fileUrl}?t=${Date.now()}`;
-        
-        this.cacheImagens.set(vendedorId, urlComTimestamp);
-      } else {
-        // Se não retornou URL, limpar o cache para forçar nova busca
-        this.cacheImagens.delete(vendedorId);
-      }
-      
-      return true;
     } catch (error) {
       console.error(`Erro ao salvar imagem do vendedor ${vendedorId}:`, error);
       return false;

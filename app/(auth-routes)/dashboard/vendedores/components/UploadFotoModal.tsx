@@ -13,6 +13,7 @@ import { Input } from "@/app/_components/ui/input";
 import { Label } from "@/app/_components/ui/label";
 import { Vendedor } from "@/app/_services/betelTecnologia";
 import { VendedorImagensService } from "@/app/_services/vendedorImagens";
+import { SupabaseStorageService } from "@/app/_services/supabaseStorageService";
 import DefaultAvatar from "@/app/components/DefaultAvatar";
 import { Upload, X, Image as ImageIcon, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
@@ -154,51 +155,85 @@ export function UploadFotoModal({
       setCarregando(true);
       setErro(null);
 
-      // Criar FormData
-      const formData = new FormData();
-      
-      // Adicionar arquivo com chave 'file' para corresponder ao backend
-      formData.append('file', arquivo);
-
-      // Preparar dados de posicionamento - apenas para compatibilidade
-      const posicionamento = {
-        imageFile: {
-          name: arquivo.name,
-          type: arquivo.type,
-          size: arquivo.size
-        }
-      };
-      
-      console.log("Enviando dados de arquivo:", posicionamento);
-      formData.append('posicionamento', JSON.stringify(posicionamento));
-
-      // Adicionar log antes de enviar
       console.log(`Enviando imagem para vendedor ID: ${vendedor.id}`);
 
-      // Chamada à API
-      const response = await fetch(`/api/dashboard/vendedores/${vendedor.id}/imagem`, {
-        method: 'POST',
-        body: formData
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || data.erro || 'Erro ao enviar imagem');
+      // Primeiro, tentar salvar no Supabase Storage
+      try {
+        const result = await SupabaseStorageService.uploadImage(vendedor.id, arquivo);
+        
+        if (result.success && result.url) {
+          // Forçar a limpeza do cache da imagem para garantir que a nova versão seja exibida
+          VendedorImagensService.limparCache(vendedor.id);
+          
+          console.log('Imagem salva com sucesso no Supabase Storage');
+          
+          // Inserir um pequeno atraso para garantir que a imagem está disponível
+          setTimeout(() => {
+            // Verificar se a imagem está realmente disponível
+            buscarImagemAtual(); 
+            
+            toast.success('Foto atualizada com sucesso no Supabase!');
+            onFotoAtualizada();
+            handleClose();
+          }, 500);
+          
+          return; // Sucesso, sair da função
+        } else {
+          console.warn(`Falha ao salvar no Supabase Storage: ${result.error}`);
+        }
+      } catch (supabaseError) {
+        console.warn(`Erro no Supabase Storage, tentando API legada:`, supabaseError);
       }
 
-      // Forçar a limpeza do cache da imagem para garantir que a nova versão seja exibida
-      VendedorImagensService.limparCache(vendedor.id);
-      
-      // Inserir um pequeno atraso para garantir que o servidor processou a imagem
-      setTimeout(() => {
-        // Verificar se a imagem está realmente disponível
-        buscarImagemAtual(); 
+      // Fallback: usar API legada se Supabase falhar
+      try {
+        // Criar FormData
+        const formData = new FormData();
         
-        toast.success('Foto atualizada com sucesso!');
-        onFotoAtualizada();
-        handleClose();
-      }, 500);
+        // Adicionar arquivo com chave 'file' para corresponder ao backend
+        formData.append('file', arquivo);
+
+        // Preparar dados de posicionamento - apenas para compatibilidade
+        const posicionamento = {
+          imageFile: {
+            name: arquivo.name,
+            type: arquivo.type,
+            size: arquivo.size
+          }
+        };
+        
+        console.log("Enviando dados de arquivo via API legada:", posicionamento);
+        formData.append('posicionamento', JSON.stringify(posicionamento));
+
+        // Chamada à API
+        const response = await fetch(`/api/dashboard/vendedores/${vendedor.id}/imagem`, {
+          method: 'POST',
+          body: formData
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || data.erro || 'Erro ao enviar imagem');
+        }
+
+        // Forçar a limpeza do cache da imagem para garantir que a nova versão seja exibida
+        VendedorImagensService.limparCache(vendedor.id);
+        
+        // Inserir um pequeno atraso para garantir que o servidor processou a imagem
+        setTimeout(() => {
+          // Verificar se a imagem está realmente disponível
+          buscarImagemAtual(); 
+          
+          toast.success('Foto atualizada com sucesso!');
+          onFotoAtualizada();
+          handleClose();
+        }, 500);
+        
+      } catch (apiError) {
+        console.error('Erro na API legada:', apiError);
+        throw apiError; // Re-throw para ser capturado pelo catch externo
+      }
       
     } catch (error) {
       console.error('Erro ao enviar imagem:', error);

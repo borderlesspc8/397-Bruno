@@ -65,6 +65,7 @@ export function PositionedPopover({
           ...floatingStyles,
           position: "fixed",
           width: "var(--radix-popover-content-width)",
+          zIndex: 999999,
         }}
         className={cn(
           "p-0 shadow-lg border border-border/40 rounded-lg",

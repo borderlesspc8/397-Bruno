@@ -1,10 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from "@/app/_lib/prisma";
 import { parse, format, startOfMonth, subMonths } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { BetelTecnologiaService } from '@/app/_services/betelTecnologia';
 import { getCachedData, CachePrefix } from '@/app/_services/cache';
-import { validateSessionForAPI } from "@/app/_utils/auth";
 
 // Configuração para forçar o comportamento dinâmico
 export const dynamic = "force-dynamic";
@@ -37,6 +35,52 @@ export async function GET(request: NextRequest) {
     // Parâmetros de filtro da data
     const dataInicioParam = searchParams.get('dataInicio');
     const dataFimParam = searchParams.get('dataFim');
+    const todosVendedores = searchParams.get('todos') === 'true';
+
+    // Se for para buscar todos os vendedores, usar período amplo
+    if (todosVendedores) {
+      const dataInicio = new Date();
+      dataInicio.setMonth(dataInicio.getMonth() - 12); // 12 meses atrás
+      const dataFim = new Date();
+      
+      const dataInicioFormatada = format(dataInicio, 'yyyy-MM-dd');
+      const dataFimFormatada = format(dataFim, 'yyyy-MM-dd');
+      
+      const cacheKey = `${CachePrefix.VENDEDORES}todos:${dataInicioFormatada}:${dataFimFormatada}`;
+      
+      try {
+        const resultado = await getCachedData(
+          cacheKey,
+          async () => {
+            console.log("🔍 Buscando TODOS os vendedores no período:", {
+              dataInicio: dataInicio.toISOString(),
+              dataFim: dataFim.toISOString()
+            });
+            
+            const vendedoresResult = await BetelTecnologiaService.buscarVendedores({
+              dataInicio,
+              dataFim
+            });
+            
+            console.log("📊 Resultado da busca de TODOS os vendedores:", {
+              vendedores: vendedoresResult.vendedores?.length || 0,
+              erro: vendedoresResult.erro
+            });
+            
+            return vendedoresResult;
+          },
+          30 * 60 // 30 minutos de cache
+        );
+
+        return NextResponse.json(resultado);
+      } catch (error) {
+        console.error('Erro ao buscar todos os vendedores:', error);
+        return NextResponse.json({ 
+          erro: 'Erro ao buscar dados dos vendedores',
+          vendedores: []
+        }, { status: 500 });
+      }
+    }
 
     if (!dataInicioParam || !dataFimParam) {
       return NextResponse.json({ 

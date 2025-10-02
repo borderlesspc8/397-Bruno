@@ -8,7 +8,7 @@ import { ptBR } from "date-fns/locale";
 import { cn } from "@/app/_lib/utils";
 import { Button } from "./button";
 import { Calendar } from "./calendar";
-import { useFloating, offset, flip, shift, autoUpdate, Placement } from "@floating-ui/react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "./dialog";
 import { Card } from "./card";
 
 interface DateRangePickerProps {
@@ -32,38 +32,6 @@ export function DateRangePicker({
   React.useEffect(() => {
     setTempRange(dateRange);
   }, [dateRange]);
-
-  // Convertendo o alinhamento em posição válida para o Floating UI
-  const placement: Placement = align === "center" 
-    ? "bottom" 
-    : align === "end" 
-      ? "bottom-end" 
-      : "bottom-start";
-
-  const { refs, x, y, strategy } = useFloating({
-    placement,
-    open,
-    onOpenChange: setOpen,
-    middleware: [
-      offset(4),
-      flip({
-        fallbackPlacements: [align === "center" 
-          ? "top" 
-          : align === "end" 
-            ? "top-end" 
-            : "top-start"]
-      }),
-      shift()
-    ],
-    whileElementsMounted: autoUpdate
-  });
-
-  // Criando o objeto de estilo manualmente
-  const floatingStyles = {
-    position: strategy,
-    top: y ?? 0,
-    left: x ?? 0,
-  };
 
   const formattedDateFrom = dateRange?.from ? format(dateRange.from, "dd/MM/yyyy") : "";
   const formattedDateTo = dateRange?.to ? format(dateRange.to, "dd/MM/yyyy") : "";
@@ -95,63 +63,59 @@ export function DateRangePicker({
   };
 
   return (
-    <div className={cn("relative", className)}>
-      <Button
-        ref={refs.setReference}
-        id="date-range-picker"
-        variant="outline"
-        size="sm"
-        className={cn(
-          "justify-start text-left font-normal",
-          !dateRange && "text-muted-foreground",
-          className
-        )}
-        onClick={() => setOpen(!open)}
-      >
-        <CalendarIcon className="mr-2 h-4 w-4 text-[#faba33]" />
-        {displayValue}
-      </Button>
-
-      {open && (
-        <Card
-          style={{
-            ...floatingStyles,
-            zIndex: 9999,
-            position: strategy,
-          }}
-          className="p-4 bg-card shadow-xl border border-[#faba33]/20 rounded-lg"
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button
+          id="date-range-picker"
+          variant="outline"
+          size="sm"
+          className={cn(
+            "justify-start text-left font-normal",
+            !dateRange && "text-muted-foreground",
+            className
+          )}
         >
-          <div ref={refs.setFloating}>
-            <Calendar
-              initialFocus
-              mode="range"
-              defaultMonth={tempRange?.from || dateRange?.from || new Date()}
-              selected={tempRange}
-              onSelect={handleRangeChange}
-              numberOfMonths={1}
-              locale={ptBR}
-            />
-            <div className="flex gap-2 mt-3 justify-end">
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={handleClear}
-              >
-                Limpar
-              </Button>
-              <Button 
-                variant="default" 
-                size="sm"
-                style={{ backgroundColor: "#faba33" }}
-                onClick={handleApply}
-              >
-                Aplicar
-              </Button>
-            </div>
+          <CalendarIcon className="mr-2 h-4 w-4 text-[#faba33]" />
+          {displayValue}
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <CalendarIcon className="h-5 w-5 text-[#faba33]" />
+            Selecionar Período
+          </DialogTitle>
+        </DialogHeader>
+        <div className="py-4">
+          <Calendar
+            initialFocus
+            mode="range"
+            defaultMonth={tempRange?.from || dateRange?.from || new Date()}
+            selected={tempRange}
+            onSelect={handleRangeChange}
+            numberOfMonths={1}
+            locale={ptBR}
+          />
+          <div className="flex gap-2 mt-4 justify-end">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={handleClear}
+            >
+              Limpar
+            </Button>
+            <Button 
+              variant="default" 
+              size="sm"
+              style={{ backgroundColor: "#faba33" }}
+              onClick={handleApply}
+            >
+              Aplicar
+            </Button>
           </div>
-        </Card>
-      )}
-    </div>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 

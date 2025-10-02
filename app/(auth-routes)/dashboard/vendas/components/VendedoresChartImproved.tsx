@@ -3,6 +3,7 @@ import { formatCurrency } from '@/app/_utils/format';
 import { BadgeCheck, TrendingUp, Target } from 'lucide-react';
 import { cn } from '@/app/_lib/utils';
 import { Vendedor as VendedorBetel } from '@/app/_services/betelTecnologia';
+import { useMetas } from '@/app/_hooks/useMetas';
 
 // Usamos a interface Vendedor importada diretamente do serviço BetelTecnologia
 interface VendedoresChartImprovedProps {
@@ -10,19 +11,6 @@ interface VendedoresChartImprovedProps {
   onVendedorClick?: (vendedor: VendedorBetel, index?: number) => void;
 }
 
-// Interface para metas
-interface Meta {
-  id: string;
-  mesReferencia: Date;
-  metaMensal: number;
-  metaSalvio: number;
-  metaCoordenador: number;
-  metasVendedores?: Array<{
-    vendedorId: string;
-    nome: string;
-    meta: number;
-  }>;
-}
 
 // Objeto de mapeamento entre nomes de vendedores e IDs usados no sistema de metas
 const VENDEDORES_MAPEAMENTO = {
@@ -32,6 +20,21 @@ const VENDEDORES_MAPEAMENTO = {
   "FERNANDO LOYO": "fernando-loyo-unidade-matriz",
   "ALYNE LIMA": "alyne-lima-unidade-matriz",
   "ADMINISTRATIVO": "administrativo"
+};
+
+// Mapeamento reverso para IDs das metas para nomes
+const METAS_VENDEDORES_MAPEAMENTO = {
+  "marcus-vinicius-macedo-(unidade-matriz)": "MARCUS VINICIUS MACEDO",
+  "diuly-moraes-(unidade-matriz)": "DIULY MORAES",
+  "bruna-ramos-(unidade-matriz)": "BRUNA RAMOS",
+  "fernando-loyo-(unidade-matriz)": "FERNANDO LOYO",
+  "alyne-lima-(unidade-matriz)": "ALYNE LIMA",
+  "marcus-vinicius-macedo-unidade-matriz": "MARCUS VINICIUS MACEDO",
+  "diuly-moraes-filial-golden": "DIULY MORAES",
+  "bruna-ramos-filial-golden": "BRUNA RAMOS",
+  "fernando-loyo-unidade-matriz": "FERNANDO LOYO",
+  "alyne-lima-unidade-matriz": "ALYNE LIMA",
+  "administrativo": "ADMINISTRATIVO"
 };
 
 // Cores no estilo Material Design
@@ -50,94 +53,128 @@ const COLORS = [
 
 export function VendedoresChartImproved({ vendedores, onVendedorClick }: VendedoresChartImprovedProps) {
   const [isClient, setIsClient] = useState(false);
-  const [metas, setMetas] = useState<Meta[]>([]);
+  const { metas, loading: isLoadingMetas } = useMetas();
   const [metaAtual, setMetaAtual] = useState<Meta | null>(null);
-  const [isLoadingMetas, setIsLoadingMetas] = useState(false);
 
   // Garantir que o componente só renderize completamente no cliente
   useEffect(() => {
     setIsClient(true);
   }, []);
 
-  // Buscar metas do servidor - OTIMIZADO COM CACHE
+  // Encontrar a meta atual (mês atual ou mais recente)
   useEffect(() => {
-    // Verificar se já há metas carregadas globalmente
-    if (window.__METAS_CACHE__) {
-      setMetas(window.__METAS_CACHE__);
-      setMetaAtual(window.__META_ATUAL_CACHE__);
-      setIsLoadingMetas(false);
-      return;
-    }
-
-    const carregarMetas = async () => {
-      setIsLoadingMetas(true);
-      try {
-        const response = await fetch("/api/dashboard/metas", {
-          cache: 'force-cache', // Usar cache para evitar múltiplas chamadas
-          headers: {
-            'Cache-Control': 'max-age=300' // Cache por 5 minutos
-          }
-        });
-        
-        if (!response.ok) {
-          throw new Error(`Erro ao carregar metas: ${response.status}`);
-        }
-        
-        const data = await response.json();
-        
-        // Converter datas para objetos Date
-        const metasFormatadas = data.map((meta: any) => ({
-          ...meta,
-          mesReferencia: new Date(meta.mesReferencia),
-          metasVendedores: Array.isArray(meta.metasVendedores) 
-            ? meta.metasVendedores 
-            : typeof meta.metasVendedores === 'string'
-              ? JSON.parse(meta.metasVendedores)
-              : []
-        }));
-        
-        // Armazenar no cache global
-        window.__METAS_CACHE__ = metasFormatadas;
-        
-        setMetas(metasFormatadas);
-        
-        // Obter a meta mais recente (considerando o mês atual)
-        const hoje = new Date();
-        const mesAtual = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
-        
-        // Tenta encontrar a meta para o mês atual
-        let metaDoMesAtual = metasFormatadas.find((meta: Meta) => {
-          const mesRef = new Date(meta.mesReferencia);
-          return mesRef.getMonth() === mesAtual.getMonth() && 
-                 mesRef.getFullYear() === mesAtual.getFullYear();
-        });
-        
-        // Se não encontrar meta para o mês atual, pega a meta mais recente
-        if (!metaDoMesAtual && metasFormatadas.length > 0) {
-          metaDoMesAtual = metasFormatadas.sort((a: Meta, b: Meta) => 
-            new Date(b.mesReferencia).getTime() - new Date(a.mesReferencia).getTime()
-          )[0];
-        }
-        
-        // Meta atual selecionada
-        const metaAtual = metaDoMesAtual || null;
-        window.__META_ATUAL_CACHE__ = metaAtual;
-        setMetaAtual(metaAtual);
-      } catch (error) {
-        console.error("❌ Erro ao carregar metas:", error);
-      } finally {
-        setIsLoadingMetas(false);
-      }
-    };
+    if (metas.length === 0) return;
     
-    carregarMetas();
-  }, []);
+    console.log('🔍 Metas disponíveis:', metas.map(m => ({
+      id: m.id,
+      mes: m.mesReferencia,
+      vendedores: m.metasVendedores?.length || 0
+    })));
+    
+    const hoje = new Date();
+    const mesAtual = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+    
+    console.log('📅 Mês atual:', mesAtual);
+    
+    // Tenta encontrar a meta para o mês atual
+    let metaDoMesAtual = metas.find((meta) => {
+      const mesRef = new Date(meta.mesReferencia);
+      const match = mesRef.getMonth() === mesAtual.getMonth() && 
+             mesRef.getFullYear() === mesAtual.getFullYear();
+      console.log(`🔍 Verificando meta ${meta.id}:`, {
+        mesRef,
+        mesAtual,
+        match
+      });
+      return match;
+    });
+    
+    // Se não encontrar meta para o mês atual, pega a meta mais recente
+    if (!metaDoMesAtual && metas.length > 0) {
+      console.log('⚠️ Meta do mês atual não encontrada, usando meta mais recente');
+      metaDoMesAtual = metas.sort((a, b) => 
+        new Date(b.mesReferencia).getTime() - new Date(a.mesReferencia).getTime()
+      )[0];
+    }
+    
+    console.log('✅ Meta selecionada:', metaDoMesAtual ? {
+      id: metaDoMesAtual.id,
+      mes: metaDoMesAtual.mesReferencia,
+      vendedores: metaDoMesAtual.metasVendedores?.length || 0,
+      metasVendedores: metaDoMesAtual.metasVendedores
+    } : 'Nenhuma');
+    
+    setMetaAtual(metaDoMesAtual || null);
+  }, [metas]);
 
-  // Usar todos os vendedores sem filtro
+  // Usar todos os vendedores sem filtro e incluir vendedores com metas mesmo sem vendas
   const vendedoresFiltrados = useMemo(() => {
     if (!vendedores || vendedores.length === 0) return [];
+    
+    // Se temos metas, verificar se há vendedores com metas que não apareceram nas vendas
+    if (metaAtual?.metasVendedores) {
+      // Adicionar vendedores que têm metas mas não apareceram nas vendas
+      const vendedoresAdicionais: VendedorBetel[] = [];
+      
+      // Mapear vendedores existentes para facilitar verificação
+      const vendedoresExistentes = new Map(
+        vendedores.map(v => [v.nome.toUpperCase(), v])
+      );
+      
+      // Verificar cada vendedor com meta
+      console.log('🔍 Verificando vendedores com metas:', metaAtual.metasVendedores);
+      
+      metaAtual.metasVendedores.forEach(metaVendedor => {
+        const nomeNormalizado = metaVendedor.vendedorId.toLowerCase().replace(/[()-]/g, '');
+        console.log(`🔍 Processando vendedor: ${metaVendedor.vendedorId} -> ${nomeNormalizado}`);
+        
+        // Mapear IDs de vendedores para nomes e lojas
+        const vendedorInfo = METAS_VENDEDORES_MAPEAMENTO[metaVendedor.vendedorId] || 
+          Object.entries(VENDEDORES_MAPEAMENTO).find(([nome, id]) => 
+            id.toLowerCase().replace(/[()-]/g, '') === nomeNormalizado
+          )?.[0];
+        
+        console.log(`🔍 Vendedor info encontrada:`, vendedorInfo);
+        
+        if (vendedorInfo) {
+          const nomeVendedor = vendedorInfo;
+          const jaExiste = Array.from(vendedoresExistentes.keys()).some(nome => 
+            nome.includes(nomeVendedor.split(' ')[0]) && 
+            nome.includes(nomeVendedor.split(' ')[1])
+          );
+          
+          console.log(`🔍 Vendedor ${nomeVendedor} já existe nas vendas:`, jaExiste);
+          
+          if (!jaExiste) {
+            // Determinar loja baseada no ID
+            let lojaNome = 'Unidade Matriz';
+            if (nomeNormalizado.includes('golden')) {
+              lojaNome = 'Filial Golden';
+            }
+            
+            console.log(`➕ Adicionando vendedor ${nomeVendedor} (${lojaNome})`);
+            
+            vendedoresAdicionais.push({
+              id: metaVendedor.vendedorId,
+              nome: `${nomeVendedor} (${lojaNome})`,
+              vendas: 0,
+              faturamento: 0,
+              ticketMedio: 0,
+              lojaId: nomeNormalizado.includes('golden') ? 'golden' : 'matriz',
+              lojaNome: lojaNome
+            });
+          }
+        } else {
+          console.log(`⚠️ Vendedor ${metaVendedor.vendedorId} não encontrado no mapeamento`);
+        }
+      });
+      
+      // Adicionar vendedores adicionais à lista
+      return [...vendedores, ...vendedoresAdicionais];
+    }
+    
     return vendedores;
-  }, [vendedores]);
+  }, [vendedores, metaAtual?.metasVendedores]);
 
   // Preparar dados para o componente, incluindo metas
   const dadosFormatados = useMemo(() => {
@@ -163,14 +200,18 @@ export function VendedoresChartImproved({ vendedores, onVendedorClick }: Vendedo
         const nomeNormalizado = vendedor.nome.toUpperCase();
         let vendedorId = "";
         
+        console.log(`🔍 Buscando meta para vendedor: ${vendedor.nome} (${nomeNormalizado})`);
+        
         // Caso especial para o Fernando (usa a meta de Coordenador)
         if (nomeNormalizado.includes("FERNANDO")) {
           metaVendedor = metaAtual.metaCoordenador;
+          console.log(`✅ Fernando - Meta coordenador: ${metaVendedor}`);
         } else {
           // Buscar o ID exato do vendedor
           for (const [nome, id] of Object.entries(VENDEDORES_MAPEAMENTO)) {
             if (nomeNormalizado.includes(nome)) {
               vendedorId = id;
+              console.log(`✅ Encontrado ID para ${vendedor.nome}: ${vendedorId}`);
               break; // Sai do loop assim que encontrar o primeiro match
             }
           }
@@ -180,11 +221,27 @@ export function VendedoresChartImproved({ vendedores, onVendedorClick }: Vendedo
             const vendedorMeta = metaAtual.metasVendedores.find(mv => {
               const idNormalizado = mv.vendedorId.toLowerCase().replace(/[()-]/g, '');
               const vendedorIdNormalizado = vendedorId.toLowerCase().replace(/[()-]/g, '');
-              return idNormalizado === vendedorIdNormalizado;
+              const match = idNormalizado === vendedorIdNormalizado;
+              console.log(`🔍 Comparando: ${idNormalizado} === ${vendedorIdNormalizado} = ${match}`);
+              return match;
             });
 
             if (vendedorMeta) {
               metaVendedor = vendedorMeta.meta;
+              console.log(`✅ Meta encontrada para ${vendedor.nome}: ${metaVendedor}`);
+            } else {
+              // Tentar buscar por nome direto no mapeamento de metas
+              const metaPorNome = metaAtual.metasVendedores.find(mv => {
+                const nomeMeta = METAS_VENDEDORES_MAPEAMENTO[mv.vendedorId];
+                return nomeMeta && nomeNormalizado.includes(nomeMeta);
+              });
+              
+              if (metaPorNome) {
+                metaVendedor = metaPorNome.meta;
+                console.log(`✅ Meta encontrada por nome para ${vendedor.nome}: ${metaVendedor}`);
+              } else {
+                console.log(`⚠️ Meta não encontrada para ${vendedor.nome} (ID: ${vendedorId})`);
+              }
             }
           } else {
             console.log(`⚠️ Não foi possível determinar o ID para ${vendedor.nome}`);
@@ -195,6 +252,8 @@ export function VendedoresChartImproved({ vendedores, onVendedorClick }: Vendedo
         if (metaVendedor > 0) {
           percentualMeta = (vendedor.faturamento / metaVendedor) * 100;
         }
+      } else {
+        console.log(`⚠️ Nenhuma meta disponível para ${vendedor.nome}`);
       }
       
       return {
