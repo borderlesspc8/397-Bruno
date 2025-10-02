@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/_lib/auth-options";
+import { validateSessionForAPI } from "@/app/_utils/auth";
 import { prisma } from "@/app/_lib/prisma";
 
 /**
@@ -22,7 +21,7 @@ async function isAdmin(userId: string): Promise<boolean> {
 export async function POST(request: NextRequest) {
   try {
     // Verificar autenticação
-    const session = await getServerSession(authOptions);
+    const session = await validateSessionForAPI();
     if (!session?.user) {
       return NextResponse.json(
         { error: "Não autorizado" },

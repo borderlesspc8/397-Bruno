@@ -43,14 +43,10 @@ import { CashFlowPredictionSource, InstallmentStatus, SaleData, SaleInstallment 
 import { ArrowDownToLine, BarChart4, CalendarIcon, CheckCircle, ChevronRight, ClockIcon, Download, Search } from "lucide-react";
 
 interface SalesPreviewModalProps {
-  wallets: { id: string; name: string }[];
-  defaultWalletId?: string;
   onSuccess?: () => void;
 }
 
 export function SalesPreviewModal({
-  wallets,
-  defaultWalletId,
   onSuccess
 }: SalesPreviewModalProps) {
   // Estados
@@ -298,11 +294,7 @@ export function SalesPreviewModal({
                   <SelectValue placeholder="Selecione uma carteira" />
                 </SelectTrigger>
                 <SelectContent>
-                  {wallets.map((wallet) => (
-                    <SelectItem key={wallet.id} value={wallet.id}>
-                      {wallet.name}
-                    </SelectItem>
-                  ))}
+                  <SelectItem value="default">Carteira Padrão</SelectItem>
                 </SelectContent>
               </Select>
             </div>

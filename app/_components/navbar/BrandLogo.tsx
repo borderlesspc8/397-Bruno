@@ -24,7 +24,7 @@ export const BrandLogo = ({ className = "" }: BrandLogoProps) => {
         <Menu className="h-5 w-5" />
         <span className="sr-only">Abrir menu</span>
       </Button>
-      <Link href="/painel" className="flex items-center gap-2">
+      <Link href="/dashboard/vendas" className="flex items-center gap-2">
         <Image 
           src="/logo-small.svg" 
           alt="Conta Rápida"

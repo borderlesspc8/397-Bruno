@@ -718,6 +718,7 @@ enum AuthProvider {
   EMAIL
   GOOGLE
   APPLE
+  SUPABASE
 }
 
 enum GoalCategory {

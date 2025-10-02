@@ -8,7 +8,7 @@ import { getAuthSession } from "@/app/_lib/auth";
 import { GestaoClickService } from "@/app/_services/gestao-click-service";
 import { prisma } from "@/app/_lib/prisma";
 import { revalidatePath } from "next/cache";
-import { getServerSession } from "next-auth";
+import { validateSessionForAPI } from "@/app/_utils/auth";
 
 // Configuração para forçar o comportamento dinâmico
 export const dynamic = "force-dynamic";

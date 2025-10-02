@@ -1,8 +1,6 @@
 import { Metadata } from "next";
-import { getServerSession } from "next-auth";
+import { getCurrentUser } from "@/lib/auth";
 import { notFound, redirect } from "next/navigation";
-
-import { authOptions } from "@/app/_lib/auth-options";
 import { prisma } from "@/app/_lib/prisma";
 import { PageHeader } from "@/app/_components/page-header";
 import { ContributeForm } from "../_components/ContributeForm";
@@ -35,15 +33,15 @@ interface ContributePageProps {
 export default async function ContributePage({ params }: ContributePageProps) {
   const session = await getServerSession(authOptions);
 
-  if (!session) {
-    redirect("/auth");
+  if (!user) {
+      redirect("/auth");
   }
 
   // @ts-ignore - O modelo financialGoal está definido no schema mas o TypeScript não o reconhece
   const goal = await prisma.financialGoal.findUnique({
     where: {
       id: params.id,
-      userId: session.user.id,
+      userId: user.id,
     },
   }) as FinancialGoal | null;
 

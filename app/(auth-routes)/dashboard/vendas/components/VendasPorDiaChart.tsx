@@ -80,11 +80,11 @@ export function VendasPorDiaChart({ dataInicio, dataFim }: VendasPorDiaChartProp
     setIsMounted(true);
   }, []);
 
-  // Buscar dados das vendas por dia (exatamente como no componente VendasPorDia)
+  // Buscar dados das vendas por dia - REATIVADO COM PROTEÇÃO CONTRA LOOPS
   useEffect(() => {
+    if (!isMounted) return;
+    
     const buscarVendasPorDia = async () => {
-      if (!isMounted) return;
-      
       setLoading(true);
       setErro(null);
 

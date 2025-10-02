@@ -7,15 +7,11 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from "@/app/_components/ui/button";
 import { BarChart, Users, LineChart, MousePointerClick, ArrowRight } from "lucide-react";
 import { DashboardHeader } from "./_components/DashboardHeader";
-import SubscriptionStatus from "@/app/components/subscription-status";
-import { useSession } from "next-auth/react";
-import { SubscriptionPlan } from "@/app/types";
+import { useAuth } from "@/app/_hooks/useAuth";
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { data: session } = useSession();
-  const userPlan = session?.user?.subscriptionPlan as SubscriptionPlan || SubscriptionPlan.FREE;
-  const isFreeUser = userPlan === SubscriptionPlan.FREE;
+  const { user } = useAuth();
 
   // Redirecionar automaticamente para dashboard/vendas
   useEffect(() => {
@@ -30,8 +26,6 @@ export default function DashboardPage() {
         description="Bem-vindo ao seu painel de controle. Visualize indicadores importantes para o seu negócio."
       />
       
-      {/* Mostrar banner de status da assinatura para usuários free */}
-      <SubscriptionStatus />
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         <Card className="border-2 border-primary/20 hover:border-primary/50 transition-colors">

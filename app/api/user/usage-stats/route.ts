@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
+import { validateSessionForAPI } from "@/app/_utils/auth";
 import { prisma } from "@/app/_lib/prisma";
 import { dynamic, fetchCache, revalidate } from '../../_utils/dynamic-config';
 

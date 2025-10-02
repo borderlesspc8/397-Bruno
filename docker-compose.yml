@@ -75,6 +75,8 @@ services:
         condition: service_healthy
     networks:
       - contarapida-network
+    # Comando para corrigir permissões e executar script de inicialização
+    command: ["/bin/sh", "-c", "echo '=== Iniciando ContaRapida ==='; echo 'Corrigindo permissões do diretório uploads...'; chown -R nextjs:nodejs /app/public/uploads && chmod -R 755 /app/public/uploads && echo 'Permissões corrigidas com sucesso!'; echo 'Aguardando serviços de suporte...'; sleep 20; echo 'Verificando PostgreSQL...'; if nc -z -v postgres 5432; then echo 'PostgreSQL disponível, executando migrações...'; npx prisma db push --accept-data-loss && echo 'Migrações concluídas com sucesso!'; else echo 'ALERTA: PostgreSQL não responde, pulando migrações!'; fi; echo 'Iniciando aplicação com servidor customizado...'; NODE_ENV=production HOSTNAME=0.0.0.0 PORT=3000 node server.mjs"]
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/health"]
       interval: 30s

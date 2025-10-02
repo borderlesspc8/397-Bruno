@@ -6,9 +6,7 @@
 
 import { NextResponse } from "next/server";
 import { BBIntegrationService } from "@/app/_lib/bb-integration";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/app/_lib/auth-options";
-import { prisma } from "@/app/_lib/prisma";
+import { createClient } from "@/app/_lib/supabase-server";
 import { readFileSync } from "fs";
 import { join } from "path";
 

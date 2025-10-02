@@ -1,7 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/app/_lib/auth-options';
+import { validateSessionForAPI } from "@/app/_utils/auth";
 
 // Configuração para forçar o comportamento dinâmico
 export const dynamic = "force-dynamic";

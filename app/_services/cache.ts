@@ -34,13 +34,13 @@ const cacheOptions = {
 };
 
 // Cache para armazenar dados
-const dataCache = new LRUCache<string, any>(cacheOptions);
+export const dataCache = new LRUCache<string, any>(cacheOptions);
 
 // Cache para armazenar promessas em andamento (deduplicação de requisições)
-const promiseCache: PromiseCache = new Map();
+export const promiseCache: PromiseCache = new Map();
 
 // Cache de métricas para otimização
-const metricsCache = new Map<string, CacheMetrics>();
+export const metricsCache = new Map<string, CacheMetrics>();
 
 // Prefixos de cache para diferentes tipos de dados
 export const CachePrefix = {

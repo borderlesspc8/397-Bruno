@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { DateRange } from "react-day-picker";
 import { 
   format, 
@@ -15,8 +15,8 @@ import {
 import { ptBR } from "date-fns/locale";
 import { DateRangePicker } from "@/app/_components/ui/date-range-picker";
 import { PositionedPopover } from "@/app/_components/ui/positioned-popover";
+import { Label } from "@/app/_components/ui/label";
 import { Calendar, ChevronDown } from "lucide-react";
-import { Button } from "@/app/_components/ui/button";
 
 interface DateRangeSelectorProps {
   onDateRangeChange: (range: { from: Date; to: Date }) => void;
@@ -27,53 +27,53 @@ export function DateRangeSelector({ onDateRangeChange }: DateRangeSelectorProps)
   const currentMonth = today.getMonth();
   const currentYear = today.getFullYear();
   
-  // Período padrão: do primeiro dia do mês atual até o último dia do mês atual
+  // Período padrão: do primeiro dia do mês atual até o dia atual (evita problemas de cache)
   const defaultRange: DateRange = {
-    from: new Date(currentYear, currentMonth, 1), // Garantindo que é o mês atual
-    to: endOfMonth(new Date(currentYear, currentMonth, 1)) // Final do mês atual
+    from: new Date(currentYear, currentMonth, 1), // Primeiro dia do mês atual
+    to: today // Dia atual (não o último dia do mês)
   };
   
   const [dateRange, setDateRange] = useState<DateRange | undefined>(defaultRange);
   const [presetOpen, setPresetOpen] = useState(false);
   
-  // Aplicar novo período e enviar para o componente pai
-  const applyDateRange = (range: DateRange | undefined) => {
+  // Aplicar novo período e enviar para o componente pai - CORRIGIDO PARA EVITAR LOOPS
+  const applyDateRange = useCallback((range: DateRange | undefined) => {
     if (!range?.from) {
       setDateRange(range);
       return;
     }
     
-    // Armazenar o range selecionado pelo usuário sem forçar o mês atual
+    // Verificar se o range realmente mudou para evitar re-renderizações
+    const newFrom = range.from;
+    const newTo = range.to || range.from;
+    
+    if (dateRange?.from?.getTime() === newFrom.getTime() && 
+        dateRange?.to?.getTime() === newTo.getTime()) {
+      return;
+    }
+    
+    // Armazenar o range selecionado pelo usuário
     setDateRange(range);
     
     // Enviar para o componente pai o range selecionado
     onDateRangeChange({ 
-      from: range.from, 
-      to: range.to || range.from 
+      from: newFrom, 
+      to: newTo
     });
-  };
+  }, [dateRange, onDateRangeChange]);
   
-  // Quando o componente for montado, enviar o período inicial para o componente pai
-  useEffect(() => {
-    if (dateRange?.from && dateRange?.to) {
-      // Usar o período padrão na inicialização, sem forçar alterações
-      onDateRangeChange({
-        from: dateRange.from,
-        to: dateRange.to
-      });
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // REMOVIDO: useEffect que causava loop infinito
+  // O período inicial será definido pelo componente pai, não pelo DateRangeSelector
   
   // Mostra o nome do período selecionado ou as datas
   const getDisplayText = () => {
     if (!dateRange?.from) return "Selecionar período";
     
-    // Verificar se é o mês atual completo
+    // Verificar se é o mês atual (do dia 1 até hoje)
     const isCurrentMonth = 
       dateRange.from.getTime() === new Date(today.getFullYear(), today.getMonth(), 1).getTime() && 
-      dateRange.to?.getTime() === endOfMonth(today).getTime();
-    if (isCurrentMonth) return "Mês Atual";
+      dateRange.to?.getTime() === today.getTime();
+    if (isCurrentMonth) return "Mês Atual (até hoje)";
     
     // Verificar se é o mês anterior
     const lastMonth = subMonths(today, 1);
@@ -95,11 +95,23 @@ export function DateRangeSelector({ onDateRangeChange }: DateRangeSelectorProps)
   // Opções rápidas de período
   const periodPresets = [
     { 
-      name: "Mês Atual", 
+      name: "Mês Atual (até hoje)", 
       handler: () => {
         const range = { 
           from: new Date(currentYear, currentMonth, 1),
-          to: endOfMonth(new Date(currentYear, currentMonth, 1)) 
+          to: today // Dia atual em vez do último dia do mês
+        };
+        setDateRange(range);
+        onDateRangeChange(range);
+        setPresetOpen(false);
+      }
+    },
+    { 
+      name: "Mês Completo", 
+      handler: () => {
+        const range = { 
+          from: new Date(currentYear, currentMonth, 1),
+          to: endOfMonth(new Date(currentYear, currentMonth, 1)) // Último dia do mês
         };
         setDateRange(range);
         onDateRangeChange(range);
@@ -160,43 +172,57 @@ export function DateRangeSelector({ onDateRangeChange }: DateRangeSelectorProps)
   ];
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      <DateRangePicker
-        dateRange={dateRange}
-        onDateRangeChange={applyDateRange}
-        className="w-full xs:w-auto min-w-[220px] transition-all duration-300 shadow-sm rounded-md bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-primary/50 focus-within:ring-2 focus-within:ring-primary/20"
-      />
+    <div className="ios26-animate-fade-in">
+      <Label className="text-sm font-semibold text-foreground mb-2 flex items-center gap-2">
+        <div className="p-1.5 bg-gradient-to-br from-orange-100 to-yellow-100 dark:from-orange-900/20 dark:to-yellow-900/20 rounded-lg">
+          <Calendar className="h-3 w-3 text-orange-600 dark:text-orange-400" />
+        </div>
+        Período
+      </Label>
       
-      <PositionedPopover
+      <div className="flex flex-wrap items-center gap-3">
+        <DateRangePicker
+          dateRange={dateRange}
+          onDateRangeChange={applyDateRange}
+          className="flex-1 min-w-[240px] ios26-card p-3 border-0 transition-all duration-300 hover:shadow-lg"
+        />
+        
+        <PositionedPopover
         trigger={
-          <Button 
-            variant="outline" 
-            size="sm" 
-            className="gap-1 items-center h-9 shadow-sm rounded-md border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 hover:border-primary/50 transition-all duration-300"
+          <button 
+            className="ios26-button flex items-center gap-2 px-4 py-2 text-sm font-semibold"
           >
-            <Calendar className="h-4 w-4 text-primary mr-1 hidden xs:inline-block" />
-            <span className="text-sm font-medium text-gray-700 dark:text-gray-300 hidden sm:inline-block">Períodos</span>
-            <ChevronDown className="h-4 w-4 text-primary" />
-          </Button>
+            <Calendar className="h-4 w-4" />
+            <span className="hidden sm:inline-block">Períodos</span>
+            <ChevronDown className="h-4 w-4" />
+          </button>
         }
         align="end"
       >
-        <div className="p-3 w-[220px] bg-white dark:bg-gray-800 shadow-lg rounded-lg border border-gray-200 dark:border-gray-700">
-          <p className="text-sm mb-3 font-medium px-2 text-primary border-b border-gray-100 dark:border-gray-700 pb-2">Períodos Rápidos</p>
-          <div className="space-y-1">
+        <div className="ios26-card p-4 w-[260px]">
+          <div className="flex items-center gap-2 mb-4 pb-3 border-b border-border">
+            <div className="p-2 bg-gradient-to-br from-orange-100 to-yellow-100 dark:from-orange-900/20 dark:to-yellow-900/20 rounded-xl">
+              <Calendar className="h-4 w-4 text-orange-600 dark:text-orange-400" />
+            </div>
+            <p className="text-sm font-semibold text-foreground">Períodos Rápidos</p>
+          </div>
+          <div className="space-y-2">
             {periodPresets.map((preset) => (
               <button
                 key={preset.name}
                 onClick={preset.handler}
-                className="w-full text-left px-3 py-2 text-sm rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 transition-colors duration-200 flex items-center"
+                className="w-full text-left px-3 py-2.5 text-sm rounded-xl hover:bg-muted/50 text-foreground transition-all duration-200 flex items-center gap-3 group"
               >
-                <Calendar className="h-4 w-4 text-primary mr-2" />
-                {preset.name}
+                <div className="p-1.5 bg-gradient-to-br from-orange-100 to-yellow-100 dark:from-orange-900/20 dark:to-yellow-900/20 rounded-lg group-hover:scale-110 transition-transform duration-200">
+                  <Calendar className="h-3 w-3 text-orange-600 dark:text-orange-400" />
+                </div>
+                <span className="font-medium">{preset.name}</span>
               </button>
             ))}
           </div>
         </div>
       </PositionedPopover>
+      </div>
     </div>
   );
 } 

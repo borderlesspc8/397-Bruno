@@ -1,8 +1,6 @@
 import { Metadata } from "next";
-import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
-
-import { authOptions } from "@/app/_lib/auth-options";
+import { getCurrentUser } from "@/lib/auth";
 import { PageHeader } from "@/app/_components/page-header";
 import { NewGoalForm } from "../_components/NewGoalForm";
 
@@ -12,10 +10,10 @@ export const metadata: Metadata = {
 };
 
 export default async function NewGoalPage() {
-  const session = await getServerSession(authOptions);
+  const user = await getCurrentUser();
 
-  if (!session) {
-    redirect("/auth");
+  if (!user) {
+      redirect("/auth");
   }
 
   return (

@@ -26,6 +26,12 @@ export function DistribuicaoVendasOrigem({ dataInicio, dataFim }: DistribuicaoVe
   const [viewMode, setViewMode] = useState<'quantidade' | 'valor'>('quantidade');
 
   useEffect(() => {
+    // DESABILITADO TEMPORARIAMENTE PARA EVITAR LOOPS
+    console.log('⚠️ DistribuicaoVendasOrigem: Requisições desabilitadas temporariamente para evitar loops')
+    setLoading(false);
+    setOrigens([]);
+    return;
+    
     async function fetchData() {
       setLoading(true);
       setError(null);

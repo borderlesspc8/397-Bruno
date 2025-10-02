@@ -84,6 +84,12 @@ export function ClientThemeProvider({
 
   // Efeito para carregar o tema salvo e marcar o componente como montado
   useEffect(() => {
+    // Verificar se estamos no cliente
+    if (typeof window === 'undefined') {
+      setMounted(true)
+      return
+    }
+
     try {
       // Antes de tudo, limpar todas as classes de tema
       removeThemeClasses()
@@ -116,7 +122,11 @@ export function ClientThemeProvider({
     } catch (error) {
       console.error('Erro ao inicializar o tema:', error)
       // Fallback para light theme em caso de erro
-      document.documentElement.classList.add('light')
+      try {
+        document.documentElement.classList.add('light')
+      } catch (domError) {
+        console.error('Erro ao aplicar fallback de tema:', domError)
+      }
       setMounted(true)
     }
   }, [storageKey])

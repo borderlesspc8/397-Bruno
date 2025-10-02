@@ -5,11 +5,11 @@ import { Alert, AlertDescription, AlertTitle } from "@/app/_components/ui/alert"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/_components/ui/tabs";
 import { Button } from "@/app/_components/ui/button";
 import { CheckCircle, Info } from "lucide-react";
-import { useSession } from "next-auth/react";
+import { useAuth } from "@/app/_hooks/useAuth";
 import { useState } from "react";
 
 export default function TestePage() {
-  const { data: session } = useSession();
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState("info");
 
   return (
@@ -58,18 +58,18 @@ export default function TestePage() {
               <CardTitle>Dados da Sessão</CardTitle>
             </CardHeader>
             <CardContent>
-              {session ? (
+              {user ? (
                 <div className="space-y-4">
                   <div>
                     <h3 className="font-medium mb-2">Usuário</h3>
                     <pre className="bg-muted p-4 rounded-md overflow-auto text-xs">
-                      {JSON.stringify(session.user, null, 2)}
+                      {JSON.stringify(user, null, 2)}
                     </pre>
                   </div>
                   <div>
                     <h3 className="font-medium mb-2">Sessão Completa</h3>
                     <pre className="bg-muted p-4 rounded-md overflow-auto text-xs">
-                      {JSON.stringify(session, null, 2)}
+                      {JSON.stringify(user, null, 2)}
                     </pre>
                   </div>
                 </div>

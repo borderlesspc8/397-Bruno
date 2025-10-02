@@ -35,11 +35,11 @@ export function VendasPorDia({ dataInicio, dataFim, onDiaClick }: VendasPorDiaPr
     setIsMounted(true);
   }, []);
 
-  // Buscar dados das vendas por dia
+  // Buscar dados das vendas por dia - REATIVADO COM PROTEÇÃO CONTRA LOOPS
   useEffect(() => {
+    if (!isMounted) return;
+    
     const buscarVendasPorDia = async () => {
-      if (!isMounted) return;
-      
       setLoading(true);
       setErro(null);
 

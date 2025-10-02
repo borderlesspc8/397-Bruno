@@ -50,11 +50,3 @@ export interface BankTransaction {
   status: string;
   correlationId?: string;
 }
-
-// Enum de planos de assinatura definido diretamente aqui
-export enum SubscriptionPlan {
-  FREE = "FREE",
-  BASIC = "BASIC",
-  PREMIUM = "PREMIUM",
-  ENTERPRISE = "ENTERPRISE"
-} 

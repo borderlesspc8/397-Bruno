@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useSession } from "next-auth/react";
+import { useAuth } from "@/app/_hooks/useAuth";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/_components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/app/_components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/app/_components/ui/avatar";
@@ -15,11 +15,9 @@ import { Sheet, SheetTrigger, SheetContent } from "@/app/_components/ui/sheet";
 import ProfileInfo from "./_components/ProfileInfo";
 import SecuritySettings from "./_components/SecuritySettings";
 import ActivityHistory from "./_components/ActivityHistory";
-import UsageStatistics from "./_components/UsageStatistics";
-import SubscriptionDetails from "./_components/SubscriptionDetails";
 
 export default function ProfilePage() {
-  const { data: session, status } = useSession();
+  const { user, loading } = useAuth();
   const [activeTab, setActiveTab] = useState("profile");
   const [isLoading, setIsLoading] = useState(true);
   const [userProfile, setUserProfile] = useState<any>(null);
@@ -54,13 +52,13 @@ export default function ProfilePage() {
   };
 
   useEffect(() => {
-    if (status === "authenticated" && session?.user) {
+    if (user) {
       fetchUserProfile();
     }
-  }, [status, session]);
+  }, [user]);
 
   // Renderize o conteúdo com base no estado de carregamento
-  if (status === "loading" || isLoading) {
+  if (loading || isLoading) {
     return (
       <div className="flex h-screen items-center justify-center">
         <div className="flex flex-col items-center gap-2">
@@ -71,7 +69,7 @@ export default function ProfilePage() {
     );
   }
 
-  if (status === "unauthenticated") {
+  if (!user) {
     return (
       <div className="flex h-screen items-center justify-center">
         <div className="text-center">
@@ -120,23 +118,6 @@ export default function ProfilePage() {
               <span>Histórico de Atividades</span>
             </TabsTrigger>
             
-            <TabsTrigger 
-              value="usage" 
-              onClick={() => setActiveTab("usage")}
-              className="w-full justify-start gap-2 px-3"
-            >
-              <BarChart className="h-4 w-4" />
-              <span>Estatísticas de Uso</span>
-            </TabsTrigger>
-            
-            <TabsTrigger 
-              value="subscription" 
-              onClick={() => setActiveTab("subscription")}
-              className="w-full justify-start gap-2 px-3"
-            >
-              <CreditCard className="h-4 w-4" />
-              <span>Assinatura</span>
-            </TabsTrigger>
           </TabsList>
         </div>
       </SheetContent>
@@ -170,10 +151,6 @@ export default function ProfilePage() {
                     </span>
                   </div>
                   <div className="hidden md:block">•</div>
-                  <div className="flex items-center gap-1">
-                    <CreditCard className="h-4 w-4" />
-                    <span>Plano {userProfile?.subscription?.plan || 'Free'}</span>
-                  </div>
                 </div>
               </div>
             </div>
@@ -208,21 +185,6 @@ export default function ProfilePage() {
                 Histórico de Atividades
               </TabsTrigger>
               
-              <TabsTrigger 
-                value="usage" 
-                className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:shadow-none py-3"
-              >
-                <BarChart className="h-4 w-4 mr-2" />
-                Estatísticas de Uso
-              </TabsTrigger>
-              
-              <TabsTrigger 
-                value="subscription" 
-                className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:shadow-none py-3"
-              >
-                <CreditCard className="h-4 w-4 mr-2" />
-                Assinatura
-              </TabsTrigger>
             </TabsList>
           </div>
         </Tabs>
@@ -237,8 +199,6 @@ export default function ProfilePage() {
               {activeTab === "profile" && <><UserCog className="h-5 w-5 mr-2" /> Informações Pessoais</>}
               {activeTab === "security" && <><Shield className="h-5 w-5 mr-2" /> Segurança</>}
               {activeTab === "activity" && <><CalendarDays className="h-5 w-5 mr-2" /> Histórico de Atividades</>}
-              {activeTab === "usage" && <><BarChart className="h-5 w-5 mr-2" /> Estatísticas de Uso</>}
-              {activeTab === "subscription" && <><CreditCard className="h-5 w-5 mr-2" /> Assinatura</>}
             </h2>
             <Separator className="mb-6" />
           </div>
@@ -246,11 +206,9 @@ export default function ProfilePage() {
 
         {/* Conteúdo das abas */}
         <div className="space-y-6">
-          {activeTab === "profile" && session?.user && <ProfileInfo user={session.user} userProfile={userProfile} />}
-          {activeTab === "security" && session?.user && <SecuritySettings user={session.user} />}
-          {activeTab === "activity" && session?.user && <ActivityHistory user={session.user} />}
-          {activeTab === "usage" && session?.user && <UsageStatistics user={session.user} userProfile={userProfile} />}
-          {activeTab === "subscription" && session?.user && <SubscriptionDetails user={session.user} subscription={userProfile?.subscription} />}
+          {activeTab === "profile" && user && <ProfileInfo user={user} userProfile={userProfile} />}
+          {activeTab === "security" && user && <SecuritySettings user={user} />}
+          {activeTab === "activity" && user && <ActivityHistory user={user} />}
         </div>
       </div>
     </div>

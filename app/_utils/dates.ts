@@ -52,13 +52,10 @@ export function processarDatasURL(
     }
     
     // Ajustar as datas para incluir todo o período
-    dataInicioObj.setHours(0, 0, 0, 0);
-    dataFimObj.setHours(23, 59, 59, 999);
-    
-    console.log('Datas processadas com sucesso:', {
-      dataInicio: dataInicioObj.toISOString(),
-      dataFim: dataFimObj.toISOString()
-    });
+    // Data inicial começa à meia-noite
+    dataInicioObj.setUTCHours(0, 0, 0, 0);
+    // Data final termina no último milissegundo do dia
+    dataFimObj.setUTCHours(23, 59, 59, 999);
     
     return {
       success: true,

@@ -1,5 +1,3 @@
-import { TransactionType } from "@prisma/client";
-
 export interface TotalExpensePerCategory {
   category: string;
   totalAmount: number;
@@ -10,39 +8,6 @@ export interface TransactionPercentagePerType {
   [key: string]: number;
 }
 
-export interface WalletsData {
-  total: number;
-  balance: number;
-  bankWallets: number;
-  manualWallets: number;
-  cashWallets: number;
-  positiveWallets: number;
-  negativeWallets: number;
-  topWallets: Array<{
-    id: string;
-    name: string;
-    balance: number;
-    type: string;
-    bankId?: string | null;
-    bank?: {
-      name: string;
-      logo: string;
-    } | null;
-  }>;
-}
-
-export interface MonthOverMonthData {
-  depositsChange: number;
-  expensesChange: number;
-  balanceChange: number;
-}
-
-export interface BudgetProgress {
-  total: number;
-  used: number;
-  percentage: number;
-}
-
 export interface DashboardData {
   balance: number;
   depositsTotal: number;
@@ -50,8 +15,32 @@ export interface DashboardData {
   expensesTotal: number;
   typesPercentage: TransactionPercentagePerType;
   totalExpensePerCategory: TotalExpensePerCategory[];
-  lastTransactions: any[]; // Transações mais recentes
-  walletsData: WalletsData;
-  monthOverMonthData: MonthOverMonthData;
-  budgetProgress: BudgetProgress;
+  lastTransactions: Array<{
+    id: string;
+    title: string;
+    amount: number;
+    date: string;
+    category: string;
+    type: string;
+    bankId?: string;
+  }>;
+  wallets: Array<{
+    id: string;
+    name: string;
+    balance: number;
+    type: string;
+  }>;
+  monthlyComparison: {
+    currentMonth: number;
+    previousMonth: number;
+    percentageChange: number;
+  };
+  goals: Array<{
+    id: string;
+    title: string;
+    targetAmount: number;
+    currentAmount: number;
+    deadline: string;
+    progress: number;
+  }>;
 }

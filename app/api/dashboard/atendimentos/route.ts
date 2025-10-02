@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
+import { validateSessionForAPI } from "@/app/_utils/auth";
 import { prisma } from "@/app/_lib/prisma";
 import { authOptions } from "@/app/_lib/auth";
 import { GestaoClickService } from '@/app/_services/gestao-click-service';

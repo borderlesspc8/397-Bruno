@@ -1,17 +1,17 @@
 import React, { Suspense } from 'react';
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
-import { getServerSession } from "next-auth/next";
 import "./globals.css";
 import { cn } from "./_lib/utils";
-import { SessionProvider } from "./_components/session-provider";
 import { ToastProvider } from "./_components/ui/toast";
+import { Toaster } from "sonner";
 import ClientThemeProvider from "./_components/client-theme-provider";
 import SocketProvider from './_components/socket-provider';
 import { NotificationProvider } from './_components/ui/notification';
-import { authOptions } from "./_lib/auth-options";
 import { DemoBanner } from "./components/DemoBanner";
 import { setupAutoImport } from './_lib/auto-import-setup';
+import { AuthProvider } from './_contexts/AuthContext';
+import { HydrationErrorBoundary } from './_components/error/HydrationErrorBoundary';
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -89,13 +89,11 @@ if (typeof window === 'undefined') {
   });
 }
 
-export default async function RootLayout({
+export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const session = await getServerSession(authOptions);
-  
   return (
     <html lang="pt-BR" suppressHydrationWarning>
       <head>
@@ -137,20 +135,23 @@ export default async function RootLayout({
         "selection:bg-primary/20",
         inter.className
       )}>
-        <SessionProvider session={session}>
-          <ClientThemeProvider>
-            <ToastProvider>
-              <NotificationProvider>
+        <ClientThemeProvider>
+          <ToastProvider>
+            <NotificationProvider>
+              <AuthProvider>
                 <SocketProvider>
                   <DemoBanner />
-                  <Suspense fallback={<LoadingFallback />}>
-                  {children}
-                  </Suspense>
+                  <HydrationErrorBoundary>
+                    <Suspense fallback={<LoadingFallback />}>
+                      {children}
+                    </Suspense>
+                  </HydrationErrorBoundary>
+                  <Toaster richColors position="bottom-right" />
                 </SocketProvider>
-              </NotificationProvider>
-            </ToastProvider>
-          </ClientThemeProvider>
-        </SessionProvider>
+              </AuthProvider>
+            </NotificationProvider>
+          </ToastProvider>
+        </ClientThemeProvider>
       </body>
     </html>
   );

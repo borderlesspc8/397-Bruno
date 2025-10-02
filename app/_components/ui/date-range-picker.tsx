@@ -116,7 +116,7 @@ export function DateRangePicker({
         <Card
           style={{
             ...floatingStyles,
-            zIndex: 50,
+            zIndex: 9999,
             position: strategy,
           }}
           className="p-4 bg-card shadow-xl border border-[#faba33]/20 rounded-lg"

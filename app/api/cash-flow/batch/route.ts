@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/_lib/auth-options";
-import { prisma } from "@/app/_lib/prisma";
+import { createClient } from "@/app/_lib/supabase-server";
 import { CashFlowPredictionSource, InstallmentStatus, TransactionType } from "@/app/_types/transaction";
 
 export async function POST(req: NextRequest) {

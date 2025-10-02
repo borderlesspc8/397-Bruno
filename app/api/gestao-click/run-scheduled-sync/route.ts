@@ -2,8 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/app/_lib/prisma";
 import { importGestaoClickTransactions } from "@/app/_lib/import/gestao-click";
 import { NotificationType } from "@prisma/client";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/_lib/auth-options";
+import { validateSessionForAPI } from "@/app/_utils/auth";
 import { GestaoClickService } from "@/app/_services/gestao-click-service";
 import { calculateImportDates, calculateNextRunDate } from "@/app/_lib/date-utils";
 

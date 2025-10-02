@@ -5,9 +5,9 @@
 
 import { prisma } from "./prisma";
 import { GestaoClickService } from "../_services/gestao-click-service";
-import { ImportSchedulerService } from "../_services/import-scheduler-service";
 import { createServerNotification } from "./server-notifications";
 import { NotificationType, NotificationPriority } from "../_types/notification";
+import { env } from './env';
 
 // Obtém credenciais do ambiente
 const GESTAO_CLICK_API_KEY = process.env.GESTAO_CLICK_API_KEY;
@@ -20,42 +20,52 @@ const AUTO_IMPORT_ENABLED = process.env.AUTO_IMPORT_ENABLED === "true";
  * Este método é chamado durante a inicialização do servidor
  */
 export async function setupAutoImport() {
-  // Verificar se a importação automática está habilitada
-  if (!AUTO_IMPORT_ENABLED) {
-    console.log("[AUTO_IMPORT] Importação automática desabilitada. Configure AUTO_IMPORT_ENABLED=true no .env para ativá-la.");
-    return;
-  }
-
-  // Verificar se as credenciais estão configuradas
-  if (!GESTAO_CLICK_API_KEY) {
-    console.error("[AUTO_IMPORT] Credenciais do Gestão Click não encontradas nas variáveis de ambiente.");
-    console.error("[AUTO_IMPORT] Adicione GESTAO_CLICK_API_KEY e GESTAO_CLICK_SECRET_ACCESS_TOKEN ao arquivo .env");
-    return;
-  }
-
   try {
-    console.log("[AUTO_IMPORT] Iniciando configuração de importação automática do Gestão Click...");
-    
-    // Buscar todos os usuários do sistema
-    const users = await prisma.user.findMany({
-      select: { id: true, email: true }
-    });
-    
-    if (users.length === 0) {
-      console.log("[AUTO_IMPORT] Nenhum usuário encontrado no sistema.");
+    // Verifica se o auto-import está habilitado
+    if (env.AUTO_IMPORT_ENABLED !== 'true') {
       return;
     }
-    
-    console.log(`[AUTO_IMPORT] Configurando importação automática para ${users.length} usuários.`);
-    
-    // Para cada usuário, configurar integração e agendamento
-    for (const user of users) {
-      await configureUserAutoImport(user.id, user.email);
+
+    // Verifica as credenciais do Gestão Click
+    const accessToken = env.GESTAO_CLICK_ACCESS_TOKEN;
+    const secretToken = env.GESTAO_CLICK_SECRET_ACCESS_TOKEN;
+
+    if (!accessToken || !secretToken) {
+      console.warn('[AUTO_IMPORT] Credenciais do Gestão Click não encontradas nas variáveis de ambiente.');
+      console.warn('[AUTO_IMPORT] Adicione GESTAO_CLICK_ACCESS_TOKEN e GESTAO_CLICK_SECRET_ACCESS_TOKEN ao arquivo .env');
+      return;
     }
-    
-    console.log("[AUTO_IMPORT] Configuração de importação automática concluída.");
+
+    // Configura o intervalo de auto-import (a cada 5 minutos)
+    const INTERVAL = 5 * 60 * 1000;
+
+    // Função para executar o auto-import
+    const runAutoImport = async () => {
+      try {
+        const baseUrl = env.NEXT_PUBLIC_APP_URL;
+        const response = await fetch(`${baseUrl}/api/gestao-click/auto-import-all`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${accessToken}`
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error(`Erro ao executar auto-import: ${response.statusText}`);
+        }
+
+        console.log('[AUTO_IMPORT] Auto-import executado com sucesso');
+      } catch (error) {
+        console.error('[AUTO_IMPORT] Erro ao executar auto-import:', error);
+      }
+    };
+
+    // Removido a execução imediata do auto-import e o setInterval
+    // Agora o auto-import só será executado quando explicitamente chamado
+
   } catch (error) {
-    console.error("[AUTO_IMPORT] Erro durante configuração da importação automática:", error);
+    console.error('[AUTO_IMPORT] Erro ao configurar auto-import:', error);
   }
 }
 
@@ -167,22 +177,5 @@ async function configureSchedule(userId: string): Promise<void> {
   // Definir horário para importação (3:00 AM)
   const scheduleTime = "03:00";
   
-  // Criar serviço de agendamento
-  const schedulerService = new ImportSchedulerService();
-  
-  console.log(`[AUTO_IMPORT] Criando agendamento para usuário ${userId}`);
-  
-  // Criar agendamento diário
-  await schedulerService.createGestaoClickSchedule(
-    userId,
-    {
-      frequency: "daily",
-      time: scheduleTime,
-      credentials: {
-        apiKey: GESTAO_CLICK_API_KEY,
-        secretToken: GESTAO_CLICK_SECRET_TOKEN,
-        apiUrl: GESTAO_CLICK_API_URL
-      }
-    }
-  );
+  console.log(`[AUTO_IMPORT] Agendamento não disponível - serviço removido`);
 } 

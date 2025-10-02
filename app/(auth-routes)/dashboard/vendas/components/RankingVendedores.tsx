@@ -372,7 +372,7 @@ export default function RankingVendedores({
   // Componente para exibição em cards
   const RankingCards = () => {
               return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-1">
+      <div className="grid grid-cols-1 gap-4 p-1">
         {vendedoresOrdenados.map((vendedor, index) => (
           <motion.div 
             key={vendedor.id}

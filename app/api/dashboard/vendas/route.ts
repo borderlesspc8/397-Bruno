@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/_lib/auth";
+import { validateSessionForAPI } from "@/app/_utils/auth";
 import { GestaoClickClientService } from "@/app/_services/gestao-click-client-service";
 import { prisma } from "@/app/_lib/prisma";
 import { BetelTecnologiaService } from '@/app/_services/betelTecnologia';
@@ -8,6 +7,7 @@ import { parse, format, startOfMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { getCachedData, CachePrefix, preloadCache } from '@/app/_services/cache';
 import { BetelVenda } from '@/app/_utils/calculoFinanceiro';
+import { roundToCents, parseValueSafe, sumWithPrecision } from '@/app/_utils/number-processor';
 
 // Configuração para forçar o comportamento dinâmico
 export const dynamic = "force-dynamic";
@@ -178,7 +178,7 @@ function preloadRelatedData(dataInicio: string, dataFim: string) {
   // Pré-carregar dados de vendedores
   const vendedoresKey = `${CachePrefix.VENDEDORES}${dataInicio}:${dataFim}`;
   preloadCache(vendedoresKey, async () => {
-    const session = await getServerSession(authOptions);
+    const session = await validateSessionForAPI();
     const userId = session?.user?.id;
     
     // Iniciar a busca de vendedores para este período
@@ -201,16 +201,16 @@ function preloadRelatedData(dataInicio: string, dataFim: string) {
 
 export async function GET(request: NextRequest) {
   try {
-    // Ativar debug apenas se parâmetro ?debug=true estiver presente
-    const debug = request.nextUrl.searchParams.get('debug') === 'true';
+    const { searchParams } = new URL(request.url);
+    const dataInicio = searchParams.get('dataInicio');
+    const dataFim = searchParams.get('dataFim');
+    const debug = searchParams.get('debug') === 'true';
+    const forceUpdate = searchParams.get('forceUpdate') === 'true';
     
-    // Forçar atualização do cache se o parâmetro nocache estiver presente
-    const forceUpdate = request.nextUrl.searchParams.has('nocache');
-    
-    // Parâmetros obrigatórios
-    const dataInicio = request.nextUrl.searchParams.get('dataInicio');
-    const dataFim = request.nextUrl.searchParams.get('dataFim');
-    
+    // Novo parâmetro para filtrar por situações
+    const situacoesParam = searchParams.get('situacoes');
+    const situacoesFiltro = situacoesParam ? situacoesParam.split(',').filter(Boolean) : [];
+
     if (!dataInicio || !dataFim) {
       return NextResponse.json(
         { 
@@ -273,19 +273,23 @@ export async function GET(request: NextRequest) {
     const dataFimObj = new Date(`${formattedDataFim}T23:59:59.999Z`);
     
     // Criar strings ISO para a API
-    const dataInicioISO = `${formattedDataInicio}T00:00:00.000Z`;
-    const dataFimISO = `${formattedDataFim}T23:59:59.999Z`;
+    const dataInicioISO = formattedDataInicio;
+    const dataFimISO = formattedDataFim;
     
     if (debug) {
-      console.log('Datas processadas para a API:', {
-        dataInicio: dataInicioISO,
-        dataFim: dataFimISO,
-        formattedDataInicio,
-        formattedDataFim
+      console.log('Datas processadas:', {
+        dataInicio: formattedDataInicio,
+        dataFim: formattedDataFim,
+        dataInicioObj: dataInicioObj.toISOString(),
+        dataFimObj: dataFimObj.toISOString()
       });
     }
 
-    const cacheKey = `${CachePrefix.DASHBOARD}vendas:${formattedDataInicio}:${formattedDataFim}:v5`; // Versão atualizada do cache
+    // Incluir situações na chave de cache para garantir cache correto por filtro
+    const situacoesKey = situacoesFiltro.length > 0 ? situacoesFiltro.sort().join('-') : 'all';
+    // Incluir timestamp para forçar atualização quando forceUpdate=true
+    const timestamp = forceUpdate ? Date.now() : 'stable';
+    const cacheKey = `${CachePrefix.DASHBOARD}vendas:${formattedDataInicio}:${formattedDataFim}:${situacoesKey}:v7:${timestamp}`;
 
     // Usar a versão aprimorada do serviço de cache (ignorando cache se forceUpdate for true)
     const resultado = await getCachedData(
@@ -298,6 +302,53 @@ export async function GET(request: NextRequest) {
           dataInicio: dataInicioObj,
           dataFim: dataFimObj
         });
+
+        // Filtrar vendas pelo período exato
+        vendas.vendas = vendas.vendas.filter(venda => {
+          const dataVenda = venda.data.split('T')[0];
+          return dataVenda >= formattedDataInicio && dataVenda <= formattedDataFim;
+        });
+
+        // Aplicar filtro de situações se especificado
+        if (situacoesFiltro.length > 0) {
+          vendas.vendas = vendas.vendas.filter(venda => {
+            const situacaoVenda = venda.nome_situacao || '';
+            
+            // Mapear situações da API para os filtros
+            const situacaoNormalizada = situacaoVenda.toLowerCase().trim();
+            
+            return situacoesFiltro.some(filtro => {
+              const filtroNormalizado = filtro.toLowerCase().replace('_', ' ');
+              
+              // Verificações específicas para cada situação
+              if (filtro === 'concretizada' || filtro === 'aprovada') {
+                return situacaoNormalizada.includes('concretizada') || 
+                       situacaoNormalizada.includes('confirmada') ||
+                       situacaoNormalizada.includes('aprovada');
+              } else if (filtro === 'em_andamento') {
+                return situacaoNormalizada.includes('andamento') || 
+                       situacaoNormalizada.includes('processando') ||
+                       situacaoNormalizada.includes('em andamento');
+              } else if (filtro === 'cancelada' || filtro === 'rejeitada') {
+                return situacaoNormalizada.includes('cancelada') || 
+                       situacaoNormalizada.includes('rejeitada') ||
+                       situacaoNormalizada.includes('cancelado');
+              } else if (filtro === 'pendente') {
+                return situacaoNormalizada.includes('pendente') || 
+                       situacaoNormalizada.includes('aguardando');
+              }
+              
+              // Fallback: comparação direta
+              return situacaoNormalizada.includes(filtroNormalizado);
+            });
+          });
+          
+          console.log(`Vendas após filtro de situações [${situacoesFiltro.join(', ')}]: ${vendas.vendas.length}`);
+        }
+
+        // Recalcular totais após filtragem
+        vendas.totalVendas = vendas.vendas.length;
+        vendas.totalValor = sumWithPrecision(vendas.vendas.map(venda => venda.valor_total));
 
         // Iniciar o preload de dados relacionados em background
         preloadRelatedData(formattedDataInicio, formattedDataFim);
@@ -318,97 +369,33 @@ export async function GET(request: NextRequest) {
           });
         }
 
-        // Filtrar as vendas para garantir que apenas as com status válidos e ESTRITAMENTE dentro do período sejam incluídas
-        const vendasFiltradas = vendas.vendas.filter(venda => {
-          // Verificar se tem status válido
-          const temStatusValido = STATUS_VALIDOS.includes(venda.nome_situacao || '');
-          
-          // CORREÇÃO: Verificar se a data está ESTRITAMENTE dentro do período solicitado
-          const dataVenda = venda.data || '';
-          // Comparar exatamente com as strings de data formatadas para garantir consistência
-          const estaDentroDoPeriodo = dataVenda >= formattedDataInicio && dataVenda <= formattedDataFim;
-          
-          const incluir = temStatusValido && estaDentroDoPeriodo;
-          
-          if (debug) {
-            console.log(`Venda ${venda.id} [${dataVenda}]: ${incluir ? 'incluída' : 'excluída'}`, {
-              status: venda.nome_situacao,
-              temStatusValido,
-              dataVenda,
-              estaDentroDoPeriodo,
-              formattedDataInicio,
-              formattedDataFim
-            });
-          }
-          
-          return incluir;
-        });
-        
-        console.log(`Vendas após filtragem: ${vendasFiltradas.length} de ${vendas.vendas.length}`);
-        
-        const totalVendasFiltradas = vendasFiltradas.length;
-        
-        // Recalcular o valor total apenas das vendas filtradas - com maior precisão
-        const totalValorFiltrado = parseFloat(vendasFiltradas.reduce((acc, venda) => {
-          // Garantir que usamos um número válido para o valor total
-          const valorVenda = typeof venda.valor_total === 'string' ? 
-            parseFloat(venda.valor_total.replace(',', '.')) : 
-            parseFloat(String(venda.valor_total || 0));
-          
-          // Verificar se o valor é um número válido antes de somar
-          if (!isNaN(valorVenda)) {
-            return acc + valorVenda;
-          }
-          return acc;
-        }, 0).toFixed(2));
-
         // Calcular informações financeiras adicionais
         let totalCusto = 0;
         let totalDescontos = 0;
         let totalFretes = 0;
 
-        vendasFiltradas.forEach((venda: any) => {
+        vendas.vendas.forEach((venda: any) => {
           // Processar custo
-          if (venda.valor_custo) {
-            const custoParsed = typeof venda.valor_custo === 'string' ? 
-              parseFloat(venda.valor_custo.replace(',', '.')) : 
-              parseFloat(String(venda.valor_custo || 0));
-            
-            if (!isNaN(custoParsed)) {
-              totalCusto += custoParsed;
-            }
-          }
+          totalCusto += parseValueSafe(venda.valor_custo);
           
           // Processar descontos
-          if (venda.desconto_valor) {
-            const descontoParsed = typeof venda.desconto_valor === 'string' ? 
-              parseFloat(venda.desconto_valor.replace(',', '.')) : 
-              parseFloat(String(venda.desconto_valor || 0));
-            
-            if (!isNaN(descontoParsed)) {
-              totalDescontos += descontoParsed;
-            }
-          }
+          totalDescontos += parseValueSafe(venda.desconto_valor);
           
           // Processar fretes
-          if (venda.valor_frete) {
-            const freteParsed = typeof venda.valor_frete === 'string' ? 
-              parseFloat(venda.valor_frete.replace(',', '.')) : 
-              parseFloat(String(venda.valor_frete || 0));
-            
-            if (!isNaN(freteParsed)) {
-              totalFretes += freteParsed;
-            }
-          }
+          totalFretes += parseValueSafe(venda.valor_frete);
         });
 
-        // Calcular lucro
-        const lucroTotal = totalValorFiltrado - totalCusto - totalDescontos + totalFretes;
-        const margemLucro = totalValorFiltrado > 0 ? (lucroTotal / totalValorFiltrado) * 100 : 0;
+        // Calcular lucro com precisão
+        totalCusto = roundToCents(totalCusto);
+        totalDescontos = roundToCents(totalDescontos);
+        totalFretes = roundToCents(totalFretes);
+        
+        const lucroTotal = roundToCents(vendas.totalValor - totalCusto - totalDescontos);
+        const margemLucro = vendas.totalValor > 0 ? roundToCents((lucroTotal / vendas.totalValor) * 100) : 0;
 
         if (debug) {
           console.log('Cálculos financeiros:', {
-            totalValorFiltrado,
+            totalValor: vendas.totalValor,
             totalCusto,
             totalDescontos,
             totalFretes,
@@ -419,9 +406,9 @@ export async function GET(request: NextRequest) {
 
         // Retornar dados filtrados e calculados com precisão
         return {
-          vendas: vendasFiltradas, // Incluir apenas vendas filtradas por status e data
-          totalVendas: totalVendasFiltradas,
-          totalValor: totalValorFiltrado,
+          vendas: vendas.vendas,
+          totalVendas: vendas.totalVendas,
+          totalValor: vendas.totalValor,
           financeiro: {
             custo: totalCusto,
             descontos: totalDescontos,

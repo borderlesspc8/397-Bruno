@@ -14,7 +14,7 @@ export default function DashboardLayout({
       <DashboardHeader />
       
       {/* Main content */}
-      <main className="w-full bg-gray-50 min-h-screen">
+      <main className="w-full bg-background min-h-screen">
         {children}
       </main>
     </div>

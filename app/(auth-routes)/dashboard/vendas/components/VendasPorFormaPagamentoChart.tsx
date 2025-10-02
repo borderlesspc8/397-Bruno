@@ -2,11 +2,12 @@ import { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/app/_components/ui/card';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { CreditCard, DownloadCloud, PieChart, AlertTriangle, RefreshCcw, FileSpreadsheet, Image } from 'lucide-react';
+import { CreditCard, DownloadCloud, PieChart, AlertTriangle, RefreshCcw, FileSpreadsheet, Image, TrendingUp, BarChart3 } from 'lucide-react';
 import { Alert, AlertDescription } from '@/app/_components/ui/alert';
 import { Button } from '@/app/_components/ui/button';
 import { Skeleton } from '@/app/_components/ui/skeleton';
 import { formatCurrency } from '@/app/_utils/format';
+import { cn } from '@/app/_lib/utils';
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
@@ -15,6 +16,7 @@ import {
 } from '@/app/_components/ui/dropdown-menu';
 import html2canvas from 'html2canvas';
 import ExcelJS from 'exceljs';
+import { Vendedor } from '@/app/_services/betelTecnologia';
 
 // Importações para Chart.js
 import dynamic from 'next/dynamic';
@@ -52,6 +54,7 @@ const Doughnut = dynamic(
 interface VendasPorFormaPagamentoChartProps {
   dataInicio: Date;
   dataFim: Date;
+  vendedores: Vendedor[];
 }
 
 interface FormaPagamentoItem {
@@ -61,71 +64,79 @@ interface FormaPagamentoItem {
   percentual: number;
 }
 
-// Cores para categorias específicas de formas de pagamento para garantir consistência
+// Cores iOS26 para categorias específicas de formas de pagamento
 const CORES_CATEGORIAS = {
-  'Crédito': 'rgba(54, 162, 235, 0.7)',    // Azul
-  'Débito': 'rgba(75, 192, 192, 0.7)',     // Verde-água
-  'PIX': 'rgba(255, 206, 86, 0.7)',        // Amarelo
-  'Dinheiro à Vista': 'rgba(255, 159, 64, 0.7)', // Laranja
-  'Boleto': 'rgba(153, 102, 255, 0.7)',    // Roxo
-  'Link de Pagamento': 'rgba(255, 99, 132, 0.7)', // Rosa
-  'Transferência Bancária': 'rgba(50, 205, 50, 0.7)', // Verde
-  'Outros': 'rgba(199, 199, 199, 0.7)',    // Cinza
+  'PIX - C6': 'hsl(25 95% 53% / 0.8)',             // Laranja primário iOS26
+  'CRÉDITO - STONE': 'hsl(45 100% 50% / 0.8)',     // Amarelo primário iOS26
+  'DÉBITO - STONE': 'hsl(142 69% 45% / 0.8)',      // Verde sucesso iOS26
+  'ESPÉCIE - BB': 'hsl(25 95% 35% / 0.8)',         // Laranja escuro iOS26
+  'LINK DE PAGAMENTO - STONE': 'hsl(0 84% 60% / 0.8)', // Vermelho destrutivo iOS26
+  'CHEQUE': 'hsl(0 0% 45% / 0.8)',                 // Cinza muted iOS26
+  'BOLETO - BB': 'hsl(25 95% 60% / 0.8)',          // Laranja claro iOS26
+  'A COMBINAR': 'hsl(0 0% 65% / 0.8)',             // Cinza claro iOS26
 };
 
-// Cores de borda correspondentes
+// Cores de borda correspondentes iOS26
 const CORES_BORDA_CATEGORIAS = {
-  'Crédito': 'rgb(54, 162, 235)',
-  'Débito': 'rgb(75, 192, 192)',
-  'PIX': 'rgb(255, 206, 86)',
-  'Dinheiro à Vista': 'rgb(255, 159, 64)',
-  'Boleto': 'rgb(153, 102, 255)',
-  'Link de Pagamento': 'rgb(255, 99, 132)',
-  'Transferência Bancária': 'rgb(50, 205, 50)',
-  'Outros': 'rgb(199, 199, 199)',
+  'PIX - C6': 'hsl(25 95% 53%)',
+  'CRÉDITO - STONE': 'hsl(45 100% 50%)',
+  'DÉBITO - STONE': 'hsl(142 69% 45%)',
+  'ESPÉCIE - BB': 'hsl(25 95% 35%)',
+  'LINK DE PAGAMENTO - STONE': 'hsl(0 84% 60%)',
+  'CHEQUE': 'hsl(0 0% 45%)',
+  'BOLETO - BB': 'hsl(25 95% 60%)',
+  'A COMBINAR': 'hsl(0 0% 65%)',
 };
 
-// Cores genéricas para formas de pagamento não mapeadas
+// Cores genéricas iOS26 para formas de pagamento não mapeadas
 const CORES_GRAFICO = [
-  'rgba(83, 102, 255, 0.7)',    // Azul-violeta
-  'rgba(255, 99, 71, 0.7)',     // Vermelho
-  'rgba(0, 128, 128, 0.7)',     // Teal
-  'rgba(210, 105, 30, 0.7)',    // Chocolate
-  'rgba(128, 0, 128, 0.7)',     // Roxo escuro
-  'rgba(46, 139, 87, 0.7)',     // Verde mar
-  'rgba(220, 20, 60, 0.7)',     // Vermelho escuro
-  'rgba(0, 139, 139, 0.7)',     // Ciano escuro
-  'rgba(184, 134, 11, 0.7)',    // Dourado escuro
-  'rgba(139, 0, 139, 0.7)',     // Magenta escuro
+  'hsl(25 95% 60% / 0.8)',      // Laranja claro iOS26
+  'hsl(45 100% 60% / 0.8)',     // Amarelo claro iOS26
+  'hsl(142 69% 38% / 0.8)',     // Verde sucesso escuro iOS26
+  'hsl(0 84% 50% / 0.8)',       // Vermelho destrutivo escuro iOS26
+  'hsl(25 95% 35% / 0.8)',      // Laranja escuro iOS26
+  'hsl(45 100% 35% / 0.8)',     // Amarelo escuro iOS26
+  'hsl(0 0% 20% / 0.8)',        // Preto claro iOS26
+  'hsl(0 0% 80% / 0.8)',        // Cinza claro iOS26
+  'hsl(25 95% 90% / 0.8)',      // Laranja muito claro iOS26
+  'hsl(45 100% 90% / 0.8)',     // Amarelo muito claro iOS26
 ];
 
-// Cores de borda genéricas
+// Cores de borda genéricas iOS26
 const CORES_BORDA = [
-  'rgb(83, 102, 255)',
-  'rgb(255, 99, 71)',
-  'rgb(0, 128, 128)',
-  'rgb(210, 105, 30)',
-  'rgb(128, 0, 128)',
-  'rgb(46, 139, 87)',
-  'rgb(220, 20, 60)',
-  'rgb(0, 139, 139)',
-  'rgb(184, 134, 11)',
-  'rgb(139, 0, 139)',
+  'hsl(25 95% 60%)',
+  'hsl(45 100% 60%)',
+  'hsl(142 69% 38%)',
+  'hsl(0 84% 50%)',
+  'hsl(25 95% 35%)',
+  'hsl(45 100% 35%)',
+  'hsl(0 0% 20%)',
+  'hsl(0 0% 80%)',
+  'hsl(25 95% 90%)',
+  'hsl(45 100% 90%)',
 ];
 
-export function VendasPorFormaPagamentoChart({ dataInicio, dataFim }: VendasPorFormaPagamentoChartProps) {
+export function VendasPorFormaPagamentoChart({ dataInicio, dataFim, vendedores }: VendasPorFormaPagamentoChartProps) {
   const [formasPagamento, setFormasPagamento] = useState<FormaPagamentoItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
 
-  // Buscar dados das vendas por forma de pagamento
+  // Processar dados dos vendedores para formas de pagamento - REATIVADO COM PROTEÇÃO CONTRA LOOPS
   useEffect(() => {
-    const buscarFormasPagamento = async () => {
+    const processarFormasPagamento = async () => {
       setLoading(true);
       setErro(null);
 
       try {
-        const response = await fetch(`/api/dashboard/vendas/formas-pagamento?dataInicio=${dataInicio.toISOString()}&dataFim=${dataFim.toISOString()}`);
+        // Buscar dados das vendas por forma de pagamento usando a mesma API que o VendedoresChartImproved
+        const timestamp = Date.now();
+        const dataInicioStr = dataInicio.toISOString().split('T')[0];
+        // Ajustar data fim para evitar incluir o dia seguinte
+        const dataFimAjustada = new Date(dataFim);
+        dataFimAjustada.setDate(dataFimAjustada.getDate() - 1);
+        const dataFimStr = dataFimAjustada.toISOString().split('T')[0];
+        console.log(`Enviando datas para API: dataInicio=${dataInicioStr}, dataFim=${dataFimStr} (ajustada de ${dataFim.toISOString().split('T')[0]})`);
+        const response = await fetch(`/api/dashboard/vendas/formas-pagamento?dataInicio=${dataInicioStr}&dataFim=${dataFimStr}&forceUpdate=true&t=${timestamp}`);
         
         if (!response.ok) {
           throw new Error(`Erro ao buscar dados: ${response.status}`);
@@ -137,7 +148,14 @@ export function VendasPorFormaPagamentoChart({ dataInicio, dataFim }: VendasPorF
           setErro(data.erro);
           setFormasPagamento([]);
         } else {
-          setFormasPagamento(data.formasPagamento || []);
+          const formasPagamento = data.formasPagamento || [];
+          const valorTotal = formasPagamento.reduce((sum: number, item: FormaPagamentoItem) => sum + item.totalValor, 0);
+          console.log('Dados recebidos da API formas-pagamento:', {
+            formasPagamento: formasPagamento.length,
+            valorTotal: valorTotal,
+            formas: formasPagamento.map((f: FormaPagamentoItem) => ({ forma: f.formaPagamento, valor: f.totalValor }))
+          });
+          setFormasPagamento(formasPagamento);
         }
       } catch (error) {
         console.error('Erro ao buscar formas de pagamento:', error);
@@ -148,8 +166,8 @@ export function VendasPorFormaPagamentoChart({ dataInicio, dataFim }: VendasPorF
       }
     };
 
-    buscarFormasPagamento();
-  }, [dataInicio, dataFim]);
+    processarFormasPagamento();
+  }, [dataInicio, dataFim, vendedores]);
 
   // Preparar dados para o gráfico
   const dadosGrafico = useMemo(() => {
@@ -200,7 +218,7 @@ export function VendasPorFormaPagamentoChart({ dataInicio, dataFim }: VendasPorF
     };
   }, [formasPagamento]);
 
-  // Opções do gráfico
+  // Opções do gráfico iOS26
   const opcoes = useMemo(() => ({
     responsive: true,
     maintainAspectRatio: false,
@@ -208,13 +226,34 @@ export function VendasPorFormaPagamentoChart({ dataInicio, dataFim }: VendasPorF
       legend: {
         position: 'right' as const,
         labels: {
-          boxWidth: 15,
+          boxWidth: 16,
           font: {
-            size: 11
-          }
+            size: 12,
+            weight: '500' as const,
+            family: 'system-ui, -apple-system, sans-serif'
+          },
+          padding: 15,
+          usePointStyle: true,
+          pointStyle: 'circle'
         }
       },
       tooltip: {
+        backgroundColor: 'hsl(var(--popover))',
+        titleColor: 'hsl(var(--popover-foreground))',
+        bodyColor: 'hsl(var(--popover-foreground))',
+        borderColor: 'hsl(var(--border))',
+        borderWidth: 1,
+        cornerRadius: 12,
+        displayColors: true,
+        titleFont: {
+          size: 13,
+          weight: '600' as const
+        },
+        bodyFont: {
+          size: 12,
+          weight: '500' as const
+        },
+        padding: 12,
         callbacks: {
           label: function(context: any) {
             const label = context.label || '';
@@ -226,7 +265,19 @@ export function VendasPorFormaPagamentoChart({ dataInicio, dataFim }: VendasPorF
         }
       }
     },
-    cutout: '60%', // Efeito de rosca
+    cutout: '65%', // Efeito de rosca mais pronunciado
+    animation: {
+      animateRotate: true,
+      animateScale: true,
+      duration: 1000,
+      easing: 'easeOutQuart' as const
+    },
+    elements: {
+      arc: {
+        borderWidth: 2,
+        borderAlign: 'center' as const
+      }
+    }
   }), []);
 
   // Função para recarregar os dados
@@ -234,7 +285,13 @@ export function VendasPorFormaPagamentoChart({ dataInicio, dataFim }: VendasPorF
     setLoading(true);
     setErro(null);
     
-    fetch(`/api/dashboard/vendas/formas-pagamento?dataInicio=${dataInicio.toISOString()}&dataFim=${dataFim.toISOString()}`)
+    const timestamp = Date.now();
+    const dataInicioStr = dataInicio.toISOString().split('T')[0];
+    // Ajustar data fim para evitar incluir o dia seguinte
+    const dataFimAjustada = new Date(dataFim);
+    dataFimAjustada.setDate(dataFimAjustada.getDate() - 1);
+    const dataFimStr = dataFimAjustada.toISOString().split('T')[0];
+    fetch(`/api/dashboard/vendas/formas-pagamento?dataInicio=${dataInicioStr}&dataFim=${dataFimStr}&forceUpdate=true&t=${timestamp}`)
       .then(response => {
         if (!response.ok) throw new Error(`Erro ao buscar dados: ${response.status}`);
         return response.json();
@@ -410,135 +467,146 @@ export function VendasPorFormaPagamentoChart({ dataInicio, dataFim }: VendasPorF
   // Renderização condicional com base no estado
   if (loading) {
     return (
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="flex items-center gap-2">
-                <CreditCard className="h-5 w-5 text-amber-500" />
-                Vendas por Forma de Pagamento
-              </CardTitle>
-              <CardDescription>Distribuição de vendas por método de pagamento</CardDescription>
-            </div>
+      <div className="ios26-card p-6 ios26-animate-fade-in">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h3 className="text-lg font-bold text-foreground flex items-center gap-3">
+              <div className="p-3 bg-gradient-to-br from-orange-100 to-yellow-100 dark:from-orange-900/20 dark:to-yellow-900/20 rounded-2xl">
+                <CreditCard className="h-6 w-6 text-orange-600 dark:text-orange-400" />
+              </div>
+              Vendas por Forma de Pagamento
+            </h3>
+            <p className="text-sm text-muted-foreground mt-2">
+              Distribuição de vendas por método de pagamento
+            </p>
           </div>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <Skeleton className="h-[300px] w-full" />
-            <div className="flex justify-between">
-              <Skeleton className="h-9 w-[100px]" />
-              <Skeleton className="h-9 w-[100px]" />
-            </div>
+        </div>
+        <div className="space-y-4">
+          <div className="ios26-skeleton h-[400px] w-full" />
+          <div className="flex justify-between">
+            <div className="ios26-skeleton h-9 w-[100px]" />
+            <div className="ios26-skeleton h-9 w-[100px]" />
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     );
   }
 
   if (erro) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <CreditCard className="h-5 w-5 text-amber-500" />
-            Vendas por Forma de Pagamento
-          </CardTitle>
-          <CardDescription>Distribuição de vendas por método de pagamento</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Alert variant="destructive" className="mb-4">
-            <AlertTriangle className="h-4 w-4" />
-            <AlertDescription className="flex justify-between items-center">
-              <div>
-                {erro}
+      <div className="ios26-card p-6 ios26-animate-fade-in">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h3 className="text-lg font-bold text-foreground flex items-center gap-3">
+              <div className="p-3 bg-gradient-to-br from-orange-100 to-yellow-100 dark:from-orange-900/20 dark:to-yellow-900/20 rounded-2xl">
+                <CreditCard className="h-6 w-6 text-orange-600 dark:text-orange-400" />
               </div>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={recarregarDados}
-                className="ml-2"
-              >
-                <RefreshCcw className="h-4 w-4 mr-1" /> Tentar novamente
-              </Button>
-            </AlertDescription>
-          </Alert>
-        </CardContent>
-      </Card>
+              Vendas por Forma de Pagamento
+            </h3>
+            <p className="text-sm text-muted-foreground mt-2">
+              Distribuição de vendas por método de pagamento
+            </p>
+          </div>
+        </div>
+        <Alert variant="destructive" className="mb-4">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription className="flex justify-between items-center">
+            <div>
+              {erro}
+            </div>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={recarregarDados}
+              className="ml-2 ios26-button"
+            >
+              <RefreshCcw className="h-4 w-4 mr-1" /> Tentar novamente
+            </Button>
+          </AlertDescription>
+        </Alert>
+      </div>
     );
   }
 
   if (formasPagamento.length === 0) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <CreditCard className="h-5 w-5 text-amber-500" />
-            Vendas por Forma de Pagamento
-          </CardTitle>
-          <CardDescription>Distribuição de vendas por método de pagamento</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col items-center justify-center h-[300px]">
-            <PieChart className="h-12 w-12 text-muted-foreground/50 mb-2" />
-            <p className="text-muted-foreground">Nenhuma forma de pagamento encontrada no período selecionado</p>
+      <div className="ios26-card p-6 ios26-animate-fade-in">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h3 className="text-lg font-bold text-foreground flex items-center gap-3">
+              <div className="p-3 bg-gradient-to-br from-orange-100 to-yellow-100 dark:from-orange-900/20 dark:to-yellow-900/20 rounded-2xl">
+                <CreditCard className="h-6 w-6 text-orange-600 dark:text-orange-400" />
+              </div>
+              Vendas por Forma de Pagamento
+            </h3>
+            <p className="text-sm text-muted-foreground mt-2">
+              Distribuição de vendas por método de pagamento
+            </p>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+        <div className="flex flex-col items-center justify-center h-[400px]">
+          <div className="p-4 bg-gradient-to-br from-muted/50 to-muted/30 rounded-2xl mb-4">
+            <PieChart className="h-12 w-12 text-muted-foreground/50" />
+          </div>
+          <p className="text-muted-foreground text-center">Nenhuma forma de pagamento encontrada no período selecionado</p>
+        </div>
+      </div>
     );
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex flex-wrap items-center justify-between">
-          <div>
-            <CardTitle className="flex items-center gap-2">
-              <CreditCard className="h-5 w-5 text-amber-500" />
-              Vendas por Forma de Pagamento
-            </CardTitle>
-            <CardDescription>
-              Distribuição de vendas por método de pagamento no período 
-              ({format(dataInicio, 'dd/MM/yyyy', { locale: ptBR })} a {format(dataFim, 'dd/MM/yyyy', { locale: ptBR })})
-            </CardDescription>
-          </div>
-          <div className="flex gap-2 mt-2 sm:mt-0">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-            <Button 
-              variant="outline" 
-              size="sm"
-              disabled={formasPagamento.length === 0}
-              className="flex items-center gap-1"
-            >
-              <DownloadCloud className="h-4 w-4" />
-              <span className="hidden sm:inline">Exportar</span>
-            </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={exportarExcel} className="cursor-pointer">
-                  <FileSpreadsheet className="h-4 w-4 mr-2" />
-                  Exportar como Excel
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={exportarImagem} className="cursor-pointer">
-                  <Image className="h-4 w-4 mr-2" />
-                  Exportar como Imagem
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={recarregarDados}
-              className="flex items-center gap-1"
-            >
-              <RefreshCcw className="h-4 w-4" />
-              <span className="hidden sm:inline">Atualizar</span>
-            </Button>
-          </div>
+    <div className="ios26-card p-6 ios26-animate-fade-in">
+      <div className="flex flex-wrap items-center justify-between mb-6">
+        <div>
+          <h3 className="text-lg font-bold text-foreground flex items-center gap-3">
+            <div className="p-3 bg-gradient-to-br from-orange-100 to-yellow-100 dark:from-orange-900/20 dark:to-yellow-900/20 rounded-2xl">
+              <CreditCard className="h-6 w-6 text-orange-600 dark:text-orange-400" />
+            </div>
+            Vendas por Forma de Pagamento
+          </h3>
+          <p className="text-sm text-muted-foreground mt-2">
+            Distribuição de vendas por método de pagamento no período 
+            ({format(dataInicio, 'dd/MM/yyyy', { locale: ptBR })} a {format(dataFim, 'dd/MM/yyyy', { locale: ptBR })})
+          </p>
         </div>
-      </CardHeader>
-      <CardContent>
-        <div className="h-[300px] flex items-center justify-center">
+        <div className="flex gap-2 mt-2 sm:mt-0">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button 
+                variant="outline" 
+                size="sm"
+                disabled={formasPagamento.length === 0}
+                className="flex items-center gap-1 ios26-button"
+              >
+                <DownloadCloud className="h-4 w-4" />
+                <span className="hidden sm:inline">Exportar</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={exportarExcel} className="cursor-pointer">
+                <FileSpreadsheet className="h-4 w-4 mr-2" />
+                Exportar como Excel
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={exportarImagem} className="cursor-pointer">
+                <Image className="h-4 w-4 mr-2" />
+                Exportar como Imagem
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={recarregarDados}
+            className="flex items-center gap-1 ios26-button"
+          >
+            <RefreshCcw className="h-4 w-4" />
+            <span className="hidden sm:inline">Atualizar</span>
+          </Button>
+        </div>
+      </div>
+      
+      <div className="ios26-chart-container">
+        <div className="h-[400px] flex items-center justify-center">
           <div className="w-full h-full max-w-[600px] mx-auto" id="grafico-formas-pagamento">
             <Doughnut 
               data={dadosGrafico} 
@@ -546,20 +614,34 @@ export function VendasPorFormaPagamentoChart({ dataInicio, dataFim }: VendasPorF
             />
           </div>
         </div>
-        
-        {formasPagamento.length > 0 && (
-          <div className="flex justify-between mt-4 text-sm">
-            <div>
-              <span className="text-muted-foreground">Total de Formas:</span>{' '}
-              <span className="font-medium">{formasPagamento.length}</span>
+      </div>
+      
+      {formasPagamento.length > 0 && (
+        <div className="mt-6 p-4 bg-gradient-to-r from-muted/30 to-muted/20 rounded-2xl">
+          <div className="flex flex-col sm:flex-row justify-between gap-4 text-sm">
+            <div className="flex items-center gap-2">
+              <div className="p-2 bg-gradient-to-br from-orange-100 to-yellow-100 dark:from-orange-900/20 dark:to-yellow-900/20 rounded-xl">
+                <BarChart3 className="h-4 w-4 text-orange-600 dark:text-orange-400" />
+              </div>
+              <div>
+                <span className="text-muted-foreground">Total de Formas:</span>{' '}
+                <span className="font-semibold text-foreground">{formasPagamento.length}</span>
+              </div>
             </div>
-            <div>
-              <span className="text-muted-foreground">Valor Total:</span>{' '}
-              <span className="font-medium">{formatCurrency(formasPagamento.reduce((sum, item) => sum + item.totalValor, 0))}</span>
+            <div className="flex items-center gap-2">
+              <div className="p-2 bg-gradient-to-br from-orange-100 to-yellow-100 dark:from-orange-900/20 dark:to-yellow-900/20 rounded-xl">
+                <TrendingUp className="h-4 w-4 text-orange-600 dark:text-orange-400" />
+              </div>
+              <div>
+                <span className="text-muted-foreground">Valor Total:</span>{' '}
+                <span className="font-semibold text-foreground ios26-currency-medium">
+                  {formatCurrency(formasPagamento.reduce((sum, item) => sum + item.totalValor, 0))}
+                </span>
+              </div>
             </div>
           </div>
-        )}
-      </CardContent>
-    </Card>
+        </div>
+      )}
+    </div>
   );
 } 

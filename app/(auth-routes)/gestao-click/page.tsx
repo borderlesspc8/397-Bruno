@@ -1,7 +1,6 @@
 import { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/_lib/auth-options";
+import { getCurrentUser } from "@/lib/auth";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/app/_components/ui/card";
 import { Button } from "@/app/_components/ui/button";
@@ -15,10 +14,10 @@ export const metadata: Metadata = {
 
 export default async function GestaoClickPage() {
   // Verificar autenticação
-  const session = await getServerSession(authOptions);
+  const user = await getCurrentUser();
   
-  if (!session?.user) {
-    redirect("/login");
+  if (!user) {
+      redirect("/auth");
   }
   
   return (

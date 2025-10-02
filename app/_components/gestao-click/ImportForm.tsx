@@ -536,7 +536,7 @@ export function GestaoClickImportForm({ walletId }: ImportFormProps) {
       <CardFooter className="flex justify-between">
         <Button
           variant="outline"
-          onClick={() => router.push('/wallets')}
+          onClick={() => router.push('/dashboard')}
           disabled={isLoading}
         >
           Cancelar

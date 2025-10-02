@@ -1,12 +1,9 @@
-import { SubscriptionPlan } from "@/app/types";
-
 export interface UserData {
   id: string;
   name: string | null;
   email: string | null;
   image: string | null;
   emailVerified: Date | null;
-  subscriptionPlan: SubscriptionPlan;
   lastActivity: Date | null;
   resourceUsage?: ResourceUsage;
   createdAt: Date;
@@ -14,16 +11,6 @@ export interface UserData {
 }
 
 export interface ResourceUsage {
-  wallets: {
-    used: number;
-    limit: number;
-    percentage: number;
-  };
-  transactions: {
-    used: number;
-    limit: number;
-    percentage: number;
-  };
   connections: {
     used: number;
     limit: number;
@@ -44,10 +31,7 @@ export interface ThemePreference {
 }
 
 export interface UserStats {
-  transactionsCount: number;
   categoriesCount: number;
-  walletsCount: number;
-  totalBalance: number;
   memberSince: Date;
   lastSync?: Date;
 }
@@ -63,7 +47,6 @@ export interface NotificationSettings {
   email: boolean;
   push: boolean;
   categories: {
-    transactions: boolean;
     security: boolean;
     system: boolean;
     marketing: boolean;

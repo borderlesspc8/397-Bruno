@@ -1,3 +1,4 @@
+# Estágio de build
 FROM node:18-alpine AS builder
 WORKDIR /app
 
@@ -8,11 +9,11 @@ RUN apk add --no-cache libc6-compat python3 make g++
 COPY package.json package-lock.json* ./
 COPY prisma ./prisma
 
-# Gerar Prisma client antes de instalar dependências
-RUN npx prisma generate
-
-# Instalar dependências
+# Instalar dependências primeiro
 RUN npm ci
+
+# Gerar Prisma client depois de instalar as dependências
+RUN npx prisma generate
 
 # Copiar o restante dos arquivos do projeto
 COPY . .
@@ -33,23 +34,27 @@ RUN apk add --no-cache libc6-compat
 RUN addgroup --system --gid 1001 nodejs \
     && adduser --system --uid 1001 nextjs
 
-# Copiar o resultado do build
+# Copiar o resultado do build e arquivos necessários
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./package.json
+COPY --from=builder /app/package-lock.json ./package-lock.json
 COPY --from=builder /app/next.config.mjs ./next.config.mjs
-
-# Copiar arquivos necessários para o servidor customizado
 COPY --from=builder /app/server.mjs ./server.mjs
 COPY --from=builder /app/app ./app
 COPY --from=builder /app/prisma ./prisma
 
 # Gerar Prisma client no ambiente de produção
-RUN npx prisma generate
+RUN npm install @prisma/client && npx prisma generate
 
 # Definir permissões
 RUN chown -R nextjs:nodejs /app
+
+# Criar diretório uploads e configurar permissões
+RUN mkdir -p /app/public/uploads/vendedores && \
+    chown -R nextjs:nodejs /app/public/uploads && \
+    chmod -R 755 /app/public/uploads
 
 # Mudar para o usuário não-root
 USER nextjs

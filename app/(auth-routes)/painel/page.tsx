@@ -3,20 +3,15 @@ import { isMatch, format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { getDashboard } from "@/app/_data/get-dashboard";
 import TimeSelect from "@/app/_components/time-select";
-import TransactionsPieChart from "@/app/_components/transactions-pie-chart";
-import ExpensesPerCategory from "@/app/_components/expenses-per-category";
-import LastTransactions from "@/app/_components/last-transactions";
 import AiReportButton from "@/app/(auth-routes)/dashboard/_components/ai-report-button";
 import SummaryCards from "@/app/_components/summary-cards";
 import { BudgetSummary } from "./_components/BudgetSummary";
 import { getAuthSession } from "@/app/_lib/auth";
-import { canUserAddTransaction } from "@/app/_data/can-user-add-transaction";
 import { 
   PlusCircle, 
   ArrowDownUp, 
   LineChart, 
   TrendingUp, 
-  Wallet, 
   Calendar, 
   CreditCard, 
   Bell, 
@@ -30,8 +25,6 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/app/_components/ui/button";
-import { RequireSubscription } from "@/app/_components/require-subscription";
-import { SubscriptionPlan } from "@/app/types";
 import { Card, CardHeader, CardTitle, CardContent, CardFooter, CardDescription } from "@/app/_components/ui/card";
 import { Badge } from "@/app/_components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/_components/ui/tabs";
@@ -40,17 +33,6 @@ import { Input } from "@/app/_components/ui/input";
 import { getMonthName } from "@/app/(auth-routes)/dashboard/_components/utils";
 import { Progress } from "@/app/_components/ui/progress";
 
-// Interface para as transações
-interface Transaction {
-  id: string;
-  title: string;
-  amount: number;
-  date: string;
-  category: string;
-  type: 'DEPOSIT' | 'EXPENSE' | 'INVESTMENT';
-  bankId?: string;
-  description?: string;
-}
 
 interface HomeProps {
   searchParams: {
@@ -77,9 +59,6 @@ const Home = async ({ searchParams: { month, year } }: HomeProps) => {
   }
   
   const dashboard = await getDashboard(month, year);
-  const userCanAddTransaction = await canUserAddTransaction();
-  const userPlan = user?.subscriptionPlan || SubscriptionPlan.FREE;
-  const isPremium = [SubscriptionPlan.PREMIUM, SubscriptionPlan.ENTERPRISE].includes(userPlan as SubscriptionPlan);
   
   // Formatando o mês atual para exibição
   const formattedMonth = format(new Date(`${year}-${month}-01`), 'MMMM yyyy', { locale: ptBR });
@@ -511,16 +490,9 @@ const Home = async ({ searchParams: { month, year } }: HomeProps) => {
         </div>
                   </CardHeader>
                   <CardContent className="relative z-10">
-          <TransactionsPieChart
-                      data={(dashboard.typesPercentage ? Object.entries(dashboard.typesPercentage) : []).map(([type, percentage]) => ({
-              id: type,
-              name: type === "DEPOSIT" ? "Receitas" : type === "EXPENSE" ? "Despesas" : "Investimentos",
-                        amount: percentage / 100,
-              color: type === "DEPOSIT" ? "#22c55e" : type === "EXPENSE" ? "#ef4444" : "#3b82f6",
-            }))}
-                      title=""
-                      description=""
-                    />
+          <div className="text-center text-muted-foreground">
+            <p>Gráfico de transações não disponível</p>
+          </div>
                   </CardContent>
                   <CardFooter className="relative z-10 pt-0 pb-3">
                     <Link href="/reports/distribution">
@@ -573,16 +545,9 @@ const Home = async ({ searchParams: { month, year } }: HomeProps) => {
                     </div>
                   </CardHeader>
                   <CardContent className="relative z-10">
-          <ExpensesPerCategory
-                      data={dashboard.totalExpensePerCategory.map((category) => ({
-              id: category.category,
-              name: category.category,
-              amount: category.totalAmount,
-                        percentage: category.percentageOfTotal / 100,
-                        color: getColorForCategory(category.category),
-                      }))}
-                      totalExpenses={dashboard.expensesTotal ?? 0}
-                    />
+          <div className="text-center text-muted-foreground">
+            <p>Gráfico de categorias não disponível</p>
+          </div>
                   </CardContent>
                   <CardFooter className="relative z-10 pt-0 pb-3">
                     <Link href="/reports/categories">
@@ -642,23 +607,13 @@ const Home = async ({ searchParams: { month, year } }: HomeProps) => {
                 </div>
               </CardHeader>
               <CardContent className="p-0">
-                <LastTransactions 
-                  transactions={dashboard?.lastTransactions?.map((tx: Transaction) => ({
-                    id: tx.id,
-                    title: tx.title,
-                    amount: tx.amount,
-                    date: tx.date,
-                    category: tx.category,
-                    type: tx.type,
-                    bankId: tx.bankId
-                  })) ?? []} 
-                  limit={10}
-                  showViewMore={true}
-                />
+                <div className="text-center text-muted-foreground p-8">
+                  <p>Lista de transações não disponível</p>
+                </div>
               </CardContent>
               <CardFooter className="flex items-center justify-between p-4 border-t">
                 <div className="text-sm text-muted-foreground">
-                  Mostrando 10 de {dashboard?.lastTransactions?.length || 0} transações
+                  Lista de transações não disponível
                 </div>
                 <div className="flex items-center gap-2">
                   <Button variant="outline" size="sm" disabled className="h-8">
@@ -871,22 +826,5 @@ const Home = async ({ searchParams: { month, year } }: HomeProps) => {
   );
 };
 
-// Função auxiliar para atribuir cores às categorias de maneira consistente
-const getColorForCategory = (category: string): string => {
-  const colorMap: Record<string, string> = {
-    "Alimentação": "#ef4444",     // Vermelho
-    "Aluguel": "#f97316",         // Laranja
-    "Transporte": "#eab308",      // Amarelo
-    "Lazer": "#84cc16",           // Verde claro
-    "Saúde": "#10b981",           // Verde
-    "Educação": "#06b6d4",        // Ciano
-    "Serviços": "#3b82f6",        // Azul
-    "Compras": "#8b5cf6",         // Violeta
-    "Outros": "#d946ef",          // Rosa
-    "Investimentos": "#6366f1",   // Índigo
-  };
-  
-  return colorMap[category] || "#94a3b8"; // Cinza como cor padrão
-};
 
 export default Home;

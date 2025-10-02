@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { signIn } from "next-auth/react";
+import { useAuth } from "@/app/_hooks/useAuth";
 import { toast } from "sonner";
 import { 
   ArrowRight, Loader2, Lock, Mail, UserCheck, KeyRound, 
@@ -29,6 +29,7 @@ type AuthMode = "login" | "register" | "forgot-password" | "magic-link";
 export default function AuthPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { signIn, signUp, resetPassword, sendMagicLink, user, loading } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [passwordStrength, setPasswordStrength] = useState(0);
@@ -92,6 +93,25 @@ export default function AuthPage() {
     setPasswordStrength(strength);
   }, [registerData.password]);
 
+  // Redirecionar usuário autenticado
+  useEffect(() => {
+    if (!loading && user) {
+      const callbackUrl = searchParams?.get("callbackUrl") || "/dashboard/vendas";
+      console.log("Usuário autenticado, redirecionando para:", callbackUrl);
+      
+      // Usar router.replace para evitar adicionar ao histórico
+      // e reduzir o delay
+      setTimeout(() => {
+        try {
+          router.replace(callbackUrl);
+        } catch (error) {
+          console.warn("Erro no router.replace, usando window.location:", error);
+          window.location.href = callbackUrl;
+        }
+      }, 100);
+    }
+  }, [user, loading, router, searchParams]);
+
   // Fazer login automático no modo demo
   useEffect(() => {
     if (isDemoMode && searchParams?.get("autologin") === "true") {
@@ -99,27 +119,25 @@ export default function AuthPage() {
     }
   }, []);
 
-  // Handler para login com credenciais
+  // Handler para login com Supabase Auth
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError(null);
     setIsLoading(true);
 
     try {
-      const result = await signIn("credentials", {
-        email: loginData.email,
-        password: loginData.password,
-        redirect: false
-      });
+      const { success, error } = await signIn(loginData.email, loginData.password);
 
-      if (result?.error) {
-        setFormError("Email ou senha incorretos");
+      if (!success) {
+        setFormError(error || "Email ou senha incorretos");
         return;
       }
 
-      toast.success("Login realizado");
-      router.push("/dashboard/vendas");
+      toast.success("Login realizado com sucesso!");
+      // O redirecionamento será feito pelo useEffect que monitora o estado do usuário
+      
     } catch (error) {
+      console.error("Erro ao fazer login:", error);
       setFormError("Erro ao fazer login");
     } finally {
       setIsLoading(false);
@@ -134,10 +152,13 @@ export default function AuthPage() {
     setIsLoading(true);
 
     try {
-      await signIn("email", {
-        email: magicLinkData.email,
-        redirect: false,
-      });
+      const { success, error } = await sendMagicLink(magicLinkData.email);
+
+      if (!success) {
+        setFormError(error || "Erro ao enviar link");
+        toast.error("Erro ao enviar link");
+        return;
+      }
       
       setFormSuccess("Link enviado");
       toast.success("Link enviado");
@@ -177,24 +198,16 @@ export default function AuthPage() {
     }
 
     try {
-      const response = await fetch("/api/auth/register", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          name: registerData.name,
-          email: registerData.email,
-          password: registerData.password
-        })
+      const { success, error } = await signUp(registerData.email, registerData.password, {
+        name: registerData.name
       });
 
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.message || data.error || "Erro ao registrar");
+      if (!success) {
+        setFormError(error || "Erro ao criar conta");
+        return;
       }
 
-      setFormSuccess("Cadastro realizado");
+      setFormSuccess("Cadastro realizado com sucesso! Verifique seu email para confirmar a conta.");
       setTimeout(() => {
         setMode("login");
         setLoginData({
@@ -217,17 +230,11 @@ export default function AuthPage() {
     setIsLoading(true);
 
     try {
-      const response = await fetch("/api/auth/forgot-password", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ email: forgotPasswordData.email })
-      });
+      const { success, error } = await resetPassword(forgotPasswordData.email);
 
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || "Erro ao solicitar recuperação");
+      if (!success) {
+        setFormError(error || "Erro ao solicitar recuperação");
+        return;
       }
 
       setFormSuccess("Email enviado");

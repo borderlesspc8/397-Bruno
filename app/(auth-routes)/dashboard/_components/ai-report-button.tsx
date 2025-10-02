@@ -4,21 +4,18 @@ import { useState } from "react";
 import { Button } from "@/app/_components/ui/button";
 import { Sparkles, Loader2 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/app/_components/ui/dialog";
-import { SubscriptionPlan } from "@/app/types";
-
 interface AiReportButtonProps {
   month?: string;
   year?: string;
-  userPlan?: SubscriptionPlan;
 }
 
-export default function AiReportButton({ month, year, userPlan = SubscriptionPlan.FREE }: AiReportButtonProps) {
+export default function AiReportButton({ month, year }: AiReportButtonProps) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [report, setReport] = useState("");
   const [error, setError] = useState("");
   
-  const isPremium = [SubscriptionPlan.PREMIUM, SubscriptionPlan.ENTERPRISE].includes(userPlan as SubscriptionPlan);
+  const isPremium = true; // Todos os usuários têm acesso
   
   const generateReport = async () => {
     setError("");

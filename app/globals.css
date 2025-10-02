@@ -3,37 +3,49 @@
 @tailwind utilities;
 
 :root, .light {
+  /* iOS 26 Design System - Cores predominantes: Laranja, Preto e Amarelo */
   --background: 0 0% 100%;
-  --foreground: 240 10% 3.9%;
+  --foreground: 0 0% 8%;
   --card: 0 0% 100%;
-  --card-foreground: 240 10% 3.9%;
+  --card-foreground: 0 0% 8%;
   --popover: 0 0% 100%;
-  --popover-foreground: 240 10% 3.9%;
-  --primary: 210 100% 45%;
+  --popover-foreground: 0 0% 8%;
+  --primary: 25 95% 53%; /* Laranja vibrante */
   --primary-foreground: 0 0% 100%;
-  --secondary: 240 4.8% 95.9%;
-  --secondary-foreground: 240 5.9% 10%;
-  --muted: 240 4.8% 95.9%;
-  --muted-foreground: 240 3.8% 46.1%;
-  --accent: 240 4.8% 95.9%;
-  --accent-foreground: 240 5.9% 10%;
-  --destructive: 0 84.2% 60.2%;
+  --secondary: 45 100% 95%; /* Amarelo claro */
+  --secondary-foreground: 0 0% 8%;
+  --muted: 45 100% 97%;
+  --muted-foreground: 0 0% 45%;
+  --accent: 25 95% 53%; /* Laranja para acentos */
+  --accent-foreground: 0 0% 100%;
+  --destructive: 0 84% 60%;
   --destructive-foreground: 0 0% 98%;
-  --info: 204 94% 94%;
-  --info-foreground: 204 94% 34%;
-  --success: 145 80% 96%;
-  --success-foreground: 145 80% 36%;
-  --warning: 45 100% 96%;
-  --warning-foreground: 45 100% 36%;
-  --alert: 0 100% 96%;
-  --alert-foreground: 0 100% 36%;
-  --border: 240 5.9% 90%;
-  --input: 240 5.9% 90%;
-  --ring: 240 5.9% 10%;
-  --radius: 0.5rem;
+  --info: 25 95% 90%;
+  --info-foreground: 25 95% 30%;
+  --success: 142 69% 38%;
+  --success-foreground: 0 0% 100%;
+  --warning: 45 100% 50%; /* Amarelo para avisos */
+  --warning-foreground: 0 0% 8%;
+  --alert: 25 95% 90%;
+  --alert-foreground: 25 95% 30%;
+  --border: 0 0% 90%;
+  --input: 0 0% 90%;
+  --ring: 25 95% 53%;
+  --radius: 0.75rem; /* iOS 26 border radius */
   
   --positive-value: 142 69% 38%;
-  --negative-value: 358 76% 46%;
+  --negative-value: 0 84% 60%;
+  
+  /* Cores específicas para dashboard */
+  --orange-primary: 25 95% 53%;
+  --orange-light: 25 95% 90%;
+  --orange-dark: 25 95% 35%;
+  --yellow-primary: 45 100% 50%;
+  --yellow-light: 45 100% 95%;
+  --yellow-dark: 45 100% 35%;
+  --black-primary: 0 0% 8%;
+  --black-light: 0 0% 20%;
+  --black-muted: 0 0% 45%;
   
   --sidebar-width: 16rem;
   --sidebar-width-collapsed: 4rem;
@@ -41,36 +53,48 @@
 }
 
 .dark {
-  --background: 222 47% 7%;
+  /* iOS 26 Design System - Tema escuro com cores predominantes */
+  --background: 0 0% 8%;
   --foreground: 0 0% 95%;
-  --card: 222 45% 9%;
+  --card: 0 0% 12%;
   --card-foreground: 0 0% 95%;
-  --popover: 222 45% 9%;
+  --popover: 0 0% 12%;
   --popover-foreground: 0 0% 95%;
-  --primary: 210 95% 60%;
-  --primary-foreground: 0 0% 100%;
-  --secondary: 222 35% 15%;
+  --primary: 25 95% 60%; /* Laranja mais vibrante no escuro */
+  --primary-foreground: 0 0% 8%;
+  --secondary: 0 0% 15%;
   --secondary-foreground: 0 0% 95%;
-  --muted: 222 35% 15%;
-  --muted-foreground: 240 5% 65%;
-  --accent: 222 35% 22%;
-  --accent-foreground: 0 0% 95%;
+  --muted: 0 0% 15%;
+  --muted-foreground: 0 0% 65%;
+  --accent: 25 95% 60%;
+  --accent-foreground: 0 0% 8%;
   --destructive: 0 75% 50%;
   --destructive-foreground: 0 0% 95%;
-  --info: 204 70% 15%;
-  --info-foreground: 204 90% 65%;
-  --success: 145 80% 15%;
-  --success-foreground: 145 80% 65%;
-  --warning: 45 100% 15%;
-  --warning-foreground: 45 100% 65%;
-  --alert: 0 75% 15%;
-  --alert-foreground: 0 85% 65%;
-  --border: 222 30% 18%;
-  --input: 222 30% 18%;
-  --ring: 219 90% 65%;
+  --info: 25 95% 20%;
+  --info-foreground: 25 95% 80%;
+  --success: 142 69% 45%;
+  --success-foreground: 0 0% 8%;
+  --warning: 45 100% 60%; /* Amarelo mais vibrante no escuro */
+  --warning-foreground: 0 0% 8%;
+  --alert: 25 95% 20%;
+  --alert-foreground: 25 95% 80%;
+  --border: 0 0% 18%;
+  --input: 0 0% 18%;
+  --ring: 25 95% 60%;
   
   --positive-value: 142 76% 56%;
-  --negative-value: 358 85% 57%;
+  --negative-value: 0 84% 60%;
+  
+  /* Cores específicas para dashboard no tema escuro */
+  --orange-primary: 25 95% 60%;
+  --orange-light: 25 95% 20%;
+  --orange-dark: 25 95% 45%;
+  --yellow-primary: 45 100% 60%;
+  --yellow-light: 45 100% 20%;
+  --yellow-dark: 45 100% 45%;
+  --black-primary: 0 0% 95%;
+  --black-light: 0 0% 80%;
+  --black-muted: 0 0% 65%;
 }
 
 /* Classe para transição suave entre temas */
@@ -652,7 +676,7 @@ a, button, .interactive {
   -webkit-overflow-scrolling: touch; /* Para melhor desempenho em dispositivos iOS */
 }
 .bg-gray-50{
-  background-color: rgba(0, 19, 38, 1) !important;
+  background-color: hsl(var(--background)) !important;
 }
 /* Estilos específicos para o calendário */
 .rdp-dropdown {
@@ -667,7 +691,7 @@ a, button, .interactive {
   cursor: pointer;
   outline: none;
   min-width: 4.5rem;
-  transition: all 0.2s ease;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
   color: hsl(var(--foreground));
   text-align: center;
 }
@@ -693,14 +717,13 @@ a, button, .interactive {
 
 .rdp-button {
   border-radius: 9999px;
-  transition: all 0.2s ease;
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
 }
 
 .rdp-day_selected {
   background-color: hsl(var(--primary)) !important;
   color: hsl(var(--primary-foreground)) !important;
   font-weight: 500;
-  transform: scale(0.95);
   box-shadow: 0 0 0 2px hsl(var(--primary) / 0.5);
 }
 
@@ -737,11 +760,22 @@ a, button, .interactive {
 
 /* Estilos específicos para o DateRangePicker aprimorado */
 .date-picker-popover {
-  z-index: 50 !important;
+  z-index: 9999 !important;
   overflow: visible !important;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15) !important;
   border: 1px solid hsl(var(--border)) !important;
   animation-duration: 0.2s !important;
+}
+
+/* Garantir que o seletor de data tenha prioridade visual sobre os cards */
+.date-range-selector-container {
+  position: relative;
+  z-index: 10;
+}
+
+/* Quando o calendário estiver aberto, garantir que ele fique acima de tudo */
+.date-range-picker-open {
+  z-index: 10000 !important;
 }
 
 .dark .date-picker-popover {
@@ -816,7 +850,7 @@ a, button, .interactive {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.15s ease-in-out;
+  transition: background-color 0.15s ease-in-out, color 0.15s ease-in-out, border-color 0.15s ease-in-out;
 }
 
 /* Estilo para dias no intervalo selecionado */
@@ -965,7 +999,7 @@ a, button, .interactive {
 
 /* Corrigir o alinhamento do popup do calendário */
 [data-radix-popper-content-wrapper] {
-  z-index: 50 !important;
+  z-index: 9999 !important;
 }
 
 /* Ajustes para calendário único */
@@ -1063,7 +1097,7 @@ a, button, .interactive {
 
 /* Estilos para garantir que o popup do datepicker seja exibido corretamente */
 [data-radix-popper-content-wrapper] {
-  z-index: 50 !important;
+  z-index: 9999 !important;
 }
 
 /* Exceção específica para os calendários que devem ficar centralizados */
@@ -1178,4 +1212,235 @@ html.light {
 /* Melhorar transição entre temas */
 .bg-background {
   transition: background-color 0.3s ease;
+}
+
+/* iOS 26 Design System - Estilos específicos para dashboard */
+.ios26-card {
+  @apply bg-card border border-border rounded-2xl shadow-sm;
+  backdrop-filter: blur(20px);
+  background: rgba(255, 255, 255, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.dark .ios26-card {
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.ios26-card:hover {
+  /* transform: translateY(-2px); */
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+}
+
+.dark .ios26-card:hover {
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+}
+
+/* Botões iOS 26 */
+.ios26-button {
+  @apply rounded-2xl px-6 py-3 font-semibold transition-all duration-300;
+  background: linear-gradient(135deg, hsl(var(--orange-primary)), hsl(var(--orange-dark)));
+  color: white;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.ios26-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+}
+
+.ios26-button:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+/* Cards de métricas iOS 26 */
+.ios26-metric-card {
+  @apply ios26-card p-6;
+  background: linear-gradient(135deg, 
+    rgba(255, 255, 255, 0.9) 0%, 
+    rgba(255, 255, 255, 0.7) 100%);
+  position: relative;
+  z-index: 1;
+}
+
+.dark .ios26-metric-card {
+  background: linear-gradient(135deg, 
+    rgba(0, 0, 0, 0.4) 0%, 
+    rgba(0, 0, 0, 0.2) 100%);
+}
+
+/* Indicadores de valor iOS 26 */
+.ios26-value-positive {
+  color: hsl(var(--orange-primary));
+  font-weight: 700;
+  font-size: 1.5rem;
+}
+
+.ios26-value-negative {
+  color: hsl(var(--destructive));
+  font-weight: 700;
+  font-size: 1.5rem;
+}
+
+.ios26-value-neutral {
+  color: hsl(var(--foreground));
+  font-weight: 600;
+  font-size: 1.25rem;
+}
+
+/* Badges iOS 26 */
+.ios26-badge {
+  @apply rounded-full px-3 py-1 text-xs font-semibold;
+  background: hsl(var(--orange-light));
+  color: hsl(var(--orange-primary));
+  border: 1px solid hsl(var(--orange-primary) / 0.2);
+}
+
+.dark .ios26-badge {
+  background: hsl(var(--orange-light));
+  color: hsl(var(--orange-primary));
+}
+
+/* Tabs iOS 26 */
+.ios26-tabs {
+  @apply border-b border-border;
+}
+
+.ios26-tab-trigger {
+  @apply px-4 py-3 text-sm font-medium transition-all duration-300;
+  border-bottom: 2px solid transparent;
+  color: hsl(var(--muted-foreground));
+}
+
+.ios26-tab-trigger[data-state="active"] {
+  color: hsl(var(--orange-primary));
+  border-bottom-color: hsl(var(--orange-primary));
+  background: hsl(var(--orange-light) / 0.1);
+}
+
+/* Gráficos iOS 26 */
+.ios26-chart-container {
+  @apply ios26-card p-6;
+  min-height: 400px;
+}
+
+/* Layout responsivo iOS 26 */
+.ios26-grid {
+  display: grid;
+  gap: 1.5rem;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+}
+
+@media (min-width: 768px) {
+  .ios26-grid {
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  }
+}
+
+@media (min-width: 1024px) {
+  .ios26-grid {
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  }
+}
+
+/* Animações iOS 26 */
+@keyframes ios26-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes ios26-scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.ios26-animate-fade-in {
+  animation: ios26-fade-in 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.ios26-animate-scale-in {
+  animation: ios26-scale-in 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Estilos para valores financeiros iOS 26 */
+.ios26-currency {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+}
+
+.ios26-currency-large {
+  @apply ios26-currency;
+  font-size: 2rem;
+  line-height: 1.2;
+}
+
+.ios26-currency-medium {
+  @apply ios26-currency;
+  font-size: 1.5rem;
+  line-height: 1.3;
+}
+
+.ios26-currency-small {
+  @apply ios26-currency;
+  font-size: 1.125rem;
+  line-height: 1.4;
+}
+
+/* Progress bars iOS 26 */
+.ios26-progress {
+  @apply w-full h-2 bg-muted rounded-full overflow-hidden;
+}
+
+.ios26-progress-bar {
+  @apply h-full transition-all duration-500 ease-out;
+  background: linear-gradient(90deg, 
+    hsl(var(--orange-primary)), 
+    hsl(var(--yellow-primary)));
+  border-radius: 9999px;
+}
+
+/* Tooltips iOS 26 */
+.ios26-tooltip {
+  @apply bg-popover text-popover-foreground px-3 py-2 rounded-xl text-sm;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+  border: 1px solid hsl(var(--border));
+}
+
+.dark .ios26-tooltip {
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+}
+
+/* Loading states iOS 26 */
+.ios26-skeleton {
+  @apply bg-muted animate-pulse rounded-2xl;
+  background: linear-gradient(90deg, 
+    hsl(var(--muted)) 25%, 
+    hsl(var(--muted-foreground) / 0.1) 50%, 
+    hsl(var(--muted)) 75%);
+  background-size: 200% 100%;
+  animation: ios26-shimmer 2s infinite;
+}
+
+@keyframes ios26-shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
 }

@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/_lib/auth-options";
+import { validateSessionForAPI } from "@/app/_utils/auth";
 import { NotificationService } from "@/app/_services/notification-service";
 import { z } from "zod";
 

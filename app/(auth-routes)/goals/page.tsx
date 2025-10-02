@@ -1,9 +1,7 @@
 import { Metadata } from "next";
-import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-
-import { authOptions } from "@/app/_lib/auth-options";
+import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/app/_lib/prisma";
 import { PageHeader } from "@/app/_components/page-header";
 import { Button } from "@/app/_components/ui/button";
@@ -17,16 +15,16 @@ export const metadata: Metadata = {
 };
 
 export default async function GoalsPage() {
-  const session = await getServerSession(authOptions);
+  const user = await getCurrentUser();
 
-  if (!session) {
-    redirect("/auth");
+  if (!user) {
+      redirect("/auth");
   }
 
   // @ts-ignore - O modelo financialGoal está definido no schema mas o TypeScript não o reconhece
   const goals = await prisma.financialGoal.findMany({
     where: {
-      userId: session.user.id,
+      userId: user.id,
     },
     orderBy: {
       createdAt: "desc",

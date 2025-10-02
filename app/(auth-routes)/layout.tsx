@@ -1,15 +1,11 @@
-import { redirect } from "next/navigation";
-import { getAuthSession } from "@/app/_lib/auth";
 import { LayoutWithNavbar } from "@/app/_components/layout-with-navbar";
+import { AuthGuard } from "@/app/_components/AuthGuard";
 
-// Componente do lado do servidor para verificação de autenticação
-export default async function AuthRoutesLayout({ children }: { children: React.ReactNode }) {
-  const { user } = await getAuthSession();
-
-  if (!user) {
-    redirect("/auth");
-  }
-
-  // Agora utilizamos o LayoutWithNavbar em vez do layout com sidebar
-  return <LayoutWithNavbar>{children}</LayoutWithNavbar>;
+// Layout simplificado - o AuthProvider global já cuida da verificação de autenticação
+export default function AuthRoutesLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <AuthGuard>
+      <LayoutWithNavbar>{children}</LayoutWithNavbar>
+    </AuthGuard>
+  );
 } 

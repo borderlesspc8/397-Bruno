@@ -50,8 +50,23 @@ export function lazyLoad<P>(
     ssr = false
   } = options;
 
-  // Criar o componente lazy
-  const LazyComponent = lazy(factory);
+  // Criar o componente lazy com tratamento de erro
+  const LazyComponent = lazy(() => 
+    factory().catch(error => {
+      console.error('Erro ao carregar componente lazy:', error);
+      // Retornar um componente de fallback em caso de erro
+      return {
+        default: () => (
+          <div className="p-4 text-center text-red-500">
+            <p>Erro ao carregar componente</p>
+            <p className="text-sm text-gray-500 mt-1">
+              {error.message || 'Erro desconhecido'}
+            </p>
+          </div>
+        )
+      };
+    })
+  );
   
   // Função para pré-carregar o componente
   const preload = factory;

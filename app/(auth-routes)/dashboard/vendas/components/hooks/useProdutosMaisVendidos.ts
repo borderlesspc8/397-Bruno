@@ -1,31 +1,25 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import axios from "axios";
-import { useSession } from "next-auth/react";
+import { useAuth } from "@/app/_hooks/useAuth";
 
 // Tipos
 export type OrdenacaoTipo = "quantidade" | "valor" | "margem";
 export type VisualizacaoTipo = "grafico" | "tabela";
 
 export interface ProdutoItem {
-  id?: string;
+  id: string;
   nome: string;
   quantidade: number;
   valor: number;
-  custo?: number;
+  valorUnitario: number;
   margem: number;
-  margemPercentual: number | string;
-  percentual?: number;
-  categoria?: string;
+  margemPercentual: number;
 }
 
-// Categorias específicas para filtrar acessórios
-const CATEGORIAS_ACESSORIOS_ESPECIAIS = [
-  "ANILHA", "HALTER", "CABO DE AÇO", "KETTLEBELL", "PAR DE CANELEIRAS"
-];
 
 // Cache para reduzir requisições desnecessárias
-const CACHE_TTL = 5 * 60 * 1000; // 5 minutos
-const produtosCache = new Map<string, { data: any, timestamp: number }>();
+// const CACHE_TTL = 5 * 60 * 1000; // 5 minutos
+// const produtosCache = new Map<string, { data: any, timestamp: number }>();
 
 interface UseProdutosMaisVendidosProps {
   dataInicio: Date;
@@ -33,8 +27,8 @@ interface UseProdutosMaisVendidosProps {
 }
 
 export const useProdutosMaisVendidos = ({ dataInicio, dataFim }: UseProdutosMaisVendidosProps) => {
-  const { data: session } = useSession();
-  const userEmail = session?.user?.email;
+  const { user } = useAuth();
+  const userEmail = user?.email;
 
   const [produtos, setProdutos] = useState<ProdutoItem[]>([]);
   const [equipamentos, setEquipamentos] = useState<ProdutoItem[]>([]);
@@ -58,39 +52,6 @@ export const useProdutosMaisVendidos = ({ dataInicio, dataFim }: UseProdutosMais
     return `produtos-vendidos:${dataInicio.toISOString()}-${dataFim.toISOString()}-${userEmail}`;
   }, []);
 
-  // Função para separar os acessórios em categorias específicas
-  const separaGrupos = useCallback((acessoriosLista: ProdutoItem[]) => {
-    // Filtra acessórios especiais que contêm palavras-chave das categorias
-    const especiais = acessoriosLista.filter(a => 
-      CATEGORIAS_ACESSORIOS_ESPECIAIS.some(cat => 
-        a.nome.toUpperCase().includes(cat)
-      )
-    );
-    
-    // Filtra itens sextavados
-    const sextavados = acessoriosLista.filter(a => 
-      a.nome.toLowerCase().includes("sextavado")
-    );
-    
-    // Filtra itens emborrachados
-    const emborrachados = acessoriosLista.filter(a => 
-      a.nome.toLowerCase().includes("emborrachado")
-    );
-    
-    // Filtra os demais acessórios (removendo os especiais)
-    const demaisAcessorios = acessoriosLista.filter(a => 
-      !CATEGORIAS_ACESSORIOS_ESPECIAIS.some(cat => a.nome.toUpperCase().includes(cat)) &&
-      !a.nome.toLowerCase().includes("sextavado") &&
-      !a.nome.toLowerCase().includes("emborrachado")
-    );
-    
-    return {
-      especiais,
-      sextavados,
-      emborrachados,
-      demaisAcessorios
-    };
-  }, []);
 
   // Buscar produtos com suporte a cache
   useEffect(() => {
@@ -105,31 +66,26 @@ export const useProdutosMaisVendidos = ({ dataInicio, dataFim }: UseProdutosMais
         setLoading(true);
         setErro(null);
 
-        const dataInicioFormatada = dataInicio.toISOString().split('T')[0];
-        const dataFimFormatada = dataFim.toISOString().split('T')[0];
+        // Ajustar as datas para considerar o fuso horário local
+        const dataInicioAjustada = new Date(dataInicio);
+        dataInicioAjustada.setHours(0, 0, 0, 0);
+        
+        const dataFimAjustada = new Date(dataFim);
+        dataFimAjustada.setHours(23, 59, 59, 999);
+        
+        // Formatar datas no formato YYYY-MM-DD
+        const dataInicioFormatada = dataInicioAjustada.toLocaleDateString('en-CA'); // Formato YYYY-MM-DD
+        const dataFimFormatada = dataFimAjustada.toLocaleDateString('en-CA'); // Formato YYYY-MM-DD
         
         // Verificar cache antes de fazer a requisição
-        const cacheKey = getCacheKey(dataInicio, dataFim, userEmail);
-        const cacheEntry = produtosCache.get(cacheKey);
-        const now = Date.now();
+        // const cacheKey = getCacheKey(dataInicioAjustada, dataFimAjustada, userEmail);
+        // const cacheEntry = produtosCache.get(cacheKey);
+        // const now = Date.now();
         
         // Se temos dados em cache e eles ainda são válidos, usá-los
-        if (cacheEntry && now - cacheEntry.timestamp < CACHE_TTL) {
-          const { data } = cacheEntry;
-          const acessoriosLista = data.acessorios || [];
-          
-          // Classificar acessórios em grupos específicos
-          const grupos = separaGrupos(acessoriosLista);
-          
-          setProdutos(data.produtos || []);
-          setEquipamentos(data.equipamentos || []);
-          setAcessorios(acessoriosLista);
-          setAcessoriosEspeciais(grupos.especiais);
-          setAcessoriosSextavados(grupos.sextavados);
-          setAcessoriosEmborrachados(grupos.emborrachados);
-          setLoading(false);
-          return;
-        }
+        // if (cacheEntry && now - cacheEntry.timestamp < CACHE_TTL) { ... }
+
+        console.log(`Buscando produtos de ${dataInicioFormatada} até ${dataFimFormatada}`);
 
         const response = await axios.get(`/api/gestao-click/produtos-mais-vendidos`, {
           params: {
@@ -140,23 +96,22 @@ export const useProdutosMaisVendidos = ({ dataInicio, dataFim }: UseProdutosMais
         });
         
         if (response.data) {
-          const acessoriosLista = response.data.acessorios || [];
-          
-          // Classificar acessórios em grupos específicos
-          const grupos = separaGrupos(acessoriosLista);
-          
-          setProdutos(response.data.produtos || []);
+          // A nova API já retorna as categorias separadas
           setEquipamentos(response.data.equipamentos || []);
-          setAcessorios(acessoriosLista);
-          setAcessoriosEspeciais(grupos.especiais);
-          setAcessoriosSextavados(grupos.sextavados);
-          setAcessoriosEmborrachados(grupos.emborrachados);
+          setAcessorios(response.data.acessorios || []);
+          setAcessoriosEspeciais(response.data.acessoriosEspeciais || []);
+          setAcessoriosSextavados(response.data.acessoriosSextavados || []);
+          setAcessoriosEmborrachados(response.data.acessoriosEmborrachados || []);
           
-          // Armazenar no cache
-          produtosCache.set(cacheKey, {
-            data: response.data,
-            timestamp: now
-          });
+          // Manter compatibilidade com o código existente
+          const todosProdutos = [
+            ...(response.data.equipamentos || []),
+            ...(response.data.acessorios || []),
+            ...(response.data.acessoriosEspeciais || []),
+            ...(response.data.acessoriosSextavados || []),
+            ...(response.data.acessoriosEmborrachados || [])
+          ];
+          setProdutos(todosProdutos);
         } else {
           setErro("Formato de dados inválido");
         }
@@ -169,7 +124,7 @@ export const useProdutosMaisVendidos = ({ dataInicio, dataFim }: UseProdutosMais
     };
 
     buscarProdutos();
-  }, [dataInicio, dataFim, userEmail, separaGrupos, getCacheKey]);
+  }, [dataInicio, dataFim, userEmail, getCacheKey]);
   
   // Formatação de valores monetários
   const formatarDinheiro = useCallback((valor: number) => {
@@ -231,15 +186,7 @@ export const useProdutosMaisVendidos = ({ dataInicio, dataFim }: UseProdutosMais
   const produtosOrdenados = useMemo(() => {
     return {
       equipamentos: ordenarProdutos(equipamentos, ordenacao),
-      acessorios: ordenarProdutos(acessorios.filter(a => 
-        !a.nome.toUpperCase().includes("ANILHA") && 
-        !a.nome.toUpperCase().includes("HALTER") && 
-        !a.nome.toUpperCase().includes("CABO DE AÇO") && 
-        !a.nome.toUpperCase().includes("KETTLEBELL") && 
-        !a.nome.toUpperCase().includes("PAR DE CANELEIRAS") &&
-        !a.nome.toLowerCase().includes("sextavado") &&
-        !a.nome.toLowerCase().includes("emborrachado")
-      ), ordenacao),
+      acessorios: ordenarProdutos(acessorios, ordenacao),
       acessoriosEspeciais: ordenarProdutos(acessoriosEspeciais, ordenacao),
       acessoriosSextavados: ordenarProdutos(acessoriosSextavados, ordenacao),
       acessoriosEmborrachados: ordenarProdutos(acessoriosEmborrachados, ordenacao)

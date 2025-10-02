@@ -10,7 +10,7 @@ import { Button } from "../ui/button";
 import { ChevronLeft, ChevronRight, Wallet } from "lucide-react";
 import { SimpleUserButton } from "./SimpleUserButton";
 import { MenuSectionComponent } from "./MenuSection";
-import { MenuSection, SubscriptionPlan } from "./types";
+import { MenuSection } from "./types";
 import { MENU_SECTIONS } from "./menu-data";
 
 export function Sidebar() {
@@ -73,7 +73,6 @@ export function Sidebar() {
               section={section}
               sectionIndex={sIndex}
               collapsed={collapsed}
-              userPlan={session?.user?.subscriptionPlan as SubscriptionPlan}
               pathname={pathname}
               isDarkTheme={isDarkTheme}
             />

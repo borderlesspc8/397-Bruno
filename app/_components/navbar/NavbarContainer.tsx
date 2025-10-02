@@ -9,7 +9,6 @@ import { BrandLogo } from "./BrandLogo";
 import { SearchBar } from "./SearchBar";
 import { NotificationCenter } from "./NotificationCenter";
 import { ThemeSelector } from "./ThemeSelector";
-import { NewTransactionButton } from "./NewTransactionButton";
 import { UserButton } from "../user-button/UserButton";
 import { SessionRefreshButton } from "../SessionRefreshButton";
 
@@ -58,7 +57,6 @@ const NavbarContainer = () => {
           <NotificationCenter />
           
           {/* Botão Nova Transação */}
-          <NewTransactionButton />
             
           {/* Menu do usuário */}
           <UserButton />

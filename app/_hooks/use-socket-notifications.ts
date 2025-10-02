@@ -2,14 +2,14 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
-import { useSession } from 'next-auth/react';
+import { useAuth } from './useAuth';
 import useNotificationStore, { Notification } from './use-notification-store';
 
 const useSocketNotifications = () => {
   const [socket, setSocket] = useState<Socket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [connectionError, setConnectionError] = useState<string | null>(null);
-  const { data: session, status } = useSession();
+  const { user, loading } = useAuth();
   const addNotification = useNotificationStore((state) => state.addNotification);
   const updateUnreadCount = useNotificationStore((state) => state.updateUnreadCount);
   
@@ -25,8 +25,8 @@ const useSocketNotifications = () => {
     if (hasCalledEffectOnceRef.current) return;
     hasCalledEffectOnceRef.current = true;
     
-    // Se a sessão ainda está carregando, aguarde
-    if (status === 'loading') return;
+    // Se a autenticação ainda está carregando, aguarde
+    if (loading) return;
     
     // Se já tentou conectar sem sucesso, não tenta novamente
     if (connectionAttemptedRef.current || authFailedRef.current) {
@@ -66,8 +66,8 @@ const useSocketNotifications = () => {
       console.log(`URL final do socket: ${socketUrl}`);
       
       // Criar objeto de autenticação com fallback para usuários não autenticados
-      const authObject = session?.user?.id 
-        ? { userId: session.user.id }
+      const authObject = user?.id 
+        ? { userId: user.id }
         : { userId: `anonymous-${Math.random().toString(36).substring(2, 9)}` };
       
       const socketInstance = io(socketUrl, {
@@ -108,7 +108,7 @@ const useSocketNotifications = () => {
         socketInstanceRef.current.removeAllListeners();
       }
     };
-  }, [session?.user?.id, status, addNotification, updateUnreadCount]);
+  }, [user?.id, loading, addNotification, updateUnreadCount]);
 
   // Função para enviar uma mensagem pelo socket
   const sendMessage = useCallback((event: string, data: any) => {
@@ -142,8 +142,8 @@ const useSocketNotifications = () => {
       setConnectionError(null);
       
       // Autenticar com o servidor se houver ID de usuário
-      if (session?.user?.id) {
-        socketInstance.emit('authenticate', session.user.id);
+      if (user?.id) {
+        socketInstance.emit('authenticate', user.id);
       } else {
         // Enviar ID anônimo para autenticação
         const anonymousId = `anonymous-${Math.random().toString(36).substring(2, 9)}`;
@@ -202,7 +202,7 @@ const useSocketNotifications = () => {
           reconnectionDelay: 3000,
           timeout: 5000,
           transports: ['polling'], // Usar apenas polling como último recurso
-          auth: session?.user?.id ? { userId: session.user.id } : { userId: `anonymous-${Math.random().toString(36).substring(2, 9)}` }
+          auth: user?.id ? { userId: user.id } : { userId: `anonymous-${Math.random().toString(36).substring(2, 9)}` }
         });
         
         // Substituir a instância atual

@@ -14,6 +14,7 @@ import { MenuItem } from "./types";
 import { MenuItemComponent } from "./MenuItem";
 import { AddTransactionButton } from '../AddTransactionButton';
 import { Session } from "next-auth";
+import { useRouter } from "next/navigation";
 
 const AnimatedMotionDiv = motion.div;
 

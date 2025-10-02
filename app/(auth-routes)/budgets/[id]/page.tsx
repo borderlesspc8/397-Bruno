@@ -1,7 +1,6 @@
 import { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/_lib/auth-options";
+import { getCurrentUser } from "@/lib/auth";
 import { db } from "@/app/_lib/prisma";
 import { formatCurrency } from "@/app/_lib/formatters";
 import { BudgetDetails } from "./_components/BudgetDetails";
@@ -24,8 +23,8 @@ interface BudgetPageProps {
 }
 
 export default async function BudgetPage({ params }: BudgetPageProps) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.email) {
+  const user = await getCurrentUser();
+  if (!user?.email) {
     return notFound();
   }
 
@@ -34,7 +33,7 @@ export default async function BudgetPage({ params }: BudgetPageProps) {
     where: {
       id: params.id,
       user: {
-        email: session.user.email,
+        email: user.email,
       },
     },
     include: {

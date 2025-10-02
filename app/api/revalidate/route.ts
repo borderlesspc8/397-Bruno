@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { getAuthSession } from "@/app/_lib/auth";
+import { redis } from '@/app/_lib/redis';
+import { dataCache, promiseCache, metricsCache } from '@/app/_services/cache';
 
 // Configuração para forçar o comportamento dinâmico
 export const dynamic = "force-dynamic";
-
 
 export async function POST(request: NextRequest) {
   try {
@@ -17,29 +18,53 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Extrair o caminho a ser revalidado da URL de consulta
-    const path = request.nextUrl.searchParams.get("path");
-    
+    const { path } = await request.json();
+
     if (!path) {
       return NextResponse.json(
-        { error: "Caminho não fornecido" },
+        { message: 'Path é obrigatório' },
         { status: 400 }
       );
     }
 
-    // Revalidar o caminho especificado
+    // Limpar todos os caches
+    await redis.flushall(); // Redis
+    dataCache.clear(); // LRU Cache
+    promiseCache.clear(); // Promise Cache
+    metricsCache.clear(); // Metrics Cache
+
+    // Força revalidação do cache para o caminho especificado
     revalidatePath(path);
 
-    return NextResponse.json({
-      revalidated: true,
-      path,
-      timestamp: new Date().toISOString()
+    // Força revalidação de todas as rotas do dashboard
+    const dashboardRoutes = [
+      '/dashboard',
+      '/dashboard/vendas',
+      '/dashboard/vendedores',
+      '/dashboard/atendimentos',
+      '/dashboard/consultores',
+      '/dashboard/metas',
+      '/api/dashboard/vendas',
+      '/api/dashboard/vendedores',
+      '/api/dashboard/atendimentos',
+      '/api/dashboard/consultores',
+      '/api/dashboard/metas',
+      '/api/user/profile'
+    ];
+
+    // Revalida todas as rotas
+    dashboardRoutes.forEach(route => {
+      revalidatePath(route);
     });
-  } catch (error) {
-    console.error("Erro ao revalidar caminho:", error);
-    
+
     return NextResponse.json(
-      { error: "Erro ao processar a requisição" },
+      { revalidated: true, message: 'Cache revalidado com sucesso' },
+      { status: 200 }
+    );
+  } catch (error) {
+    console.error('Erro ao revalidar cache:', error);
+    return NextResponse.json(
+      { message: 'Erro ao revalidar cache' },
       { status: 500 }
     );
   }

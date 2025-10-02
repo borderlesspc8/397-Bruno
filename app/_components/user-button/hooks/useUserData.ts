@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useSession } from "next-auth/react";
+import { useAuth } from "@/app/_hooks/useAuth";
 import { UserData } from "../types";
 import { toast } from "../../ui/use-toast";
 
@@ -9,14 +9,14 @@ import { toast } from "../../ui/use-toast";
  * Hook para gerenciar os dados do usuário
  */
 export const useUserData = () => {
-  const { data: session, update } = useSession();
+  const { user } = useAuth();
   const [userData, setUserData] = useState<UserData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   
   // Buscar dados completos do usuário
   useEffect(() => {
     const fetchUserData = async () => {
-      if (!session?.user) {
+      if (!user) {
         setIsLoading(false);
         return;
       }
@@ -25,7 +25,14 @@ export const useUserData = () => {
         setIsLoading(true);
         
         // Buscar dados reais da API
-        const response = await fetch("/api/user/profile");
+        const response = await fetch(`/api/user/profile?userId=${user.id}`);
+        
+        // Se não autorizado, não exibir erro (usuário será redirecionado)
+        if (response.status === 401) {
+          console.log("Usuário não autenticado, aguardando redirecionamento");
+          setIsLoading(false);
+          return;
+        }
         
         if (!response.ok) {
           throw new Error(`Erro ao buscar dados: ${response.status}`);
@@ -36,34 +43,26 @@ export const useUserData = () => {
         setUserData(data);
       } catch (error) {
         console.error("Erro ao buscar dados do usuário:", error);
-        toast({
-          title: "Erro",
-          description: "Não foi possível carregar os dados do usuário.",
-          variant: "destructive"
-        });
+        // Só exibir toast se não for erro de autenticação
+        if (error instanceof Error && !error.message.includes('401')) {
+          toast({
+            title: "Erro",
+            description: "Não foi possível carregar os dados do usuário.",
+            variant: "destructive"
+          });
+        }
       } finally {
         setIsLoading(false);
       }
     };
     
     fetchUserData();
-  }, [session, toast]);
+  }, [user, toast]);
   
   // Atualizar avatar do usuário
   const updateAvatar = async (imageUrl: string) => {
     try {
-      // Em um caso real, isso enviaria uma requisição para a API
-      // para atualizar o avatar do usuário
-      
-      // Simulação para demonstração
-      await update({
-        ...session,
-        user: {
-          ...session?.user,
-          image: imageUrl
-        }
-      });
-      
+      // Simulação para demonstração - apenas atualizar o estado local
       setUserData(prev => prev ? { ...prev, image: imageUrl } : null);
       
       toast({

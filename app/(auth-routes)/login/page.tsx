@@ -11,7 +11,7 @@ const LoginPage = async () => {
 
   // Redirecionar se já estiver logado
   if (session?.user) {
-    redirect("/painel");
+    redirect("/dashboard/vendas");
   }
 
   return (

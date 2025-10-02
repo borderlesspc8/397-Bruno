@@ -1,69 +1,41 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getToken } from "next-auth/jwt";
-import { db } from "@/app/_lib/db";
+import { createClient } from "@/app/_lib/supabase-server";
 
 export async function GET(request: NextRequest) {
   try {
-    // Verificar se o usuário está autenticado e é o administrador autorizado
-    const token = await getToken({ 
-      req: request,
-      secret: process.env.NEXTAUTH_SECRET 
-    });
+    // Verificar se o usuário está autenticado usando Supabase Auth
+    const supabase = createClient();
+    const { data: { user }, error } = await supabase.auth.getUser();
 
-    if (!token) {
+    if (error || !user) {
       return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
     }
 
     // Verificar se o usuário atual é o administrador autorizado (mvcas95@gmail.com)
-    if (token?.email !== "mvcas95@gmail.com") {
+    if (user.email !== "mvcas95@gmail.com") {
       return NextResponse.json({ 
         error: "Acesso restrito apenas ao administrador autorizado" 
       }, { status: 403 });
     }
 
-    // Buscar todos os usuários do banco de dados
-    const users = await db.user.findMany({
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        emailVerified: true,
-        image: true,
-        subscription: true,
-        role: true,
-        isOnboarded: true,
-        isTermsAccepted: true,
-        lastLogin: true,
-        createdAt: true,
-        updatedAt: true,
-      },
-      orderBy: {
-        createdAt: 'desc'
-      }
-    });
+    // TODO: Implementar busca de usuários no Supabase quando necessário
+    // Por enquanto, retornar apenas o usuário atual
+    const currentUser = {
+      id: user.id,
+      email: user.email,
+      name: user.user_metadata?.full_name || user.email?.split('@')[0],
+      image: user.user_metadata?.avatar_url,
+      subscriptionPlan: 'FREE',
+      isActive: true,
+      role: 'ADMIN',
+      isOnboarded: true,
+      isTermsAccepted: true,
+      lastLogin: user.last_sign_in_at,
+      createdAt: user.created_at,
+      updatedAt: user.updated_at
+    };
 
-    // Processar os dados de usuários para adicionar os campos necessários
-    const processedUsers = users.map(user => {
-      // Determinar o plano de assinatura com base no relacionamento subscription
-      let subscriptionPlan = 'FREE';
-      let isActive = true;
-
-      if (user.subscription) {
-        subscriptionPlan = user.subscription.plan || 'FREE';
-        // Apenas 'ACTIVE' é considerado ativo, todos os outros status são inativos
-        isActive = user.subscription.status === 'ACTIVE';
-      }
-
-      return {
-        ...user,
-        subscriptionPlan,
-        isActive,
-        // Removendo o objeto de assinatura completo para simplificar o retorno
-        subscription: undefined
-      };
-    });
-
-    return NextResponse.json({ users: processedUsers });
+    return NextResponse.json({ users: [currentUser] });
 
   } catch (error) {
     console.error("Erro ao buscar usuários:", error);

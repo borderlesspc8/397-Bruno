@@ -57,15 +57,11 @@ const formSchema = z.object({
 type FormValues = z.infer<typeof formSchema>;
 
 interface CashFlowPredictionFormProps {
-  wallets: { id: string; name: string }[];
-  defaultWalletId?: string;
   onSuccess?: () => void;
   defaultValues?: Partial<FormValues>;
 }
 
 export function CashFlowPredictionForm({
-  wallets,
-  defaultWalletId,
   onSuccess,
   defaultValues,
 }: CashFlowPredictionFormProps) {
@@ -259,11 +255,7 @@ export function CashFlowPredictionForm({
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  {wallets.map((wallet) => (
-                    <SelectItem key={wallet.id} value={wallet.id}>
-                      {wallet.name}
-                    </SelectItem>
-                  ))}
+                  <SelectItem value="default">Carteira Padrão</SelectItem>
                 </SelectContent>
               </Select>
               <FormMessage />

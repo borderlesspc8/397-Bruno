@@ -35,7 +35,7 @@ export function PageContainer({
   
   return (
     <div className={cn(
-      "mx-auto px-4 py-6",
+      "page-container mx-auto px-4 py-6 relative z-10",
       fullWidth ? "w-full" : "container max-w-screen-2xl",
       className
     )}>

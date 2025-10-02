@@ -1,6 +1,6 @@
 import React from 'react';
 import { useRouter } from 'next/router';
-import { Building2, Wallet, Receipt, Target, PiggyBank, BarChart3, Settings } from 'lucide-react';
+import { Building2, Target, PiggyBank, BarChart3, Settings } from 'lucide-react';
 
 interface SidebarNavProps {
   // ... existing props ...
@@ -15,16 +15,6 @@ export default function SidebarNav({
   const pathname = router.pathname;
 
   const routes = [
-    {
-      href: "/wallets",
-      label: "Carteiras",
-      icon: Wallet,
-    },
-    {
-      href: "/transactions",
-      label: "Transações",
-      icon: Receipt,
-    },
     {
       href: "/goals",
       label: "Objetivos",

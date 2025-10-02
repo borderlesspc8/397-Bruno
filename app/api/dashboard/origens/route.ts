@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
+import { validateSessionForAPI } from "@/app/_utils/auth";
 import { authOptions } from "@/app/_lib/auth";
 
 // Configuração para forçar o comportamento dinâmico

@@ -106,6 +106,16 @@ export function ComoNosConheceuProdutos({ dataInicio, dataFim }: ComoNosConheceu
   const itensPorPaginaDados = 10;
 
   useEffect(() => {
+    // DESABILITADO TEMPORARIAMENTE PARA EVITAR LOOPS
+    console.log('⚠️ ComoNosConheceuProdutos: Requisições desabilitadas temporariamente para evitar loops');
+    
+    setLoading(false);
+    setDados({ origens: [], produtos: [] });
+    setError(null);
+    return;
+    
+    // CÓDIGO ORIGINAL COMENTADO PARA EVITAR LOOPS
+    /*
     const fetchData = async () => {
       setLoading(true);
       setError(null);
@@ -148,6 +158,7 @@ export function ComoNosConheceuProdutos({ dataInicio, dataFim }: ComoNosConheceu
     };
     
     fetchData();
+    */
   }, [dataInicio, dataFim, origemSelecionada, tipoLoja]);
 
   // Cores para os gráficos

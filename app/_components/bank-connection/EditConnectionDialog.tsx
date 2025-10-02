@@ -105,7 +105,7 @@ export const EditConnectionDialog = ({
     try {
       toast.info("Testando conexão...", { id: "test-connection" });
 
-      const response = await fetch(`/api/wallets/${connectionId}/test-connection`, {
+      const response = await fetch(`/api/banks/test-connection`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -119,7 +119,7 @@ export const EditConnectionDialog = ({
 
       const data = await response.json();
       
-      toast.success(`Conexão testada com sucesso! ${data.transactions} transações encontradas.`, {
+      toast.success(`Conexão testada com sucesso!`, {
         id: "test-connection",
       });
     } catch (error) {

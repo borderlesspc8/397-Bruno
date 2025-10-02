@@ -1,4 +1,3 @@
-import { SubscriptionPlan } from "@/app/types";
 
 /**
  * Gera as iniciais para o avatar a partir do nome ou email
@@ -20,41 +19,6 @@ export function generateInitials(name: string | null, email: string | null): str
   return "??";
 }
 
-/**
- * Formata o nome do plano para exibição
- */
-export function formatPlanName(plan: SubscriptionPlan | null | undefined): string {
-  if (!plan) return "Gratuito";
-  
-  switch (plan) {
-    case SubscriptionPlan.BASIC:
-      return "Basic";
-    case SubscriptionPlan.PREMIUM:
-      return "Premium";
-    case SubscriptionPlan.ENTERPRISE:
-      return "Empresarial";
-    default:
-      return "Gratuito";
-  }
-}
-
-/**
- * Retorna a variante de badge adequada para o plano
- */
-export function getPlanBadgeVariant(plan: SubscriptionPlan | null | undefined): string {
-  if (!plan) return "outline";
-  
-  switch (plan) {
-    case SubscriptionPlan.BASIC:
-      return "secondary";
-    case SubscriptionPlan.PREMIUM:
-      return "default";
-    case SubscriptionPlan.ENTERPRISE:
-      return "destructive";
-    default:
-      return "outline";
-  }
-}
 
 /**
  * Formata uma data como relativa a agora (ex: "2 dias atrás")

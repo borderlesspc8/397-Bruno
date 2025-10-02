@@ -23,7 +23,14 @@ export function useVendedoresImagens(vendedores: Vendedor[], limite?: number) {
       '1076058': '/uploads/vendedores/1076058.jpg',
       '1089189': '/uploads/vendedores/1089189.jpg',
       '1145968': '/uploads/vendedores/1145968.jpg',
-      'marcos-vinicius': '/uploads/vendedores/vendedor_marcos-vinicius.png'
+      'marcos-vinicius': '/uploads/vendedores/vendedor_marcos-vinicius.png',
+      // IDs com prefixo gc- (Gestão Click)
+      'gc-1072623': '/uploads/vendedores/vendedor_1072623.png',
+      'gc-1076058': '/uploads/vendedores/1076058.jpg',
+      'gc-1089189': '/uploads/vendedores/1089189.jpg',
+      'gc-1145968': '/uploads/vendedores/1145968.jpg',
+      'gc-1093446': '/uploads/vendedores/vendedor_1093446.png',
+      'gc-1187735': '/uploads/vendedores/vendedor_1187735.png'
     };
 
     // Para cada vendedor, carregamos suas imagens
@@ -41,10 +48,15 @@ export function useVendedoresImagens(vendedores: Vendedor[], limite?: number) {
         return;
       }
 
+      // Extrair o ID real do vendedor (remover prefixo gc- se existir)
+      const vendedorIdReal = id.startsWith('gc-') ? id.replace('gc-', '') : id;
+
       // Formatos a tentar, em ordem de prioridade
       const formatos = [
-        `/uploads/vendedores/vendedor_${id}.png`,
-        `/uploads/vendedores/vendedor_${id}.jpg`
+        `/uploads/vendedores/vendedor_${vendedorIdReal}.png`,
+        `/uploads/vendedores/vendedor_${vendedorIdReal}.jpg`,
+        `/uploads/vendedores/${vendedorIdReal}.jpg`, // Formato sem prefixo vendedor_
+        `/uploads/vendedores/${vendedorIdReal}.png`  // Formato sem prefixo vendedor_
       ];
       
       // Função para tentar o próximo formato

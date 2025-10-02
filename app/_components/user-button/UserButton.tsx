@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useSession, signOut } from "next-auth/react";
+import { useAuth } from "@/app/_hooks/useAuth";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { 
@@ -33,7 +33,7 @@ import { Badge } from "../ui/badge";
 // Hooks e Utilitários
 import { useUserData } from "./hooks/useUserData";
 import { useAvatarCustomization } from "./hooks/useAvatarCustomization";
-import { formatPlanName, getPlanBadgeVariant, generateInitials } from "./utils/formatters";
+import { generateInitials } from "./utils/formatters";
 import { useTheme } from "../theme-provider";
 
 // Componentes
@@ -42,7 +42,7 @@ import { ResourceUsageDisplay } from "./components/ResourceUsage";
 import { AvatarCustomizer } from "./components/AvatarCustomizer";
 
 export function UserButton() {
-  const { data: session } = useSession();
+  const { user, signOut } = useAuth();
   const { theme, setTheme } = useTheme();
   const router = useRouter();
   const { userData, isLoading, updateAvatar } = useUserData();
@@ -62,16 +62,15 @@ export function UserButton() {
     saveAvatarChanges
   } = useAvatarCustomization(userData?.image, updateAvatar);
   
-  if (!session?.user) {
+  if (!user) {
     return null;
   }
   
-  const { name, email, image } = session.user;
+  const { name, email, image } = user || {};
   const initials = generateInitials(name, email);
-  const userPlan = userData?.subscriptionPlan || session.user.subscriptionPlan;
   
   const handleLogout = async () => {
-    await signOut({ callbackUrl: "/auth" });
+    await signOut();
   };
   
   return (
@@ -112,9 +111,6 @@ export function UserButton() {
             {/* Status da conta */}
             <AccountStatus userData={userData} isLoading={isLoading} />
             
-            <Badge variant={getPlanBadgeVariant(userPlan) as "outline" | "secondary" | "default" | "destructive"} className="w-fit mt-1">
-              Plano {formatPlanName(userPlan)}
-            </Badge>
             
             {/* Uso de recursos */}
             <ResourceUsageDisplay resourceUsage={userData?.resourceUsage} isLoading={isLoading} />
@@ -128,13 +124,6 @@ export function UserButton() {
               <span>Meu Perfil</span>
             </Link>
           </DropdownMenuItem>
-{/*           
-          <DropdownMenuItem asChild>
-            <Link href="/subscription" className="flex items-center cursor-pointer">
-              <Star className="mr-2 h-4 w-4" />
-              <span>Meu Plano</span>
-            </Link>
-          </DropdownMenuItem> */}
           
           {/* <DropdownMenuItem asChild>
             <Link href="/history" className="flex items-center cursor-pointer">

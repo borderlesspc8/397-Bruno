@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
+import { validateSessionForAPI } from "@/app/_utils/auth";
 import { z } from "zod";
 
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { db } from "@/app/_lib/prisma";
 
 export const dynamic = "force-dynamic";

@@ -4,9 +4,7 @@ import { parse, format, startOfMonth, subMonths } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { BetelTecnologiaService } from '@/app/_services/betelTecnologia';
 import { getCachedData, CachePrefix } from '@/app/_services/cache';
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
-import { db } from "@/app/_lib/prisma";
+import { validateSessionForAPI } from "@/app/_utils/auth";
 
 // Configuração para forçar o comportamento dinâmico
 export const dynamic = "force-dynamic";

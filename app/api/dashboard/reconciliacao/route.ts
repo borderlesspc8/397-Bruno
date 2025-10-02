@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthSession } from "@/app/_lib/auth";
-import { verificarIntegracaoGestaoClick } from "@/app/_data/get-dashboard";
 
 // Configuração para forçar o comportamento dinâmico
 export const dynamic = "force-dynamic";
@@ -29,12 +28,11 @@ export async function GET(req: NextRequest) {
     const month = monthStr ? parseInt(monthStr, 10) : new Date().getMonth() + 1;
     const year = yearStr ? parseInt(yearStr, 10) : new Date().getFullYear();
 
-    // Executar reconciliação com parâmetros corretos
-    const resultado = await verificarIntegracaoGestaoClick(
-      session.user.id, 
-      month,
-      year
-    );
+    // Reconciliação não disponível - serviço removido
+    const resultado = {
+      success: false,
+      message: "Reconciliação não disponível - serviço removido"
+    };
 
     return NextResponse.json(resultado);
   } catch (error) {

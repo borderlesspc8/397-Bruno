@@ -1,56 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/_lib/auth-options";
-import { prisma } from "@/app/_lib/prisma";
-import { SubscriptionPlan } from "@/app/types";
+import { validateSessionForAPI } from "@/app/_utils/auth";
+import { createClient } from "@/app/_lib/supabase-server";
 
 // Função que gera dados simulados baseados em parâmetros para parecer realista
 function generateRealisticData() {
-  // Escolher um dos planos aleatoriamente para variar os dados
-  const plans = [SubscriptionPlan.FREE, SubscriptionPlan.BASIC, SubscriptionPlan.PREMIUM];
-  const userPlan = plans[Math.floor(Math.random() * plans.length)];
-  
-  // Definir limites com base no plano
+  // Todos os usuários têm acesso total - sem limitações
   const limits = {
-    wallets: userPlan === SubscriptionPlan.FREE ? 1 : 
-             userPlan === SubscriptionPlan.BASIC ? 3 : 10,
-             
-    transactions: userPlan === SubscriptionPlan.FREE ? 100 : 
-                  userPlan === SubscriptionPlan.BASIC ? 1000 : 10000,
-                  
-    connections: userPlan === SubscriptionPlan.FREE ? 1 : 
-                 userPlan === SubscriptionPlan.BASIC ? 2 : 5
+    connections: 5
   };
   
-  // Gerar contagens realistas baseadas no plano
-  // Para planos FREE e BASIC, fazemos o uso ficar próximo do limite 
-  // Para PREMIUM mostramos uso moderado
+  // Uso moderado para todos os usuários
   const usage = {
-    wallets: userPlan === SubscriptionPlan.FREE ? 1 : 
-             userPlan === SubscriptionPlan.BASIC ? Math.floor(limits.wallets * 0.8) : 
-             Math.floor(limits.wallets * 0.4),
-             
-    transactions: userPlan === SubscriptionPlan.FREE ? Math.floor(limits.transactions * 0.85) : 
-                  userPlan === SubscriptionPlan.BASIC ? Math.floor(limits.transactions * 0.75) : 
-                  Math.floor(limits.transactions * 0.32),
-                  
-    connections: userPlan === SubscriptionPlan.FREE ? limits.connections : 
-                 userPlan === SubscriptionPlan.BASIC ? Math.floor(limits.connections * 0.5) : 
-                 Math.floor(limits.connections * 0.4)
+    connections: Math.floor(limits.connections * 0.4)
   };
   
   // Calcular percentuais
   const resourceUsage = {
-    wallets: {
-      used: usage.wallets,
-      limit: limits.wallets,
-      percentage: usage.wallets / limits.wallets
-    },
-    transactions: {
-      used: usage.transactions,
-      limit: limits.transactions,
-      percentage: usage.transactions / limits.transactions
-    },
     connections: {
       used: usage.connections,
       limit: limits.connections,
@@ -60,15 +25,11 @@ function generateRealisticData() {
   
   // Dados estatísticos sobre o usuário
   const stats = {
-    transactionsCount: usage.transactions,
-    categoriesCount: Math.floor(usage.transactions * 0.1), // Cerca de 10% do número de transações
-    walletsCount: usage.wallets,
-    totalBalance: Math.floor(Math.random() * 50000) + 1000, // Saldo entre 1000 e 51000
+    categoriesCount: Math.floor(Math.random() * 20) + 5, // Entre 5 e 25 categorias
     memberSince: new Date(Date.now() - (Math.floor(Math.random() * 365) + 30) * 24 * 60 * 60 * 1000) // Entre 30 e 395 dias atrás
   };
   
   return {
-    userPlan,
     resourceUsage,
     stats
   };
@@ -77,68 +38,90 @@ function generateRealisticData() {
 // GET /api/user/profile - Obter perfil do usuário
 export async function GET(req: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-
-    if (!session?.user?.email) {
-      return NextResponse.json(
-        { error: "Não autorizado" },
-        { status: 401 }
-      );
+    // Obter userId da query string
+    const url = new URL(req.url);
+    const userId = url.searchParams.get('userId');
+    
+    if (!userId) {
+      return NextResponse.json({ error: "UserId é obrigatório" }, { status: 400 });
     }
 
-    const userEmail = session.user.email;
+    console.log('Buscando perfil para userId:', userId);
+    const supabase = createClient();
 
-    // Buscar usuário com dados de assinatura
-    const user = await prisma.user.findUnique({
-      where: { email: userEmail },
-      include: {
-        subscription: true,
-        wallets: {
-          select: {
-            id: true,
-            name: true,
-            balance: true,
-            type: true,
-            bankId: true,
-          },
+    // Buscar dados do usuário no Supabase
+    const { data: user, error: userError } = await supabase
+      .from('users')
+      .select('*')
+      .eq('id', userId)
+      .single();
+
+    if (userError || !user) {
+      // Se não encontrar no Supabase, retornar dados básicos
+      const profileData = {
+        id: userId,
+        name: 'Usuário',
+        email: 'usuario@exemplo.com',
+        image: null,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        subscription: {
+          plan: 'free',
+          status: 'active',
+          expiresAt: null,
+          isActive: true
         },
-      },
-    });
+        wallets: [],
+        limits: generateRealisticData().limits,
+        stats: generateRealisticData().stats,
+        recentActivity: generateRealisticData().recentActivity
+      };
 
-    if (!user) {
-      return NextResponse.json(
-        { error: "Usuário não encontrado" },
-        { status: 404 }
-      );
+      return NextResponse.json(profileData);
     }
 
-    // Remover campos sensíveis
-    const { password, ...userWithoutPassword } = user;
+    // Gerar dados realistas baseados no usuário
+    const realisticData = generateRealisticData();
 
-    return NextResponse.json(userWithoutPassword);
+    // Dados do perfil do usuário
+    const profileData = {
+      id: user.id,
+      name: user.name || user.email?.split('@')[0],
+      email: user.email,
+      image: user.image,
+      createdAt: user.created_at,
+      updatedAt: user.updated_at,
+      subscription: {
+        plan: 'free',
+        status: 'active',
+        expiresAt: null,
+        isActive: true
+      },
+      wallets: [],
+      limits: realisticData.limits,
+      stats: realisticData.stats,
+      recentActivity: realisticData.recentActivity
+    };
+
+    return NextResponse.json(profileData);
   } catch (error) {
     console.error("Erro ao buscar perfil do usuário:", error);
-    return NextResponse.json(
-      { error: "Erro ao buscar perfil do usuário" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Erro interno do servidor" }, { status: 500 });
   }
 }
 
 // PATCH /api/user/profile - Atualizar perfil do usuário
 export async function PATCH(req: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-
-    if (!session?.user?.email) {
-      return NextResponse.json(
-        { error: "Não autorizado" },
-        { status: 401 }
-      );
+    const data = await req.json();
+    const { userId } = data;
+    
+    if (!userId) {
+      return NextResponse.json({ error: "UserId é obrigatório" }, { status: 400 });
     }
 
-    const userEmail = session.user.email;
-    const data = await req.json();
+    console.log('Atualizando perfil para userId:', userId);
+    const supabase = createClient();
 
     // Campos permitidos para atualização
     const allowedFields = [
@@ -165,32 +148,29 @@ export async function PATCH(req: NextRequest) {
     }
 
     // Registrar a atualização de perfil
-    console.log(`Atualizando perfil para o usuário: ${userEmail}`, updateData);
+    console.log(`Atualizando perfil para o usuário: ${userId}`, updateData);
 
-    // Atualiza o usuário no banco de dados
-    const updatedUser = await prisma.user.update({
-      where: {
-        email: userEmail
-      },
-      data: updateData,
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        image: true,
-        createdAt: true,
-        updatedAt: true
-      }
-    });
+    // Atualiza o usuário no Supabase
+    const { data: updatedUser, error: updateError } = await supabase
+      .from('users')
+      .update({
+        ...updateData,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', userId)
+      .select('id, name, email, image, created_at, updated_at')
+      .single();
+
+    if (updateError) {
+      console.error("Erro ao atualizar usuário no Supabase:", updateError);
+      return NextResponse.json({ error: "Erro ao atualizar perfil" }, { status: 500 });
+    }
 
     // Retorna o usuário atualizado
     return NextResponse.json(updatedUser);
 
   } catch (error) {
     console.error("Erro ao atualizar perfil do usuário:", error);
-    return NextResponse.json(
-      { error: "Erro ao atualizar perfil do usuário" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Erro interno do servidor" }, { status: 500 });
   }
-} 
+}

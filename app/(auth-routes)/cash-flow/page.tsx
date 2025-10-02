@@ -1,6 +1,5 @@
 import { Metadata } from "next";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/_lib/auth-options";
+import { getCurrentUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { prisma } from "@/app/_lib/prisma";
 import { CashFlowView } from "@/app/_components/cash-flow/CashFlowView";
@@ -23,16 +22,16 @@ export const metadata: Metadata = {
 };
 
 export default async function CashFlowPage() {
-  const session = await getServerSession(authOptions);
+  const user = await getCurrentUser();
 
-  if (!session) {
-    redirect("/auth/signin");
+  if (!user) {
+      redirect("/auth");
   }
 
   // Recuperar carteiras do usuário
   const wallets = await prisma.wallet.findMany({
     where: {
-      userId: session.user.id,
+      userId: user.id,
     },
     orderBy: {
       name: 'asc',

@@ -6,7 +6,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { toast } from "sonner";
-import { NumericFormat } from "react-number-format";
 import { 
   Plus, 
   Calendar, 
@@ -16,7 +15,8 @@ import {
   Edit,
   ChevronLeft,
   ChevronRight,
-  Check
+  Check,
+  AlertCircle
 } from "lucide-react";
 
 // Componentes UI
@@ -55,16 +55,24 @@ import {
   DropdownMenuTrigger,
 } from "@/app/_components/ui/dropdown-menu";
 import { Textarea } from "@/app/_components/ui/textarea";
+import { MoneyInput } from "@/app/_components/money-input";
+import { NumberFormatValues } from "react-number-format";
 import { cn } from "@/app/_lib/utils";
 
-// Esquema de validação para o formulário de meta
+  // Esquema de validação para o formulário de meta
 const metaSchema = z.object({
   mesReferencia: z.date({
     required_error: "Selecione o mês de referência",
   }),
-  metaMensal: z.string().min(1, "Valor obrigatório"),
-  metaSalvio: z.string().min(1, "Valor obrigatório"),
-  metaCoordenador: z.string().min(1, "Valor obrigatório"),
+  metaMensal: z.string().refine((val) => val && val.trim() !== "", {
+    message: "Meta mensal é obrigatória"
+  }),
+  metaSalvio: z.string().refine((val) => val && val.trim() !== "", {
+    message: "Meta Salvio é obrigatória"
+  }),
+  metaCoordenador: z.string().refine((val) => val && val.trim() !== "", {
+    message: "Meta coordenador é obrigatória"
+  }),
   metasVendedores: z.array(
     z.object({
       vendedorId: z.string().min(1, "Vendedor obrigatório"),
@@ -135,6 +143,7 @@ function generateMonthOptions() {
 
 export default function MetasPage() {
   const [isLoading, setIsLoading] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [metas, setMetas] = useState<Meta[]>([]);
   const [editingMeta, setEditingMeta] = useState<Meta | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -151,7 +160,7 @@ export default function MetasPage() {
   const router = useRouter();
 
   // Valores padrão para o formulário
-  const defaultValues: Partial<MetaFormValues> = {
+  const defaultValues: MetaFormValues = {
     mesReferencia: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
     metaMensal: "",
     metaSalvio: "",
@@ -180,95 +189,148 @@ export default function MetasPage() {
     }
   }, [currentStep, isDialogOpen]);
   
-  // Carregar vendedores ao iniciar
+  // Carregar vendedores ao iniciar - usando a mesma fonte do ranking de vendas
   useEffect(() => {
     const carregarVendedores = async () => {
       try {
-        // Vendedores estáticos para garantir que sempre estejam disponíveis
-        const vendedoresEstaticos = [
-          { id: "bruna-ramos", nome: "BRUNA RAMOS" },
-          { id: "diuly-moraes", nome: "DIULY MORAES" },
-          { id: "marcus-vinicius", nome: "Marcus Vinicius Macedo" }
-        ];
+        console.log("🔍 Carregando vendedores para metas...");
         
-        // Ainda tentamos buscar da API para manter compatibilidade com outros vendedores
-        const response = await fetch('/api/dashboard/vendedores-meta');
+        // Usar as mesmas datas do mês atual que são usadas no dashboard de vendas
+        const hoje = new Date();
+        const primeiroDiaMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+        const ultimoDiaMes = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0);
+        
+        // Buscar vendedores da mesma API que o ranking usa
+        const params = new URLSearchParams({
+          dataInicio: primeiroDiaMes.toISOString(),
+          dataFim: ultimoDiaMes.toISOString()
+        });
+        
+        const response = await fetch(`/api/dashboard/vendedores?${params}`);
+        
         if (response.ok) {
-          const vendedoresDaAPI = await response.json();
+          const data = await response.json();
+          console.log("📊 Dados dos vendedores recebidos:", data);
           
-          // Combinamos os vendedores da API com os estáticos, evitando duplicações
-          const vendedoresIds = new Set(vendedoresEstaticos.map(v => v.id));
-          const vendedoresUnicos = [...vendedoresEstaticos];
-          
-          for (const vendedor of vendedoresDaAPI) {
-            if (!vendedoresIds.has(vendedor.id)) {
-              vendedoresUnicos.push(vendedor);
-              vendedoresIds.add(vendedor.id);
-            }
+          if (data.vendedores && Array.isArray(data.vendedores)) {
+            // Mapear vendedores para o formato esperado pelo modal de metas
+            const vendedoresMapeados = data.vendedores
+              .filter((v: any) => v.nome && v.nome.trim() !== '') // Filtrar vendedores sem nome
+              .map((vendedor: any) => ({
+                id: vendedor.nome.toLowerCase().replace(/\s+/g, '-'), // Gerar ID baseado no nome
+                nome: vendedor.nome.trim()
+              }))
+              .sort((a: any, b: any) => a.nome.localeCompare(b.nome)); // Ordenar alfabeticamente
+            
+            console.log("👥 Vendedores mapeados:", vendedoresMapeados);
+            setVendedores(vendedoresMapeados);
+          } else {
+            console.warn("⚠️ Nenhum vendedor encontrado na resposta da API");
+            setVendedores([]);
           }
-          
-          setVendedores(vendedoresUnicos);
         } else {
-          // Se falhar, usamos apenas os estáticos
-          setVendedores(vendedoresEstaticos);
+          console.error("❌ Erro ao buscar vendedores:", response.status, response.statusText);
+          setVendedores([]);
         }
       } catch (error) {
-        console.error("Erro ao carregar vendedores:", error);
-        
-        // Em caso de erro, usamos os vendedores estáticos
-        setVendedores([
-          { id: "bruna-ramos", nome: "BRUNA RAMOS" },
-          { id: "diuly-moraes", nome: "DIULY MORAES" },
-          { id: "marcus-vinicius", nome: "Marcus Vinicius Macedo" }
-        ]);
+        console.error("❌ Erro ao carregar vendedores:", error);
+        setVendedores([]);
       }
     };
     
     carregarVendedores();
   }, []);
   
-  // Carregar metas ao iniciar
-  useEffect(() => {
-    loadMetas();
-  }, []);
-  
-  // Função para carregar metas do servidor
+  // Função para carregar metas do servidor com melhor tratamento de erros
   async function loadMetas() {
+    if (isLoading) return; // Evita múltiplas chamadas simultâneas
+    
     setIsLoading(true);
+    setLoadError(null);
     
     try {
-      const response = await fetch("/api/dashboard/metas");
+      const response = await fetch("/api/dashboard/metas", {
+        // Adiciona cache: no-store para evitar cache do navegador
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache'
+        }
+      });
       
       if (!response.ok) {
-        throw new Error("Erro ao carregar metas");
+        throw new Error(`Erro ao carregar metas: ${response.status}`);
       }
       
       const data = await response.json();
+      console.log("📥 Dados brutos recebidos do servidor:", data);
       
-      // Converter datas para objetos Date
-      const metasFormatadas = data.map((meta: any) => ({
-        ...meta,
-        mesReferencia: new Date(meta.mesReferencia),
-        createdAt: new Date(meta.createdAt),
-        updatedAt: new Date(meta.updatedAt),
-      }));
+      if (!Array.isArray(data)) {
+        throw new Error("Formato de dados inválido");
+      }
       
+      // Converter datas para objetos Date e parsear metasVendedores
+      const metasFormatadas = data.map((meta: any) => {
+        try {
+          return {
+            ...meta,
+            mesReferencia: new Date(meta.mesReferencia),
+            createdAt: new Date(meta.createdAt),
+            updatedAt: new Date(meta.updatedAt),
+            metasVendedores: Array.isArray(meta.metasVendedores) 
+              ? meta.metasVendedores 
+              : typeof meta.metasVendedores === 'string'
+                ? JSON.parse(meta.metasVendedores)
+                : []
+          };
+        } catch (error) {
+          console.error("Erro ao processar meta:", meta, error);
+          return null;
+        }
+      }).filter(Boolean); // Remove itens inválidos
+      
+      console.log("✅ Metas formatadas finais:", metasFormatadas);
       setMetas(metasFormatadas);
     } catch (error) {
       console.error("Erro ao carregar metas:", error);
-      toast("Erro ao carregar metas");
+      setLoadError(error instanceof Error ? error.message : "Erro ao carregar metas");
+      toast.error("Erro ao carregar metas. Tente novamente.");
     } finally {
       setIsLoading(false);
     }
   }
 
+  // Efeito para carregar metas inicialmente e recarregar quando necessário
+  useEffect(() => {
+    loadMetas();
+  }, []);
+
+  // Efeito para recarregar metas quando o diálogo é fechado
+  useEffect(() => {
+    if (!isDialogOpen) {
+      loadMetas();
+    }
+  }, [isDialogOpen]);
+
   // Adicionar um vendedor à lista de metas por vendedor
   const adicionarVendedor = () => {
     const metasVendedores = form.getValues('metasVendedores') || [];
+    
+    // Verificar se ainda há vendedores disponíveis para selecionar
+    const vendedoresJaSelecionados = metasVendedores.map(mv => mv.vendedorId).filter(Boolean);
+    const vendedoresDisponiveis = vendedores.filter(v => !vendedoresJaSelecionados.includes(v.id));
+    
+    if (vendedoresDisponiveis.length === 0) {
+      toast.error("Todos os vendedores disponíveis já foram selecionados.");
+      console.log("⚠️ Tentativa de adicionar vendedor bloqueada - todos já selecionados");
+      return;
+    }
+    
     form.setValue('metasVendedores', [
       ...metasVendedores,
       { vendedorId: '', nome: '', meta: '' }
     ]);
+    
+    console.log(`📝 Vendedor adicionado. Disponíveis: ${vendedoresDisponiveis.length}, Já selecionados: ${vendedoresJaSelecionados.length}`);
   };
 
   // Remover um vendedor da lista de metas por vendedor
@@ -280,11 +342,17 @@ export default function MetasPage() {
 
   // Atualizar nome do vendedor ao selecionar ID
   const atualizarNomeVendedor = (index: number, id: string) => {
+    console.log("🔄 Atualizando nome do vendedor. ID:", id, "Vendedores disponíveis:", vendedores);
+    
     const vendedor = vendedores.find(v => v.id === id);
     if (vendedor) {
       const metasVendedores = form.getValues('metasVendedores') || [];
       metasVendedores[index].nome = vendedor.nome;
       form.setValue('metasVendedores', [...metasVendedores]);
+      
+      console.log("✅ Nome do vendedor atualizado:", vendedor.nome);
+    } else {
+      console.warn("⚠️ Vendedor não encontrado para ID:", id);
     }
   };
 
@@ -310,32 +378,53 @@ export default function MetasPage() {
   // Função modificada para verificar a validação final apenas na submissão
   const isFormValid = () => {
     const formValues = form.getValues();
+    console.log("=== VALIDAÇÃO CUSTOMIZADA ===");
+    console.log("Form values:", formValues);
     
     // Verificar etapa 1
     if (!(formValues.mesReferencia instanceof Date)) {
+      console.log("FALHA: mesReferencia não é Date:", typeof formValues.mesReferencia, formValues.mesReferencia);
       return false;
     }
+    console.log("✓ mesReferencia válida");
     
     // Verificar etapa 2
-    if (!formValues.metaMensal || !formValues.metaSalvio || !formValues.metaCoordenador) {
+    if (!formValues.metaMensal || formValues.metaMensal.trim() === '') {
+      console.log("FALHA: metaMensal inválida:", formValues.metaMensal);
       return false;
     }
+    if (!formValues.metaSalvio || formValues.metaSalvio.trim() === '') {
+      console.log("FALHA: metaSalvio inválida:", formValues.metaSalvio);
+      return false;
+    }
+    if (!formValues.metaCoordenador || formValues.metaCoordenador.trim() === '') {
+      console.log("FALHA: metaCoordenador inválida:", formValues.metaCoordenador);
+      return false;
+    }
+    console.log("✓ Valores monetários válidos");
     
     // Verificar etapa 3 (opcional)
     if (formValues.metasVendedores && formValues.metasVendedores.length > 0) {
+      console.log("Verificando vendedores:", formValues.metasVendedores);
+      
       // Verificar apenas vendedores que tenham algum campo preenchido
       const vendedoresPreenchidos = formValues.metasVendedores.filter(
         v => (v.vendedorId && v.vendedorId !== '') || (v.meta && v.meta !== '')
       );
       
+      console.log("Vendedores preenchidos:", vendedoresPreenchidos);
+      
       // Se houver vendedores com dados, todos precisam estar completos
       for (const vendedor of vendedoresPreenchidos) {
         if (!vendedor.vendedorId || vendedor.vendedorId === '' || !vendedor.meta || vendedor.meta === '') {
+          console.log("FALHA: Vendedor incompleto:", vendedor);
           return false;
         }
       }
     }
+    console.log("✓ Vendedores válidos");
     
+    console.log("✓ Formulário totalmente válido!");
     return true;
   };
   
@@ -348,31 +437,49 @@ export default function MetasPage() {
 
   // Lidar com envio do formulário
   const onSubmit = async (data: MetaFormValues) => {
-    console.log("Submetendo formulário, step atual:", currentStep);
-    // Log para debug
-    console.log("Valores do formulário:", data);
+    console.log("=== INÍCIO DO SUBMIT ===");
+    console.log("Step atual:", currentStep);
+    console.log("Dados recebidos:", data);
+    console.log("Form errors:", form.formState.errors);
+    
+    // Verificar validação do Zod
+    const validationResult = metaSchema.safeParse(data);
+    if (!validationResult.success) {
+      console.log("Erro de validação Zod:", validationResult.error);
+      toast.error("Erro de validação: " + validationResult.error.issues.map(i => i.message).join(", "));
+      return;
+    }
+    
+    console.log("Validação Zod passou!");
     
     // Verificar se o formulário está válido antes de enviar
     if (!isFormValid()) {
+      console.log("Formulário falhou na validação customizada");
       toast.error("Por favor, verifique se todos os campos obrigatórios estão preenchidos corretamente.");
       
       // Identificar qual step tem problemas e navegar para ele
       const formValues = form.getValues();
+      console.log("Valores atuais do form:", formValues);
       
       if (!(formValues.mesReferencia instanceof Date)) {
+        console.log("Erro no step 0 - mesReferencia");
         setCurrentStep(0);
         return;
       }
       
       if (!formValues.metaMensal || !formValues.metaSalvio || !formValues.metaCoordenador) {
+        console.log("Erro no step 1 - valores monetários");
         setCurrentStep(1);
         return;
       }
       
       // Se chegou até aqui, o problema está no step 3
+      console.log("Erro no step 2 - vendedores");
       setCurrentStep(2);
       return;
     }
+    
+    console.log("Formulário válido, prosseguindo com o envio...");
 
     setIsLoading(true);
     
@@ -452,9 +559,13 @@ export default function MetasPage() {
       
       toast.success(`Meta ${editingMeta ? 'atualizada' : 'cadastrada'} com sucesso!`);
       
-      // Só fecha o diálogo e reseta o formulário após salvar com sucesso
+      // Após salvar com sucesso, fechar o diálogo
       setIsDialogOpen(false);
       resetForm();
+      
+      // Recarregar as metas para garantir dados atualizados
+      await loadMetas();
+      
     } catch (error) {
       console.error("Erro:", error);
       toast.error(`Erro ao ${editingMeta ? 'atualizar' : 'cadastrar'} meta`);
@@ -465,6 +576,9 @@ export default function MetasPage() {
 
   // Abrir formulário para edição
   const handleEdit = (meta: Meta) => {
+    console.log("🔧 Iniciando edição da meta:", meta);
+    console.log("📋 metasVendedores originais:", meta.metasVendedores);
+    
     setEditingMeta(meta);
     setCurrentStep(0);
     
@@ -473,18 +587,32 @@ export default function MetasPage() {
       ? meta.metasVendedores 
       : [];
     
+    console.log("✅ metasVendedores processadas:", metasVendedores);
+    
+    // Mapear vendedores para o formato do formulário
+    const metasVendedoresParaFormulario = metasVendedores.map(v => ({
+      vendedorId: v.vendedorId,
+      nome: v.nome,
+      meta: v.meta.toString()
+    }));
+    
+    console.log("📝 Dados para o formulário:", {
+      mesReferencia: meta.mesReferencia,
+      metaMensal: meta.metaMensal.toString(),
+      metaSalvio: meta.metaSalvio.toString(),
+      metaCoordenador: meta.metaCoordenador.toString(),
+      metasVendedores: metasVendedoresParaFormulario
+    });
+    
     // Reset com valores numéricos convertidos para string sem formatação
     form.reset({
       mesReferencia: meta.mesReferencia,
       metaMensal: meta.metaMensal.toString(),
       metaSalvio: meta.metaSalvio.toString(),
       metaCoordenador: meta.metaCoordenador.toString(),
-      metasVendedores: metasVendedores.map(v => ({
-        vendedorId: v.vendedorId,
-        nome: v.nome,
-        meta: v.meta.toString()
-      }))
+      metasVendedores: metasVendedoresParaFormulario
     });
+    
     setIsDialogOpen(true);
   };
 
@@ -661,24 +789,17 @@ export default function MetasPage() {
                 {/* Etapa 2: Metas Gerais */}
                 {currentStep === 1 && (
                   <div className="space-y-4">
-                    <FormField
+                                            <FormField
                       control={form.control}
                       name="metaMensal"
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Meta Mensal (R$)</FormLabel>
                           <FormControl>
-                            <NumericFormat
-                              customInput={Input}
-                              thousandSeparator="."
-                              decimalSeparator=","
-                              decimalScale={2}
-                              fixedDecimalScale
-                              allowNegative={false}
-                              prefix="R$ "
+                            <MoneyInput
                               placeholder="0,00"
                               value={field.value}
-                              onValueChange={(values) => {
+                              onValueChange={(values: NumberFormatValues) => {
                                 // Usar apenas o value sem formatação - contém apenas dígitos e ponto decimal
                                 field.onChange(values.value);
                               }}
@@ -700,17 +821,10 @@ export default function MetasPage() {
                         <FormItem>
                           <FormLabel>Meta Salvio (R$)</FormLabel>
                           <FormControl>
-                            <NumericFormat
-                              customInput={Input}
-                              thousandSeparator="."
-                              decimalSeparator=","
-                              decimalScale={2}
-                              fixedDecimalScale
-                              allowNegative={false}
-                              prefix="R$ "
+                            <MoneyInput
                               placeholder="0,00"
                               value={field.value}
-                              onValueChange={(values) => {
+                              onValueChange={(values: NumberFormatValues) => {
                                 // Usar apenas o value sem formatação
                                 field.onChange(values.value);
                               }}
@@ -729,17 +843,10 @@ export default function MetasPage() {
                         <FormItem>
                           <FormLabel>Meta do Coordenador (R$)</FormLabel>
                           <FormControl>
-                            <NumericFormat
-                              customInput={Input}
-                              thousandSeparator="."
-                              decimalSeparator=","
-                              decimalScale={2}
-                              fixedDecimalScale
-                              allowNegative={false}
-                              prefix="R$ "
+                            <MoneyInput
                               placeholder="0,00"
                               value={field.value}
-                              onValueChange={(values) => {
+                              onValueChange={(values: NumberFormatValues) => {
                                 // Usar apenas o value sem formatação
                                 field.onChange(values.value);
                               }}
@@ -760,17 +867,41 @@ export default function MetasPage() {
                 {currentStep === 2 && (
                   <div className="space-y-4">
                     <div className="flex items-center justify-between mb-2">
-                      <FormLabel>Metas por Vendedor</FormLabel>
+                      <div>
+                        <FormLabel>Metas por Vendedor</FormLabel>
+                        <FormDescription className="text-xs mt-1">
+                          Lista baseada nos vendedores do ranking atual (mês corrente)
+                        </FormDescription>
+                      </div>
                       <Button
                         type="button"
                         variant="outline"
                         size="sm"
                         onClick={adicionarVendedor}
+                        disabled={(() => {
+                          if (vendedores.length === 0) return true;
+                          
+                          // Verificar se ainda há vendedores disponíveis
+                          const metasVendedores = form.watch('metasVendedores') || [];
+                          const vendedoresJaSelecionados = metasVendedores.map(mv => mv.vendedorId).filter(Boolean);
+                          const vendedoresDisponiveis = vendedores.filter(v => !vendedoresJaSelecionados.includes(v.id));
+                          
+                          return vendedoresDisponiveis.length === 0;
+                        })()}
                       >
                         <Plus className="h-4 w-4 mr-2" />
                         Adicionar Vendedor
                       </Button>
                     </div>
+                    
+                    {vendedores.length === 0 && (
+                      <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-md">
+                        <p className="text-sm text-yellow-800">
+                          <strong>Atenção:</strong> Nenhum vendedor encontrado no ranking atual. 
+                          Verifique se existem vendas no mês corrente ou aguarde o carregamento dos dados.
+                        </p>
+                      </div>
+                    )}
                     
                     <div className="space-y-3">
                       {(form.watch('metasVendedores') || []).map((vendedor, index) => (
@@ -790,27 +921,49 @@ export default function MetasPage() {
                                   <SelectValue placeholder="Selecione um vendedor" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  {vendedores.map((v) => (
-                                    <SelectItem key={v.id} value={v.id}>
-                                      {v.nome}
-                                    </SelectItem>
-                                  ))}
+                                  {(() => {
+                                    if (vendedores.length === 0) {
+                                      return (
+                                        <SelectItem value="no-vendedores" disabled>
+                                          Nenhum vendedor encontrado
+                                        </SelectItem>
+                                      );
+                                    }
+                                    
+                                    // Obter IDs dos vendedores já selecionados (exceto o atual)
+                                    const metasVendedores = form.getValues('metasVendedores') || [];
+                                    const vendedoresJaSelecionados = metasVendedores
+                                      .map((mv, idx) => idx !== index ? mv.vendedorId : null)
+                                      .filter(Boolean);
+                                    
+                                    // Filtrar vendedores disponíveis
+                                    const vendedoresDisponiveis = vendedores.filter(v => 
+                                      !vendedoresJaSelecionados.includes(v.id)
+                                    );
+                                    
+                                    if (vendedoresDisponiveis.length === 0) {
+                                      return (
+                                        <SelectItem value="no-disponivel" disabled>
+                                          Todos os vendedores já foram selecionados
+                                        </SelectItem>
+                                      );
+                                    }
+                                    
+                                    return vendedoresDisponiveis.map((v) => (
+                                      <SelectItem key={v.id} value={v.id}>
+                                        {v.nome}
+                                      </SelectItem>
+                                    ));
+                                  })()}
                                 </SelectContent>
                               </Select>
                             </div>
                             
                             <div className="col-span-4">
-                              <NumericFormat
-                                customInput={Input}
-                                thousandSeparator="."
-                                decimalSeparator=","
-                                decimalScale={2}
-                                fixedDecimalScale
-                                allowNegative={false}
-                                prefix="R$ "
+                              <MoneyInput
                                 placeholder="0,00"
                                 value={vendedor.meta}
-                                onValueChange={(values) => {
+                                onValueChange={(values: NumberFormatValues) => {
                                   const metasVendedores = [...(form.getValues('metasVendedores') || [])];
                                   metasVendedores[index].meta = values.value;
                                   form.setValue('metasVendedores', metasVendedores);
@@ -890,14 +1043,34 @@ export default function MetasPage() {
                       <ChevronRight className="ml-2 h-4 w-4" />
                     </Button>
                   ) : (
-                    // Botão de submissão no último passo
-                    <Button 
-                      type="submit" 
-                      disabled={isLoading}
-                    >
-                      {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                      {editingMeta ? "Atualizar Meta" : "Cadastrar Meta"}
-                    </Button>
+                    <div className="flex gap-2">
+                      {/* Botão de debug temporário */}
+                      <Button 
+                        type="button"
+                        variant="outline"
+                        onClick={() => {
+                          console.log("=== DEBUG BUTTON ===");
+                          const values = form.getValues();
+                          console.log("Current form values:", values);
+                          console.log("Form state:", form.formState);
+                          console.log("Form errors:", form.formState.errors);
+                          console.log("Is valid:", isFormValid());
+                          console.log("Zod validation:", metaSchema.safeParse(values));
+                        }}
+                        disabled={isLoading}
+                      >
+                        Debug
+                      </Button>
+                      
+                      {/* Botão de submissão no último passo */}
+                      <Button 
+                        type="submit" 
+                        disabled={isLoading}
+                      >
+                        {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        {editingMeta ? "Atualizar Meta" : "Cadastrar Meta"}
+                      </Button>
+                    </div>
                   )}
                 </div>
               </form>
@@ -908,7 +1081,33 @@ export default function MetasPage() {
       
       <Separator />
       
-      {isLoading && metas.length === 0 ? (
+      {loadError ? (
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center p-10">
+            <div className="text-destructive mb-4">
+              <AlertCircle className="h-12 w-12" />
+            </div>
+            <h3 className="text-lg font-medium">Erro ao carregar metas</h3>
+            <p className="text-muted-foreground text-center mt-2">
+              {loadError}
+            </p>
+            <Button 
+              onClick={() => loadMetas()} 
+              className="mt-4"
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Carregando...
+                </>
+              ) : (
+                'Tentar Novamente'
+              )}
+            </Button>
+          </CardContent>
+        </Card>
+      ) : isLoading && metas.length === 0 ? (
         <div className="flex justify-center items-center h-64">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
           <span className="ml-2">Carregando metas...</span>

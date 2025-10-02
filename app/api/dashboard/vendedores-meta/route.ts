@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { validateSessionForAPI } from "@/app/_utils/auth";
 import { db } from "@/app/_lib/prisma";
 
 // Configuração para forçar o comportamento dinâmico

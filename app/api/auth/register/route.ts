@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import { db } from "@/app/_lib/prisma";
-import { hash } from "bcryptjs";
+import { createClient } from "@/app/_lib/supabase-server";
 import { z } from "zod";
 
 const registerSchema = z.object({
@@ -15,38 +14,34 @@ export async function POST(req: Request) {
     
     const { name, email, password } = registerSchema.parse(body);
 
-    // Verificar se o usuário já existe
-    const userExists = await db.user.findUnique({
-      where: { email },
+    const supabase = createClient();
+
+    // Registrar usuário via Supabase Auth
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          full_name: name,
+        }
+      }
     });
 
-    if (userExists) {
+    if (error) {
       return NextResponse.json(
-        { message: "Este email já está em uso" },
-        { status: 409 }
+        { message: error.message },
+        { status: 400 }
       );
     }
 
-    // Hash da senha
-    const hashedPassword = await hash(password, 10);
-
-    // Criar usuário
-    const user = await db.user.create({
-      data: {
-        name,
-        email,
-        password: hashedPassword,
-        authProvider: "EMAIL",
-      },
-    });
-
-    // Remover a senha do objeto retornado
-    const { password: _, ...userWithoutPassword } = user;
-
     return NextResponse.json(
       { 
-        message: "Usuário criado com sucesso", 
-        user: userWithoutPassword 
+        message: "Usuário criado com sucesso. Verifique seu email para confirmar a conta.", 
+        user: {
+          id: data.user?.id,
+          email: data.user?.email,
+          name: data.user?.user_metadata?.full_name
+        }
       },
       { status: 201 }
     );

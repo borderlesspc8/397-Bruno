@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
-import { useSession } from 'next-auth/react';
+import { useAuth } from '../useAuth';
 import useNotificationStore from './use-notification-store';
 import { Notification } from '@/app/_types/notification';
 
@@ -19,7 +19,7 @@ interface UseSocketNotificationsReturn {
 export function useSocketNotifications(): UseSocketNotificationsReturn {
   const [isConnected, setIsConnected] = useState(false);
   const [connectionError, setConnectionError] = useState<string | null>(null);
-  const { data: session, status } = useSession();
+  const { user, loading } = useAuth();
   const store = useNotificationStore();
   
   // Referências para evitar tentativas repetidas e manter o estado do socket
@@ -34,11 +34,11 @@ export function useSocketNotifications(): UseSocketNotificationsReturn {
     if (hasInitializedRef.current) return;
     
     // Se a sessão ainda está carregando, aguarde
-    if (status === 'loading') return;
+    if (loading) return;
     
     // Se não há usuário autenticado, não faz nada
-    if (!session?.user?.id) {
-      console.log('Sem sessão de usuário ativa, socket não será iniciado');
+    if (!user?.id) {
+      console.log('Sem usuário autenticado, socket não será iniciado');
       return;
     }
     
@@ -72,7 +72,7 @@ export function useSocketNotifications(): UseSocketNotificationsReturn {
         reconnectionAttempts: 3,
         reconnectionDelay: 3000,
         timeout: 5000,
-        auth: { userId: session.user.id }
+        auth: { userId: user.id }
       });
       
       // Armazenar na referência
@@ -85,7 +85,7 @@ export function useSocketNotifications(): UseSocketNotificationsReturn {
         setConnectionError(null);
         
         // Autenticar com o servidor
-        socketInstance.emit('authenticate', session.user.id);
+        socketInstance.emit('authenticate', user.id);
       });
   
       // Tratando desconexão
@@ -143,7 +143,7 @@ export function useSocketNotifications(): UseSocketNotificationsReturn {
         socketInstanceRef.current.removeAllListeners();
       }
     };
-  }, [session?.user?.id, status, store]);
+  }, [user?.id, loading, store]);
 
   // Função para enviar uma mensagem pelo socket
   const sendMessage = useCallback((event: string, data: any) => {
