@@ -64,26 +64,24 @@ interface FormaPagamentoItem {
   percentual: number;
 }
 
-// Cores iOS26 para categorias específicas de formas de pagamento
+// Cores iOS26 para categorias específicas de formas de pagamento (apenas formas ativas)
 const CORES_CATEGORIAS = {
   'PIX - C6': 'hsl(25 95% 53% / 0.8)',             // Laranja primário iOS26
+  'PIX': 'hsl(25 95% 70% / 0.8)',                  // Laranja claro iOS26 para PIX genérico
   'CRÉDITO - STONE': 'hsl(45 100% 50% / 0.8)',     // Amarelo primário iOS26
   'DÉBITO - STONE': 'hsl(142 69% 45% / 0.8)',      // Verde sucesso iOS26
   'ESPÉCIE - BB': 'hsl(25 95% 35% / 0.8)',         // Laranja escuro iOS26
-  'LINK DE PAGAMENTO - STONE': 'hsl(0 84% 60% / 0.8)', // Vermelho destrutivo iOS26
-  'CHEQUE': 'hsl(0 0% 45% / 0.8)',                 // Cinza muted iOS26
   'BOLETO - BB': 'hsl(25 95% 60% / 0.8)',          // Laranja claro iOS26
   'A COMBINAR': 'hsl(0 0% 65% / 0.8)',             // Cinza claro iOS26
 };
 
-// Cores de borda correspondentes iOS26
+// Cores de borda correspondentes iOS26 (apenas formas ativas)
 const CORES_BORDA_CATEGORIAS = {
   'PIX - C6': 'hsl(25 95% 53%)',
+  'PIX': 'hsl(25 95% 70%)',
   'CRÉDITO - STONE': 'hsl(45 100% 50%)',
   'DÉBITO - STONE': 'hsl(142 69% 45%)',
   'ESPÉCIE - BB': 'hsl(25 95% 35%)',
-  'LINK DE PAGAMENTO - STONE': 'hsl(0 84% 60%)',
-  'CHEQUE': 'hsl(0 0% 45%)',
   'BOLETO - BB': 'hsl(25 95% 60%)',
   'A COMBINAR': 'hsl(0 0% 65%)',
 };

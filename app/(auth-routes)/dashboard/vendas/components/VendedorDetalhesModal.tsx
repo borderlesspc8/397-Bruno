@@ -4,6 +4,7 @@ import { Badge } from '@/app/_components/ui/badge';
 import { Progress } from '@/app/_components/ui/progress';
 import { Pagination, PaginationContent, PaginationItem, PaginationNext, PaginationPrevious } from '@/app/_components/ui/pagination';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/app/_components/ui/dialog';
+import { Button } from "@/app/_components/ui/button";
 import { VendasService } from "@/app/_services/vendas";
 import { Vendedor as BaseVendedor } from "@/app/_services/betelTecnologia";
 import { Avatar, AvatarFallback, AvatarImage } from "@/app/_components/ui/avatar";
@@ -16,7 +17,10 @@ import {
   Phone, 
   Store, 
   Trophy, 
-  User 
+  User,
+  ArrowUpDown,
+  ArrowDown,
+  ArrowUp
 } from "lucide-react";
 import { formatarDinheiro } from "@/app/_utils/formatters";
 import VendedorTabelaVendas from "./VendedorTabelaVendas";
@@ -52,7 +56,36 @@ export function VendedorDetalhesModal({
   const [loadingVendas, setLoadingVendas] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [paginaAtual, setPaginaAtual] = useState(1);
+  const [ordenacaoValor, setOrdenacaoValor] = useState<'maior-menor' | 'menor-maior'>('maior-menor');
   const itensPorPagina = 10;
+  
+  // Função para ordenar vendas por valor
+  const ordenarVendasPorValor = (vendas: any[]) => {
+    return [...vendas].sort((a, b) => {
+      const valorA = parseFloat(a.valor_total) || 0;
+      const valorB = parseFloat(b.valor_total) || 0;
+      
+      if (ordenacaoValor === 'maior-menor') {
+        return valorB - valorA; // Maior para menor
+      } else {
+        return valorA - valorB; // Menor para maior
+      }
+    });
+  };
+  
+  // Função para alternar ordenação
+  const alternarOrdenacao = () => {
+    const novaOrdenacao = ordenacaoValor === 'maior-menor' ? 'menor-maior' : 'maior-menor';
+    setOrdenacaoValor(novaOrdenacao);
+    setPaginaAtual(1); // Voltar para primeira página ao mudar ordenação
+    
+    // Log para debug
+    console.log('🔄 [VendedorDetalhesModal] Ordenação alterada:', {
+      ordenacaoAnterior: ordenacaoValor,
+      novaOrdenacao,
+      totalVendas: vendasVendedor.length
+    });
+  };
   
   useEffect(() => {
     if (aberto && vendedor) {
@@ -63,7 +96,28 @@ export function VendedorDetalhesModal({
       setPaginaAtual(1);
       setErro(null);
     }
-  }, [aberto, vendedor]);
+  }, [aberto, vendedor, dataInicio, dataFim]); // Adicionar dataInicio e dataFim como dependências
+  
+  // Log para debug da ordenação
+  useEffect(() => {
+    if (vendasVendedor.length > 0) {
+      const vendasOrdenadas = ordenarVendasPorValor(vendasVendedor);
+      console.log('🔍 [VendedorDetalhesModal] Debug ordenação:', {
+        ordenacaoAtual: ordenacaoValor,
+        totalVendas: vendasVendedor.length,
+        primeirosValores: vendasOrdenadas.slice(0, 3).map(v => ({
+          cliente: v.nome_cliente,
+          valor: parseFloat(v.valor_total) || 0,
+          valorFormatado: new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(parseFloat(v.valor_total) || 0)
+        })),
+        ultimosValores: vendasOrdenadas.slice(-3).map(v => ({
+          cliente: v.nome_cliente,
+          valor: parseFloat(v.valor_total) || 0,
+          valorFormatado: new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(parseFloat(v.valor_total) || 0)
+        }))
+      });
+    }
+  }, [ordenacaoValor, vendasVendedor]);
   
   const buscarVendasVendedor = async (vendedorId: string) => {
     if (!vendedorId) return;
@@ -71,6 +125,16 @@ export function VendedorDetalhesModal({
     try {
       setLoadingVendas(true);
       setErro(null);
+      
+      // Log para debug
+      console.log('🔍 [VendedorDetalhesModal] Buscando vendas para vendedor:', {
+        vendedorId,
+        vendedorNome: vendedor?.nome,
+        dataInicio: dataInicio.toISOString(),
+        dataFim: dataFim.toISOString(),
+        dataInicioFormatted: dataInicio.toLocaleDateString('pt-BR'),
+        dataFimFormatted: dataFim.toLocaleDateString('pt-BR')
+      });
       
       const response = await VendasService.buscarVendasPorVendedor({
         dataInicio,
@@ -82,20 +146,33 @@ export function VendedorDetalhesModal({
         throw new Error(response.erro);
       }
       
+      console.log('✅ [VendedorDetalhesModal] Vendas encontradas:', {
+        totalVendas: response.vendas?.length || 0,
+        totalValor: response.totalValor,
+        primeirasVendas: response.vendas?.slice(0, 3).map(v => ({
+          id: v.id,
+          cliente: v.cliente,
+          valor_total: v.valor_total,
+          vendedor_id: v.vendedor_id,
+          nome_vendedor: v.nome_vendedor
+        }))
+      });
+      
       setVendasVendedor(response.vendas || []);
     } catch (error) {
-      console.error('Erro ao buscar vendas do vendedor:', error);
+      console.error('❌ [VendedorDetalhesModal] Erro ao buscar vendas do vendedor:', error);
       setErro(error instanceof Error ? error.message : 'Erro ao buscar vendas');
     } finally {
       setLoadingVendas(false);
     }
   };
   
-  // Calcular índices para paginação
+  // Aplicar ordenação e calcular índices para paginação
+  const vendasOrdenadas = ordenarVendasPorValor(vendasVendedor);
   const indiceInicial = (paginaAtual - 1) * itensPorPagina;
   const indiceFinal = indiceInicial + itensPorPagina;
-  const totalPaginas = Math.ceil((vendasVendedor?.length || 0) / itensPorPagina);
-  const vendasPaginadas = vendasVendedor.slice(indiceInicial, indiceFinal);
+  const totalPaginas = Math.ceil((vendasOrdenadas?.length || 0) / itensPorPagina);
+  const vendasPaginadas = vendasOrdenadas.slice(indiceInicial, indiceFinal);
   
   // Funções para navegação de página
   const irParaPaginaAnterior = () => {
@@ -135,6 +212,16 @@ export function VendedorDetalhesModal({
             <Badge variant="outline" className="bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">
               {vendedor.posicao}º Lugar
             </Badge>
+          </div>
+          
+          {/* Exibir período de datas */}
+          <div className="bg-muted/30 rounded-lg p-3 text-sm">
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <Calendar className="h-4 w-4" />
+              <span>
+                Período: {dataInicio.toLocaleDateString('pt-BR')} até {dataFim.toLocaleDateString('pt-BR')}
+              </span>
+            </div>
           </div>
           
           <div className="grid grid-cols-2 gap-4">
@@ -177,7 +264,24 @@ export function VendedorDetalhesModal({
           
           {/* Lista de Vendas do Vendedor */}
           <div className="pt-6 border-t mt-4">
-            <h4 className="text-md font-semibold mb-3">Vendas Realizadas</h4>
+            <div className="flex justify-between items-center mb-3">
+              <h4 className="text-md font-semibold">Vendas Realizadas</h4>
+              
+              {/* Filtro de Ordenação por Valor */}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={alternarOrdenacao}
+                className="flex items-center gap-2 hover:bg-muted/50 transition-colors"
+              >
+                <span className="text-sm">Valor</span>
+                {ordenacaoValor === 'maior-menor' ? (
+                  <ArrowDown className="h-3 w-3" />
+                ) : (
+                  <ArrowUp className="h-3 w-3" />
+                )}
+              </Button>
+            </div>
             
             {loadingVendas ? (
               <div className="flex items-center justify-center h-[150px]">

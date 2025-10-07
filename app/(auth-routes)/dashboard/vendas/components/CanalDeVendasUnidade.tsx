@@ -18,8 +18,8 @@ import {
 import { Tooltip as UITooltip } from "@/app/_components/ui/tooltip";
 import { Share2, Info, PieChart as PieChartIcon, BarChart as BarChartIcon } from "lucide-react";
 
-interface OrigemData {
-  origem: string;
+interface CanalVendaData {
+  canal: string;
   quantidade: number;
   percentual: number;
 }
@@ -27,11 +27,11 @@ interface OrigemData {
 interface UnidadeData {
   id: string;
   nome: string;
-  origens: OrigemData[];
+  canais: CanalVendaData[];
   total: number;
 }
 
-interface ComoNosConheceuUnidadeProps {
+interface CanalDeVendasUnidadeProps {
   dataInicio: Date;
   dataFim: Date;
 }
@@ -58,8 +58,8 @@ const AnimatedProgressBar = ({ percentual, color }: { percentual: number, color:
   </div>
 );
 
-// Componente para os cartões de origens
-const OrigemCard = ({ origem, index, color }: { origem: OrigemData, index: number, color: string }) => (
+// Componente para os cartões de canais
+const CanalCard = ({ canal, index, color }: { canal: CanalVendaData, index: number, color: string }) => (
   <motion.div 
     initial={{ opacity: 0, y: 20 }}
     animate={{ opacity: 1, y: 0 }}
@@ -67,18 +67,18 @@ const OrigemCard = ({ origem, index, color }: { origem: OrigemData, index: numbe
     className="p-3 rounded-lg bg-white dark:bg-gray-800 shadow-sm hover:shadow-md transition-shadow duration-200"
   >
     <div className="flex items-center justify-between mb-2">
-      <span className="font-medium">{origem.origem}</span>
-      <span className="text-sm font-medium">{origem.quantidade} leads</span>
+      <span className="font-medium">{canal.canal}</span>
+      <span className="text-sm font-medium">{canal.quantidade} vendas</span>
     </div>
-    <AnimatedProgressBar percentual={origem.percentual} color={color} />
+    <AnimatedProgressBar percentual={canal.percentual} color={color} />
     <div className="text-right text-sm text-muted-foreground mt-1">
-      {formatPercentCorreto(origem.percentual)}
+      {formatPercentCorreto(canal.percentual)}
     </div>
   </motion.div>
 );
 
-export function ComoNosConheceuUnidade({ dataInicio, dataFim }: ComoNosConheceuUnidadeProps) {
-  const [origensData, setOrigensData] = useState<OrigemData[]>([]);
+export function CanalDeVendasUnidade({ dataInicio, dataFim }: CanalDeVendasUnidadeProps) {
+  const [canaisData, setCanaisData] = useState<CanalVendaData[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [visualizacao, setVisualizacao] = useState<'pizza' | 'tabela'>('pizza');
@@ -93,16 +93,16 @@ export function ComoNosConheceuUnidade({ dataInicio, dataFim }: ComoNosConheceuU
         const dataInicioStr = dataInicio.toISOString().split('T')[0];
         const dataFimStr = dataFim.toISOString().split('T')[0];
         
-        // Buscar dados de origens consolidados usando o endpoint existente
+        // Buscar dados de canais consolidados usando o endpoint existente
         let response = await fetch(
-          `/api/dashboard/origens?dataInicio=${dataInicioStr}&dataFim=${dataFimStr}`
+          `/api/dashboard/canais-vendas?dataInicio=${dataInicioStr}&dataFim=${dataFimStr}`
         );
         
         // Se o endpoint principal falhar, tentar o endpoint direto
         if (!response.ok) {
-          console.log('📊 [ComoNosConheceu] Endpoint principal falhou, tentando endpoint direto...');
+          console.log('📊 [CanalDeVendas] Endpoint principal falhou, tentando endpoint direto...');
           response = await fetch(
-            `/api/dashboard/origens/direct?dataInicio=${dataInicioStr}&dataFim=${dataFimStr}`
+            `/api/dashboard/canais-vendas/direct?dataInicio=${dataInicioStr}&dataFim=${dataFimStr}`
           );
         }
         
@@ -118,44 +118,44 @@ export function ComoNosConheceuUnidade({ dataInicio, dataFim }: ComoNosConheceuU
         
         const data = await response.json();
         
-        console.log('📊 [ComoNosConheceu] Dados recebidos da API:', {
+        console.log('📊 [CanalDeVendas] Dados recebidos da API:', {
           temDashboard: !!data.dashboard,
-          temOrigemLeads: !!data.dashboard?.origemLeadsPorUnidade,
-          quantidadeUnidades: data.dashboard?.origemLeadsPorUnidade?.length || 0
+          temCanalVendasPorUnidade: !!data.dashboard?.canalVendasPorUnidade,
+          quantidadeUnidades: data.dashboard?.canalVendasPorUnidade?.length || 0
         });
         
         // Processar os dados retornados pelo endpoint - pegar apenas os dados consolidados
-        if (data && data.dashboard && data.dashboard.origemLeadsPorUnidade) {
-          const unidadesData: UnidadeData[] = data.dashboard.origemLeadsPorUnidade;
+        if (data && data.dashboard && data.dashboard.canalVendasPorUnidade) {
+          const unidadesData: UnidadeData[] = data.dashboard.canalVendasPorUnidade;
           
           // Buscar a unidade consolidada (Todas as Unidades)
           const unidadeConsolidada = unidadesData.find(u => u.id === "todos");
           
-          console.log('📊 [ComoNosConheceu] Unidade consolidada encontrada:', {
+          console.log('📊 [CanalDeVendas] Unidade consolidada encontrada:', {
             existe: !!unidadeConsolidada,
-            totalOrigens: unidadeConsolidada?.origens?.length || 0,
-            totalLeads: unidadeConsolidada?.total || 0
+            totalCanais: unidadeConsolidada?.canais?.length || 0,
+            totalVendas: unidadeConsolidada?.total || 0
           });
           
-          if (unidadeConsolidada && unidadeConsolidada.origens) {
-            setOrigensData(unidadeConsolidada.origens);
+          if (unidadeConsolidada && unidadeConsolidada.canais) {
+            setCanaisData(unidadeConsolidada.canais);
           } else {
             // Se não houver dados consolidados, usar os dados da primeira unidade
-            if (unidadesData.length > 0 && unidadesData[0].origens) {
-              console.log('📊 [ComoNosConheceu] Usando dados da primeira unidade como fallback');
-              setOrigensData(unidadesData[0].origens);
+            if (unidadesData.length > 0 && unidadesData[0].canais) {
+              console.log('📊 [CanalDeVendas] Usando dados da primeira unidade como fallback');
+              setCanaisData(unidadesData[0].canais);
             } else {
-              console.log('📊 [ComoNosConheceu] Nenhum dado de origem encontrado');
-              setOrigensData([]);
+              console.log('📊 [CanalDeVendas] Nenhum dado de canal encontrado');
+              setCanaisData([]);
             }
           }
         } else {
-          console.error('📊 [ComoNosConheceu] Formato de dados inválido:', data);
+          console.error('📊 [CanalDeVendas] Formato de dados inválido:', data);
           throw new Error("Formato de dados inválido - verifique os logs do console");
         }
       } catch (err) {
-        console.error("Erro ao buscar dados de origens:", err);
-        setError("Não foi possível carregar os dados de origem");
+        console.error("Erro ao buscar dados de canais:", err);
+        setError("Não foi possível carregar os dados de canal de vendas");
       } finally {
         setLoading(false);
       }
@@ -172,20 +172,20 @@ export function ComoNosConheceuUnidade({ dataInicio, dataFim }: ComoNosConheceuU
 
   // Renderizar gráfico e tabela com dados consolidados
   const renderChart = () => {
-    if (!origensData || origensData.length === 0) return null;
+    if (!canaisData || canaisData.length === 0) return null;
     
     // Preparar dados para o gráfico
-    const chartData = [...origensData]
+    const chartData = [...canaisData]
       .sort((a, b) => b.quantidade - a.quantidade)
       .slice(0, 15) // Limitar a 15 itens para melhor visualização
-      .map(origem => ({
-        origem: origem.origem,
-        quantidade: origem.quantidade,
-        percentual: origem.percentual
+      .map(canal => ({
+        canal: canal.canal,
+        quantidade: canal.quantidade,
+        percentual: canal.percentual
       }));
     
-    // Calcular total de leads
-    const totalLeads = chartData.reduce((sum, origem) => sum + origem.quantidade, 0);
+    // Calcular total de vendas
+    const totalVendas = chartData.reduce((sum, canal) => sum + canal.quantidade, 0);
     
     return (
       <motion.div 
@@ -194,14 +194,14 @@ export function ComoNosConheceuUnidade({ dataInicio, dataFim }: ComoNosConheceuU
         animate={{ opacity: 1 }}
         transition={{ duration: 0.5 }}
       >
-        {/* Cabeçalho com total de leads */}
+        {/* Cabeçalho com total de vendas */}
         <div className="flex justify-between items-center mb-4">
           <div>
             <h3 className="text-lg font-semibold">
-              Dados Gerais - Como nos Conheceu
+              Dados Gerais - Canal de Vendas
             </h3>
             <p className="text-sm text-muted-foreground">
-              Total de {totalLeads} leads no período
+              Total de {totalVendas} vendas no período
             </p>
           </div>
           <div className="flex space-x-2">
@@ -251,7 +251,7 @@ export function ComoNosConheceuUnidade({ dataInicio, dataFim }: ComoNosConheceuU
                       innerRadius={40} // Donut chart
                       fill="#8884d8"
                       dataKey="quantidade"
-                      nameKey="origem"
+                      nameKey="canal"
                       label={({ name, percent }) => {
                         const shortName = name.length > 8 ? name.substring(0, 8) + '...' : name;
                         // Formatar o percentual com uma casa decimal
@@ -273,7 +273,7 @@ export function ComoNosConheceuUnidade({ dataInicio, dataFim }: ComoNosConheceuU
                     </Pie>
                     <Tooltip 
                       formatter={(value, name, props) => [
-                        `${props.payload.origem}: ${value} leads (${(props.payload.percentual * 100).toFixed(1)}%)`
+                        `${props.payload.canal}: ${value} vendas (${(props.payload.percentual * 100).toFixed(1)}%)`
                       ]}
                       contentStyle={{ 
                         backgroundColor: 'rgba(255, 255, 255, 0.9)',
@@ -298,14 +298,14 @@ export function ComoNosConheceuUnidade({ dataInicio, dataFim }: ComoNosConheceuU
                       tickFormatter={(value) => value > 1000 ? `${(value / 1000).toFixed(1)}k` : value}
                     />
                     <YAxis 
-                      dataKey="origem" 
+                      dataKey="canal" 
                       type="category" 
                       width={100}
                       tick={{ fontSize: 12 }}
                       tickFormatter={(value) => value.length > 15 ? `${value.substring(0, 15)}...` : value}
                     />
                     <Tooltip
-                      formatter={(value) => [`${value} leads`, 'Quantidade']}
+                      formatter={(value) => [`${value} vendas`, 'Quantidade']}
                       contentStyle={{ 
                         backgroundColor: 'rgba(255, 255, 255, 0.9)',
                         borderRadius: '8px',
@@ -333,14 +333,14 @@ export function ComoNosConheceuUnidade({ dataInicio, dataFim }: ComoNosConheceuU
           <div>
             <h4 className="text-sm font-medium mb-4 text-muted-foreground flex items-center">
               <Info size={14} className="mr-1.5" /> 
-              {visualizacao === 'pizza' ? 'Detalhamento por origem' : 'Tabela de dados'}
+              {visualizacao === 'pizza' ? 'Detalhamento por canal' : 'Tabela de dados'}
             </h4>
             {visualizacao === 'pizza' ? (
               <div className="space-y-4 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
-                {chartData.map((origem, index) => (
-                  <OrigemCard 
+                {chartData.map((canal, index) => (
+                  <CanalCard 
                     key={index} 
-                    origem={origem} 
+                    canal={canal} 
                     index={index} 
                     color={COLORS[index % COLORS.length]} 
                   />
@@ -351,13 +351,13 @@ export function ComoNosConheceuUnidade({ dataInicio, dataFim }: ComoNosConheceuU
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-gray-200 dark:border-gray-700">
-                      <th className="text-left py-2 font-medium text-gray-700 dark:text-gray-300">Origem</th>
-                      <th className="text-right py-2 font-medium text-gray-700 dark:text-gray-300">Leads</th>
+                      <th className="text-left py-2 font-medium text-gray-700 dark:text-gray-300">Canal</th>
+                      <th className="text-right py-2 font-medium text-gray-700 dark:text-gray-300">Vendas</th>
                       <th className="text-right py-2 font-medium text-gray-700 dark:text-gray-300">%</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {chartData.map((origem, index) => (
+                    {chartData.map((canal, index) => (
                       <motion.tr
                         key={index}
                         initial={{ opacity: 0, x: -10 }}
@@ -371,15 +371,15 @@ export function ComoNosConheceuUnidade({ dataInicio, dataFim }: ComoNosConheceuU
                               className="w-3 h-3 rounded-full mr-2"
                               style={{ backgroundColor: COLORS[index % COLORS.length] }}
                             />
-                            <span className="font-medium">{origem.origem}</span>
+                            <span className="font-medium">{canal.canal}</span>
                           </div>
                         </td>
                         <td className="text-right py-2 font-medium">
-                          {origem.quantidade.toLocaleString()}
+                          {canal.quantidade.toLocaleString()}
                         </td>
                         <td className="text-right py-2">
                           <span className="text-muted-foreground">
-                            {formatPercentCorreto(origem.percentual)}
+                            {formatPercentCorreto(canal.percentual)}
                           </span>
                         </td>
                       </motion.tr>
@@ -427,7 +427,7 @@ export function ComoNosConheceuUnidade({ dataInicio, dataFim }: ComoNosConheceuU
     return (
       <Card className="border-gray-100 dark:border-gray-800">
         <CardHeader>
-          <CardTitle>Como nos Conheceu - Por Unidade</CardTitle>
+          <CardTitle>Canal de Vendas - Por Unidade</CardTitle>
           <CardDescription>Período: {dataInicio.toLocaleDateString()} a {dataFim.toLocaleDateString()}</CardDescription>
         </CardHeader>
         <CardContent>
@@ -465,11 +465,11 @@ export function ComoNosConheceuUnidade({ dataInicio, dataFim }: ComoNosConheceuU
     );
   }
 
-  if (origensData.length === 0) {
+  if (canaisData.length === 0) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Como nos Conheceu - Dados Gerais</CardTitle>
+          <CardTitle>Canal de Vendas - Dados Gerais</CardTitle>
           <CardDescription>Período: {dataInicio.toLocaleDateString()} a {dataFim.toLocaleDateString()}</CardDescription>
         </CardHeader>
         <CardContent>
@@ -507,7 +507,7 @@ export function ComoNosConheceuUnidade({ dataInicio, dataFim }: ComoNosConheceuU
         <div className="flex items-center justify-between">
           <div>
             <CardTitle className="text-xl text-gray-900 dark:text-gray-100">
-              Como nos Conheceu - Dados Gerais
+              Canal de Vendas - Dados Gerais
             </CardTitle>
             <CardDescription className="text-gray-500 dark:text-gray-400">
               Período: {dataInicio.toLocaleDateString()} a {dataFim.toLocaleDateString()}
@@ -519,9 +519,9 @@ export function ComoNosConheceuUnidade({ dataInicio, dataFim }: ComoNosConheceuU
               whileTap={{ scale: 0.95 }}
               onClick={() => {
                 console.log('📊 [Debug] Dados atuais:', {
-                  origensData,
-                  totalOrigens: origensData.length,
-                  totalLeads: origensData.reduce((sum, o) => sum + o.quantidade, 0)
+                  canaisData,
+                  totalCanais: canaisData.length,
+                  totalVendas: canaisData.reduce((sum, c) => sum + c.quantidade, 0)
                 });
               }}
               className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400"
@@ -554,4 +554,4 @@ export function ComoNosConheceuUnidade({ dataInicio, dataFim }: ComoNosConheceuU
       </CardContent>
     </Card>
   );
-} 
+}

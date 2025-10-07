@@ -111,6 +111,17 @@ export function VendedoresChartImproved({ vendedores, onVendedorClick }: Vendedo
   const vendedoresFiltrados = useMemo(() => {
     if (!vendedores || vendedores.length === 0) return [];
     
+    // Log para debug
+    console.log('🔍 [VendedoresChartImproved] Vendedores recebidos:', {
+      totalVendedores: vendedores.length,
+      vendedores: vendedores.map(v => ({
+        id: v.id,
+        nome: v.nome,
+        vendas: v.vendas,
+        faturamento: v.faturamento
+      }))
+    });
+    
     // Se temos metas, verificar se há vendedores com metas que não apareceram nas vendas
     if (metaAtual?.metasVendedores) {
       // Adicionar vendedores que têm metas mas não apareceram nas vendas
@@ -170,7 +181,15 @@ export function VendedoresChartImproved({ vendedores, onVendedorClick }: Vendedo
       });
       
       // Adicionar vendedores adicionais à lista
-      return [...vendedores, ...vendedoresAdicionais];
+      const resultado = [...vendedores, ...vendedoresAdicionais];
+      
+      console.log('✅ [VendedoresChartImproved] Vendedores finais:', {
+        totalVendedores: resultado.length,
+        vendedoresComVendas: resultado.filter(v => v.vendas > 0).length,
+        vendedoresSemVendas: resultado.filter(v => v.vendas === 0).length
+      });
+      
+      return resultado;
     }
     
     return vendedores;

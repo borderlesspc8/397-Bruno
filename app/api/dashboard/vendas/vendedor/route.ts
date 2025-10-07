@@ -41,6 +41,15 @@ export async function GET(request: NextRequest) {
     // Validar e processar parâmetros de data
     const resultadoDatas = processarDatasURL(dataInicio, dataFim);
     
+    // Log para debug das datas
+    console.log('🔍 [API Vendas Vendedor] Datas recebidas:', {
+      dataInicio,
+      dataFim,
+      dataInicioProcessada: resultadoDatas.dataInicio?.toISOString(),
+      dataFimProcessada: resultadoDatas.dataFim?.toISOString(),
+      vendedorId
+    });
+    
     // Se houve erro no processamento das datas
     if (!resultadoDatas.success) {
       return NextResponse.json(
@@ -73,15 +82,54 @@ export async function GET(request: NextRequest) {
     }
 
     // Filtrar apenas as vendas do vendedor especificado
-    const vendasDoVendedor = vendasResult.vendas.filter(venda => 
-      String(venda.vendedor_id) === vendedorId || 
-      String(venda.nome_vendedor) === vendedorId ||
-      String(venda.vendedor_nome) === vendedorId
-    );
+    // Normalizar o vendedorId para comparação
+    const vendedorIdNormalizado = vendedorId.replace('gc-', ''); // Remove prefixo se existir
+    
+    const vendasDoVendedor = vendasResult.vendas.filter(venda => {
+      // Comparar por ID do vendedor (removendo prefixo se existir)
+      const vendaVendedorId = String(venda.vendedor_id || '').replace('gc-', '');
+      const vendaNomeVendedor = String(venda.nome_vendedor || '').toLowerCase().trim();
+      const vendaVendedorNome = String(venda.vendedor_nome || '').toLowerCase().trim();
+      const vendedorIdLower = vendedorIdNormalizado.toLowerCase().trim();
+      
+      // Log para debug
+      if (vendasResult.vendas.indexOf(venda) < 3) {
+        console.log('🔍 Comparando venda:', {
+          vendaId: venda.id,
+          vendaVendedorId,
+          vendaNomeVendedor,
+          vendaVendedorNome,
+          vendedorIdNormalizado,
+          matchId: vendaVendedorId === vendedorIdNormalizado,
+          matchNome: vendaNomeVendedor === vendedorIdLower || vendaVendedorNome === vendedorIdLower
+        });
+      }
+      
+      return vendaVendedorId === vendedorIdNormalizado || 
+             vendaNomeVendedor === vendedorIdLower ||
+             vendaVendedorNome === vendedorIdLower ||
+             // Comparação adicional por nome completo (caso o ID não bata)
+             vendaNomeVendedor.includes(vendedorIdLower) ||
+             vendaVendedorNome.includes(vendedorIdLower);
+    });
     
     // Calcular totais
     const totalVendas = vendasDoVendedor.length;
     const totalValor = vendasDoVendedor.reduce((sum, venda) => sum + parseFloat(venda.valor_total || '0'), 0);
+
+    // Log para debug dos resultados
+    console.log('✅ [API Vendas Vendedor] Resultados encontrados:', {
+      vendedorId,
+      totalVendasEncontradas: vendasDoVendedor.length,
+      totalValor,
+      periodo: `${resultadoDatas.dataInicio?.toLocaleDateString('pt-BR')} até ${resultadoDatas.dataFim?.toLocaleDateString('pt-BR')}`,
+      primeirasVendas: vendasDoVendedor.slice(0, 3).map(v => ({
+        id: v.id,
+        data: v.data,
+        cliente: v.cliente,
+        valor_total: v.valor_total
+      }))
+    });
 
     // Retornar resultados
     return NextResponse.json({

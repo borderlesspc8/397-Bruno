@@ -100,18 +100,51 @@ export function useGestaoClickSupabase({
       })
 
       // Processar vendedores para formato da Dashboard
-      const vendedoresProcessados = dados.vendedores.map(vendedor => ({
-        id: vendedor.id,
-        nome: vendedor.nome,
-        vendas: dados.vendas.filter(v => v.vendedor_id === vendedor.id).length,
-        valor: dados.vendas
-          .filter(v => v.vendedor_id === vendedor.id)
-          .reduce((sum, v) => sum + v.valor_total, 0),
-        ticketMedio: 0
-      })).map(vendedor => ({
-        ...vendedor,
-        ticketMedio: vendedor.vendas > 0 ? vendedor.valor / vendedor.vendas : 0
-      })).sort((a, b) => b.valor - a.valor)
+      const vendedoresProcessados = dados.vendedores.map(vendedor => {
+        // Normalizar ID do vendedor para comparação
+        const vendedorIdNormalizado = vendedor.id.replace('gc-', '');
+        
+        // Buscar vendas do vendedor usando múltiplos critérios
+        const vendasDoVendedor = dados.vendas.filter(venda => {
+          const vendaVendedorId = String(venda.vendedor_id || '').replace('gc-', '');
+          const vendaNomeVendedor = String(venda.nome_vendedor || '').toLowerCase().trim();
+          const vendaVendedorNome = String(venda.vendedor_nome || '').toLowerCase().trim();
+          const vendedorNome = vendedor.nome.toLowerCase().trim();
+          
+          return vendaVendedorId === vendedorIdNormalizado || 
+                 vendaNomeVendedor === vendedorNome ||
+                 vendaVendedorNome === vendedorNome ||
+                 vendaNomeVendedor.includes(vendedorNome) ||
+                 vendaVendedorNome.includes(vendedorNome);
+        });
+        
+        const totalVendas = vendasDoVendedor.length;
+        const valorTotal = vendasDoVendedor.reduce((sum, v) => sum + (v.valor_total || 0), 0);
+        
+        // Log para debug dos primeiros vendedores
+        if (dados.vendedores.indexOf(vendedor) < 3) {
+          console.log('🔍 [useGestaoClickSupabase] Processando vendedor:', {
+            vendedorId: vendedor.id,
+            vendedorNome: vendedor.nome,
+            vendasEncontradas: totalVendas,
+            valorTotal,
+            vendasExemplo: vendasDoVendedor.slice(0, 2).map(v => ({
+              id: v.id,
+              vendedor_id: v.vendedor_id,
+              nome_vendedor: v.nome_vendedor,
+              valor_total: v.valor_total
+            }))
+          });
+        }
+        
+        return {
+          id: vendedor.id,
+          nome: vendedor.nome,
+          vendas: totalVendas,
+          valor: valorTotal,
+          ticketMedio: totalVendas > 0 ? valorTotal / totalVendas : 0
+        };
+      }).sort((a, b) => b.valor - a.valor)
 
       setData({
         vendas: dados.vendas,
@@ -182,18 +215,35 @@ export function useGestaoClickSupabase({
       })
 
       // Processar vendedores
-      const vendedoresProcessados = dados.vendedores.map(vendedor => ({
-        id: vendedor.id,
-        nome: vendedor.nome,
-        vendas: dados.vendas.filter(v => v.vendedor_id === vendedor.id).length,
-        valor: dados.vendas
-          .filter(v => v.vendedor_id === vendedor.id)
-          .reduce((sum, v) => sum + v.valor_total, 0),
-        ticketMedio: 0
-      })).map(vendedor => ({
-        ...vendedor,
-        ticketMedio: vendedor.vendas > 0 ? vendedor.valor / vendedor.vendas : 0
-      })).sort((a, b) => b.valor - a.valor)
+      const vendedoresProcessados = dados.vendedores.map(vendedor => {
+        // Normalizar ID do vendedor para comparação
+        const vendedorIdNormalizado = vendedor.id.replace('gc-', '');
+        
+        // Buscar vendas do vendedor usando múltiplos critérios
+        const vendasDoVendedor = dados.vendas.filter(venda => {
+          const vendaVendedorId = String(venda.vendedor_id || '').replace('gc-', '');
+          const vendaNomeVendedor = String(venda.nome_vendedor || '').toLowerCase().trim();
+          const vendaVendedorNome = String(venda.vendedor_nome || '').toLowerCase().trim();
+          const vendedorNome = vendedor.nome.toLowerCase().trim();
+          
+          return vendaVendedorId === vendedorIdNormalizado || 
+                 vendaNomeVendedor === vendedorNome ||
+                 vendaVendedorNome === vendedorNome ||
+                 vendaNomeVendedor.includes(vendedorNome) ||
+                 vendaVendedorNome.includes(vendedorNome);
+        });
+        
+        const totalVendas = vendasDoVendedor.length;
+        const valorTotal = vendasDoVendedor.reduce((sum, v) => sum + (v.valor_total || 0), 0);
+        
+        return {
+          id: vendedor.id,
+          nome: vendedor.nome,
+          vendas: totalVendas,
+          valor: valorTotal,
+          ticketMedio: totalVendas > 0 ? valorTotal / totalVendas : 0
+        };
+      }).sort((a, b) => b.valor - a.valor)
 
       setData({
         vendas: dados.vendas,

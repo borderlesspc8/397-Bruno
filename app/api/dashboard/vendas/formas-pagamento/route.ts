@@ -62,14 +62,13 @@ export async function GET(request: NextRequest) {
     
     console.log(`Valor total calculado (mesmo critério da API principal): R$ ${valorTotalAPI.toFixed(2)}`);
 
-    // Mapeamento para categorias específicas de forma de pagamento - usando exatamente os rótulos do Gestão Click
+    // Mapeamento para categorias específicas de forma de pagamento - apenas formas ativas (baseado em dados reais)
     const CATEGORIAS_PAGAMENTO: Record<string, string> = {
-      // PIX - C6
-      'PIX': 'PIX - C6',
-      'PIX C6': 'PIX - C6',
+      // PIX - C6 (apenas se especificamente C6)
       'PIX - C6': 'PIX - C6',
+      'PIX C6': 'PIX - C6',
       
-      // CRÉDITO - STONE
+      // CRÉDITO - STONE (16.5% das vendas)
       'ELO CRÉDITO STONE': 'CRÉDITO - STONE',
       'MASTERCARD CRÉDITO STONE': 'CRÉDITO - STONE',
       'MASTER CRÉDITO': 'CRÉDITO - STONE',
@@ -84,7 +83,7 @@ export async function GET(request: NextRequest) {
       'Cartão de Crédito': 'CRÉDITO - STONE',
       'Crédito': 'CRÉDITO - STONE',
       
-      // DÉBITO - STONE
+      // DÉBITO - STONE (3.4% das vendas)
       'DÉBITO - Slipay': 'DÉBITO - STONE',
       'DÉBITO - SLIPAY': 'DÉBITO - STONE',
       'DEBITO - Slipay': 'DÉBITO - STONE',
@@ -97,37 +96,29 @@ export async function GET(request: NextRequest) {
       'Cartão de Débito': 'DÉBITO - STONE',
       'Débito': 'DÉBITO - STONE',
       
-      // ESPÉCIE - BB
+      // ESPÉCIE - BB (1.5% das vendas)
       'Dinheiro à Vista': 'ESPÉCIE - BB',
       'Dinheiro': 'ESPÉCIE - BB',
       'Especie': 'ESPÉCIE - BB',
       'ESPÉCIE - BB': 'ESPÉCIE - BB',
       'Moeda': 'ESPÉCIE - BB',
       
-      // LINK DE PAGAMENTO - STONE
-      'LINK DE PAGAMENTO - STONE': 'LINK DE PAGAMENTO - STONE',
-      'Link de Pagamento - Stone': 'LINK DE PAGAMENTO - STONE',
-      'Link de Pagamento': 'LINK DE PAGAMENTO - STONE',
-      
-      // CHEQUE
-      'CHEQUE': 'CHEQUE',
-      'Cheque': 'CHEQUE',
-      'CHEQUE - BB': 'CHEQUE',
-      'CHEQUE - STONE': 'CHEQUE',
-      
-      // BOLETO - BB
+      // BOLETO - BB (0.1% das vendas)
       'BOLETO': 'BOLETO - BB',
       'Boleto Bancário': 'BOLETO - BB',
       'Boleto': 'BOLETO - BB',
       'BOLETO - BB': 'BOLETO - BB',
       
-      // A COMBINAR
+      // A COMBINAR (1.7% das vendas)
       'A COMBINAR': 'A COMBINAR',
       'A Combinar': 'A COMBINAR',
-      'A combinar': 'A COMBINAR'
+      'A combinar': 'A COMBINAR',
+      
+      // PIX genérico (para outros processadores que não C6)
+      'PIX': 'PIX'
     };
 
-    // Função para normalizar a forma de pagamento - usando exatamente os rótulos do Gestão Click
+    // Função para normalizar a forma de pagamento - apenas formas ativas (baseado em dados reais)
     const normalizarFormaPagamento = (forma: string): string => {
       if (!forma) return 'A COMBINAR';
       
@@ -139,7 +130,14 @@ export async function GET(request: NextRequest) {
       // Verificar de forma mais ampla para casos não mapeados exatamente
       const formaNormalizada = forma.trim();
       
-      if (formaNormalizada.includes('PIX')) return 'PIX - C6';
+      // PIX - apenas se especificamente C6, senão mapear para PIX genérico
+      if (formaNormalizada.includes('PIX')) {
+        if (formaNormalizada.includes('C6')) {
+          return 'PIX - C6';
+        } else {
+          return 'PIX'; // PIX genérico para outros processadores
+        }
+      }
       if (formaNormalizada.includes('BOLETO') || formaNormalizada.includes('Boleto')) return 'BOLETO - BB';
       if (formaNormalizada.toLowerCase().includes('dinheiro') || formaNormalizada.toLowerCase().includes('à vista') || 
           formaNormalizada.toLowerCase().includes('especie') || formaNormalizada.toLowerCase().includes('moeda')) return 'ESPÉCIE - BB';
@@ -150,11 +148,7 @@ export async function GET(request: NextRequest) {
       if (formaNormalizada.includes('DÉBIT') || formaNormalizada.includes('Débit') ||
           formaNormalizada.includes('DEBIT') || formaNormalizada.includes('Debit')) return 'DÉBITO - STONE';
       
-      if (formaNormalizada.includes('CHEQUE') || formaNormalizada.includes('Cheque')) return 'CHEQUE';
-      
-      if (formaNormalizada.includes('LINK DE PAGAMENTO') || formaNormalizada.includes('Link de Pagamento')) return 'LINK DE PAGAMENTO - STONE';
-      
-      // Se não corresponder a nenhuma das categorias, retorna como A COMBINAR
+      // Se não corresponder a nenhuma das categorias ativas, retorna como A COMBINAR
       return 'A COMBINAR';
     };
 
@@ -198,17 +192,21 @@ export async function GET(request: NextRequest) {
       
       // Determinar a forma de pagamento da venda
       let formaPagamento = 'Outros';
+      let formaOriginal = '';
       
       // Primeiro, tentar usar a forma de pagamento principal da venda
       if (venda.forma_pagamento || venda.metodo_pagamento) {
-        formaPagamento = normalizarFormaPagamento(venda.forma_pagamento || venda.metodo_pagamento || 'Outros');
+        formaOriginal = venda.forma_pagamento || venda.metodo_pagamento || 'Outros';
+        formaPagamento = normalizarFormaPagamento(formaOriginal);
       } else if (venda.pagamentos && Array.isArray(venda.pagamentos) && venda.pagamentos.length > 0) {
         // Se não há forma principal, usar a do primeiro pagamento
         const primeiroPagamento = venda.pagamentos[0]?.pagamento;
         if (primeiroPagamento?.nome_forma_pagamento) {
-          formaPagamento = normalizarFormaPagamento(primeiroPagamento.nome_forma_pagamento);
+          formaOriginal = primeiroPagamento.nome_forma_pagamento;
+          formaPagamento = normalizarFormaPagamento(formaOriginal);
         }
       }
+      
       
       // Adicionar à contagem
       if (formasPagamentoMap.has(formaPagamento)) {
@@ -241,6 +239,7 @@ export async function GET(request: NextRequest) {
     console.log(`Formas de pagamento encontradas: ${formasPagamento.map(f => f.formaPagamento).join(', ')}`);
     console.log(`Valor total das formas de pagamento: R$ ${valorTotal.toFixed(2)}`);
     console.log(`Diferença entre APIs: R$ ${(valorTotal - valorTotalAPI).toFixed(2)} (${valorTotal > valorTotalAPI ? 'formas-pagamento maior' : 'API principal maior'})`);
+    
     
     // Log detalhado para debug
     if (Math.abs(valorTotal - valorTotalAPI) > 0.01) {

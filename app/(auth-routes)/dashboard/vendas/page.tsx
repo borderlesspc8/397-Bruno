@@ -36,6 +36,8 @@ import { VendasPorDiaCard } from "./components/VendasPorDiaCard";
 import { VendedoresChartImproved } from "./components/VendedoresChartImproved";
 import { MobileRankingVendedores } from "./components/MobileRankingVendedores";
 import { LazyFallback } from "@/app/_components/ui/lazy-fallback";
+import { ComoNosConheceuUnidade } from "./components/ComoNosConheceuUnidade";
+import { CanalDeVendasUnidade } from "./components/CanalDeVendasUnidade";
 
 // Componente com carregamento lazy para otimizar a renderização inicial
 const LazyProdutosMaisVendidos = React.lazy(() => 
@@ -490,6 +492,18 @@ export default function DashboardVendas() {
                 >
                   Produtos Vendidos
                 </TabsTrigger>
+                <TabsTrigger 
+                  value="origem" 
+                  className="ios26-tab-trigger whitespace-nowrap"
+                >
+                  Como nos Conheceu
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="canal" 
+                  className="ios26-tab-trigger whitespace-nowrap"
+                >
+                  Canal de Vendas
+                </TabsTrigger>
               </TabsList>
             </div>
             
@@ -524,6 +538,20 @@ export default function DashboardVendas() {
                     onVendaClick={abrirDetalhesVenda}
                   />
                 </Suspense>
+              </TabsContent>
+              
+              <TabsContent value="origem" className="mt-0">
+                <ComoNosConheceuUnidade 
+                  dataInicio={dateRange.from}
+                  dataFim={dateRange.to}
+                />
+              </TabsContent>
+              
+              <TabsContent value="canal" className="mt-0">
+                <CanalDeVendasUnidade 
+                  dataInicio={dateRange.from}
+                  dataFim={dateRange.to}
+                />
               </TabsContent>
             </div>
           </Tabs>
