@@ -19,7 +19,12 @@ export interface VendaIntegrada {
     quantidade: number
     preco_unitario: number
     total: number
+    valor_custo?: number
   }>
+  // Dados de canal e origem
+  canal_venda?: string
+  origem?: string
+  como_nos_conheceu?: string
   // Dados do Gestão Click
   external_id?: string
   source: 'gestao-click' | 'betel-tecnologia' | 'manual'
@@ -212,6 +217,16 @@ export class GestaoClickSupabaseService {
         valor_custo: v.valor_custo,
         desconto_valor: v.desconto_valor,
         valor_frete: v.valor_frete,
+        canal_venda: v.canal_venda,
+        origem: v.origem,
+        como_nos_conheceu: v.como_nos_conheceu,
+        // Verificar campos relacionados a canal/origem
+        canal: v.canal,
+        origem_venda: v.origem_venda,
+        origem_lead: v.origem_lead,
+        como_conheceu: v.como_conheceu,
+        fonte: v.fonte,
+        meio: v.meio,
         camposDisponiveis: Object.keys(v)
       }))
     });
@@ -231,13 +246,22 @@ export class GestaoClickSupabaseService {
         valor_custo: parseFloat(venda.valor_custo || '0'),
         desconto_valor: parseFloat(venda.desconto_valor || '0'),
         valor_frete: parseFloat(venda.valor_frete || '0'),
-        produtos: venda.produtos ? venda.produtos.map((produto: any) => ({
-          id: produto.id || Math.random().toString(36).substr(2, 9),
-          nome: produto.descricao || produto.nome || 'Produto não informado',
+        produtos: (venda.produtos || venda.itens) ? (venda.produtos || venda.itens).map((produto: any) => ({
+          id: produto.id || produto.produto_id || Math.random().toString(36).substr(2, 9),
+          nome: produto.descricao || produto.nome || produto.produto || 'Produto não informado',
           quantidade: parseInt(produto.quantidade || '1'),
-          preco_unitario: parseFloat(produto.valor_unitario || produto.preco_unitario || '0'),
-          total: parseFloat(produto.quantidade || '1') * parseFloat(produto.valor_unitario || produto.preco_unitario || '0')
+          preco_unitario: parseFloat(produto.valor_unitario || produto.preco_unitario || produto.valor_venda || '0'),
+          total: parseFloat(produto.quantidade || '1') * parseFloat(produto.valor_unitario || produto.preco_unitario || produto.valor_venda || '0'),
+          valor_custo: parseFloat(produto.valor_custo || '0')
         })) : [],
+        // Incluir dados de pagamentos
+        pagamentos: venda.pagamentos || [],
+        forma_pagamento: venda.forma_pagamento,
+        metodo_pagamento: venda.metodo_pagamento,
+        // Incluir dados de canal e origem - usando os campos corretos da API
+        canal_venda: venda.nome_canal_venda || venda.canal_venda || venda.canal || venda.origem_venda || venda.fonte || venda.meio || venda.canal_vendas,
+        origem: venda.origem || venda.como_nos_conheceu || venda.origem_lead || venda.como_conheceu || venda.fonte_origem || venda.origem_cliente,
+        como_nos_conheceu: this.extrairComoNosConheceu(venda) || venda.como_nos_conheceu || venda.origem || venda.canal_venda || venda.como_conheceu || venda.fonte || venda.meio_conheceu,
         external_id: venda.id?.toString(),
         source: 'gestao-click' as const,
         metadata: {
@@ -246,7 +270,22 @@ export class GestaoClickSupabaseService {
           valor_frete: venda.valor_frete,
           situacao_id: venda.situacao_id,
           loja_id: venda.loja_id,
-          loja_nome: venda.loja_nome
+          loja_nome: venda.loja_nome,
+          pagamentos: venda.pagamentos,
+          forma_pagamento: venda.forma_pagamento,
+          metodo_pagamento: venda.metodo_pagamento,
+          canal_venda: venda.canal_venda,
+          nome_canal_venda: venda.nome_canal_venda,
+          origem: venda.origem,
+          como_nos_conheceu: venda.como_nos_conheceu,
+          // Campos alternativos para debug
+          canal: venda.canal,
+          origem_venda: venda.origem_venda,
+          origem_lead: venda.origem_lead,
+          como_conheceu: venda.como_conheceu,
+          fonte: venda.fonte,
+          meio: venda.meio,
+          atributos: venda.atributos
         }
       };
 
@@ -257,13 +296,28 @@ export class GestaoClickSupabaseService {
             valor_total: venda.valor_total,
             valor_custo: venda.valor_custo,
             desconto_valor: venda.desconto_valor,
-            valor_frete: venda.valor_frete
+            valor_frete: venda.valor_frete,
+            pagamentos: venda.pagamentos?.length || 0,
+            forma_pagamento: venda.forma_pagamento,
+            metodo_pagamento: venda.metodo_pagamento,
+            produtos: venda.produtos?.length || 0,
+            itens: venda.itens?.length || 0,
+            canal_venda: venda.canal_venda,
+            origem: venda.origem,
+            como_nos_conheceu: venda.como_nos_conheceu
           },
           transformada: {
             valor_total: vendaTransformada.valor_total,
             valor_custo: vendaTransformada.valor_custo,
             desconto_valor: vendaTransformada.desconto_valor,
-            valor_frete: vendaTransformada.valor_frete
+            valor_frete: vendaTransformada.valor_frete,
+            pagamentos: vendaTransformada.pagamentos?.length || 0,
+            forma_pagamento: vendaTransformada.forma_pagamento,
+            metodo_pagamento: vendaTransformada.metodo_pagamento,
+            produtos: vendaTransformada.produtos?.length || 0,
+            canal_venda: vendaTransformada.canal_venda,
+            origem: vendaTransformada.origem,
+            como_nos_conheceu: vendaTransformada.como_nos_conheceu
           }
         });
       }
@@ -604,5 +658,22 @@ export class GestaoClickSupabaseService {
       console.error('Erro ao configurar subscription em tempo real:', error)
       throw error
     }
+  }
+
+  /**
+   * Extrai o valor de "Como nos conheceu" dos atributos da venda
+   */
+  private static extrairComoNosConheceu(venda: any): string | null {
+    if (!venda.atributos || !Array.isArray(venda.atributos)) {
+      return null;
+    }
+
+    const atributoComoConheceu = venda.atributos.find((attr: any) => 
+      attr.atributo && 
+      attr.atributo.descricao && 
+      attr.atributo.descricao.toLowerCase().includes('como nos conheceu')
+    );
+
+    return atributoComoConheceu?.atributo?.conteudo || null;
   }
 }

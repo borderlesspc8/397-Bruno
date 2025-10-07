@@ -24,9 +24,10 @@ export interface ProdutoItem {
 interface UseProdutosMaisVendidosProps {
   dataInicio: Date;
   dataFim: Date;
+  vendas?: any[]; // Receber vendas diretamente do componente pai
 }
 
-export const useProdutosMaisVendidos = ({ dataInicio, dataFim }: UseProdutosMaisVendidosProps) => {
+export const useProdutosMaisVendidos = ({ dataInicio, dataFim, vendas }: UseProdutosMaisVendidosProps) => {
   const { user } = useAuth();
   const userEmail = user?.email;
 
@@ -53,8 +54,217 @@ export const useProdutosMaisVendidos = ({ dataInicio, dataFim }: UseProdutosMais
   }, []);
 
 
-  // Buscar produtos com suporte a cache
+  // Processar produtos localmente quando vendas são fornecidas
   useEffect(() => {
+    const processarProdutosLocalmente = () => {
+      if (!vendas || !Array.isArray(vendas)) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        setLoading(true);
+        setErro(null);
+
+        console.log('🔍 [useProdutosMaisVendidos] Processando produtos localmente:', {
+          totalVendas: vendas.length,
+          primeirasVendas: vendas.slice(0, 3).map(v => ({
+            id: v.id,
+            produtos: v.produtos?.length || 0
+          }))
+        });
+
+        // Processar produtos das vendas
+        const produtosMap = new Map<string, {
+          id: string;
+          nome: string;
+          quantidade: number;
+          valor: number;
+          valorUnitario: number;
+          margem: number;
+          margemPercentual: number;
+        }>();
+
+        vendas.forEach((venda: any, vendaIndex: number) => {
+          if (venda.produtos && Array.isArray(venda.produtos)) {
+            console.log(`🔍 [useProdutosMaisVendidos] Venda ${vendaIndex + 1} (ID: ${venda.id}):`, {
+              totalProdutos: venda.produtos.length,
+              primeiroProduto: venda.produtos[0] ? {
+                id: venda.produtos[0].id,
+                nome: venda.produtos[0].nome,
+                descricao: venda.produtos[0].descricao,
+                produto: venda.produtos[0].produto,
+                tipoNome: typeof venda.produtos[0].nome,
+                nomeExtraido: venda.produtos[0].nome && typeof venda.produtos[0].nome === 'object' 
+                  ? venda.produtos[0].nome.nome_produto || venda.produtos[0].nome.nome 
+                  : venda.produtos[0].nome,
+                // Campos de valor
+                preco_unitario: venda.produtos[0].preco_unitario,
+                valor_unitario: venda.produtos[0].valor_unitario,
+                valor_venda: venda.produtos[0].valor_venda,
+                total: venda.produtos[0].total,
+                quantidade: venda.produtos[0].quantidade,
+                valor_custo: venda.produtos[0].valor_custo,
+                camposDisponiveis: Object.keys(venda.produtos[0])
+              } : null
+            });
+
+            venda.produtos.forEach((produto: any, produtoIndex: number) => {
+              // Extrair ID do produto - pode estar no objeto nome
+              let produtoId = produto.id || produto.produto_id || `produto-${vendaIndex}-${produtoIndex}`;
+              if (produto.nome && typeof produto.nome === 'object' && produto.nome.produto_id) {
+                produtoId = produto.nome.produto_id;
+              }
+              // Garantir que o nome seja uma string - extrair do objeto se necessário
+              let nomeProduto = 'Produto não informado';
+              if (produto.nome) {
+                if (typeof produto.nome === 'string') {
+                  nomeProduto = produto.nome;
+                } else if (typeof produto.nome === 'object' && produto.nome.nome_produto) {
+                  nomeProduto = produto.nome.nome_produto;
+                } else if (typeof produto.nome === 'object' && produto.nome.nome) {
+                  nomeProduto = produto.nome.nome;
+                }
+              } else if (produto.descricao) {
+                nomeProduto = produto.descricao;
+              } else if (produto.produto) {
+                nomeProduto = produto.produto;
+              }
+
+              // Extrair quantidade - pode estar no objeto nome
+              let quantidade = 1;
+              if (produto.quantidade) {
+                quantidade = parseInt(produto.quantidade);
+              } else if (produto.nome && typeof produto.nome === 'object' && produto.nome.quantidade) {
+                quantidade = parseInt(produto.nome.quantidade);
+              }
+              
+              // Extrair valor unitário - tentar vários campos possíveis, incluindo o objeto nome
+              let valorUnitario = 0;
+              if (produto.preco_unitario) {
+                valorUnitario = parseFloat(produto.preco_unitario);
+              } else if (produto.valor_unitario) {
+                valorUnitario = parseFloat(produto.valor_unitario);
+              } else if (produto.valor_venda) {
+                valorUnitario = parseFloat(produto.valor_venda);
+              } else if (produto.nome && typeof produto.nome === 'object' && produto.nome.valor_venda) {
+                valorUnitario = parseFloat(produto.nome.valor_venda);
+              } else if (produto.total && quantidade > 0) {
+                // Se não tem valor unitário, calcular a partir do total
+                valorUnitario = parseFloat(produto.total) / quantidade;
+              } else if (produto.nome && typeof produto.nome === 'object' && produto.nome.valor_total && quantidade > 0) {
+                // Se o valor total está no objeto nome, calcular o unitário
+                valorUnitario = parseFloat(produto.nome.valor_total) / quantidade;
+              }
+              
+              const valorTotal = quantidade * valorUnitario;
+              
+              console.log(`💰 [useProdutosMaisVendidos] Produto processado:`, {
+                produtoId,
+                nomeProduto: nomeProduto,
+                quantidade,
+                valorUnitario,
+                valorTotal,
+                camposValor: {
+                  preco_unitario: produto.preco_unitario,
+                  valor_unitario: produto.valor_unitario,
+                  valor_venda: produto.valor_venda,
+                  total: produto.total,
+                  // Valores do objeto nome
+                  nome_valor_venda: produto.nome && typeof produto.nome === 'object' ? produto.nome.valor_venda : null,
+                  nome_valor_total: produto.nome && typeof produto.nome === 'object' ? produto.nome.valor_total : null,
+                  nome_quantidade: produto.nome && typeof produto.nome === 'object' ? produto.nome.quantidade : null
+                }
+              });
+
+              if (produtosMap.has(produtoId)) {
+                const produtoExistente = produtosMap.get(produtoId)!;
+                produtoExistente.quantidade += quantidade;
+                produtoExistente.valor += valorTotal;
+                produtoExistente.valorUnitario = produtoExistente.valor / produtoExistente.quantidade;
+              } else {
+                produtosMap.set(produtoId, {
+                  id: produtoId,
+                  nome: nomeProduto,
+                  quantidade,
+                  valor: valorTotal,
+                  valorUnitario,
+                  margem: 0, // TODO: Calcular margem se tiver dados de custo
+                  margemPercentual: 0
+                });
+              }
+            });
+          }
+        });
+
+        const produtosProcessados = Array.from(produtosMap.values());
+
+        // Categorizar produtos
+        const equipamentosProcessados: ProdutoItem[] = [];
+        const acessoriosProcessados: ProdutoItem[] = [];
+        const acessoriosEspeciaisProcessados: ProdutoItem[] = [];
+        const acessoriosSextavadosProcessados: ProdutoItem[] = [];
+        const acessoriosEmborrachadosProcessados: ProdutoItem[] = [];
+
+        produtosProcessados.forEach(produto => {
+          const nomeLower = String(produto.nome || '').toLowerCase();
+          const nomeUpper = String(produto.nome || '').toUpperCase();
+          
+          // Lógica baseada no arquivo Python:
+          // 1. Primeiro verificar categorias especiais (ANILHA, HALTER, CABO DE AÇO, KETTLEBELL, PAR DE CANELEIRAS)
+          const categoriasEspeciais = ["ANILHA", "HALTER", "CABO DE AÇO", "KETTLEBELL", "PAR DE CANELEIRAS"];
+          const isCategoriaEspecial = categoriasEspeciais.some(cat => nomeUpper.includes(cat));
+          
+          if (isCategoriaEspecial) {
+            acessoriosEspeciaisProcessados.push(produto);
+          } else if (nomeLower.includes('sextavado')) {
+            acessoriosSextavadosProcessados.push(produto);
+          } else if (nomeLower.includes('emborrachado')) {
+            acessoriosEmborrachadosProcessados.push(produto);
+          } else {
+            // 2. Classificar por valor unitário (baseado na lógica Python: ticket < 1000 = acessórios)
+            if (produto.valorUnitario < 1000) {
+              acessoriosProcessados.push(produto);
+            } else {
+              equipamentosProcessados.push(produto);
+            }
+          }
+        });
+
+        console.log('💰 [useProdutosMaisVendidos] Produtos processados:', {
+          total: produtosProcessados.length,
+          equipamentos: equipamentosProcessados.length,
+          acessorios: acessoriosProcessados.length,
+          acessoriosEspeciais: acessoriosEspeciaisProcessados.length,
+          acessoriosSextavados: acessoriosSextavadosProcessados.length,
+          acessoriosEmborrachados: acessoriosEmborrachadosProcessados.length,
+          // Mostrar alguns exemplos de cada categoria
+          exemplosEquipamentos: equipamentosProcessados.slice(0, 3).map(p => ({ nome: p.nome, valor: p.valorUnitario })),
+          exemplosAcessorios: acessoriosProcessados.slice(0, 3).map(p => ({ nome: p.nome, valor: p.valorUnitario })),
+          exemplosEspeciais: acessoriosEspeciaisProcessados.slice(0, 3).map(p => ({ nome: p.nome, valor: p.valorUnitario }))
+        });
+
+        setProdutos(produtosProcessados);
+        setEquipamentos(equipamentosProcessados);
+        setAcessorios(acessoriosProcessados);
+        setAcessoriosEspeciais(acessoriosEspeciaisProcessados);
+        setAcessoriosSextavados(acessoriosSextavadosProcessados);
+        setAcessoriosEmborrachados(acessoriosEmborrachadosProcessados);
+        setLoading(false);
+      } catch (error) {
+        console.error('Erro ao processar produtos localmente:', error);
+        setErro(error instanceof Error ? error.message : 'Erro ao processar produtos');
+        setLoading(false);
+      }
+    };
+
+    // Se temos vendas, processar localmente
+    if (vendas) {
+      processarProdutosLocalmente();
+      return;
+    }
+
+    // Caso contrário, buscar via API (lógica original)
     const buscarProdutos = async () => {
       if (!userEmail) {
         setErro("Usuário não identificado. Faça login novamente.");
@@ -76,14 +286,6 @@ export const useProdutosMaisVendidos = ({ dataInicio, dataFim }: UseProdutosMais
         // Formatar datas no formato YYYY-MM-DD
         const dataInicioFormatada = dataInicioAjustada.toLocaleDateString('en-CA'); // Formato YYYY-MM-DD
         const dataFimFormatada = dataFimAjustada.toLocaleDateString('en-CA'); // Formato YYYY-MM-DD
-        
-        // Verificar cache antes de fazer a requisição
-        // const cacheKey = getCacheKey(dataInicioAjustada, dataFimAjustada, userEmail);
-        // const cacheEntry = produtosCache.get(cacheKey);
-        // const now = Date.now();
-        
-        // Se temos dados em cache e eles ainda são válidos, usá-los
-        // if (cacheEntry && now - cacheEntry.timestamp < CACHE_TTL) { ... }
 
         console.log(`Buscando produtos de ${dataInicioFormatada} até ${dataFimFormatada}`);
 
@@ -124,7 +326,7 @@ export const useProdutosMaisVendidos = ({ dataInicio, dataFim }: UseProdutosMais
     };
 
     buscarProdutos();
-  }, [dataInicio, dataFim, userEmail, getCacheKey]);
+  }, [dataInicio, dataFim, userEmail, getCacheKey, vendas]);
   
   // Formatação de valores monetários
   const formatarDinheiro = useCallback((valor: number) => {

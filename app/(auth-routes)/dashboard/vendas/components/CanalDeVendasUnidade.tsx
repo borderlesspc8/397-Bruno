@@ -1,22 +1,19 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/app/_components/ui/card";
-import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts';
-import { formatPercent } from "@/app/_utils/format";
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
+import { formatCurrency } from "@/app/_lib/formatters";
 import { Skeleton } from "@/app/_components/ui/skeleton";
 import { motion, AnimatePresence } from "framer-motion";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/_components/ui/tabs";
 import { 
   BarChart, 
   Bar, 
   XAxis, 
   YAxis, 
-  CartesianGrid,
-  PieChart as RechartsStaticPieChart
+  CartesianGrid
 } from 'recharts';
-import { Tooltip as UITooltip } from "@/app/_components/ui/tooltip";
-import { Share2, Info, PieChart as PieChartIcon, BarChart as BarChartIcon } from "lucide-react";
+import { Share2, Info, PieChart as PieChartIcon, BarChart as BarChartIcon, TrendingUp } from "lucide-react";
 
 interface CanalVendaData {
   canal: string;
@@ -34,6 +31,7 @@ interface UnidadeData {
 interface CanalDeVendasUnidadeProps {
   dataInicio: Date;
   dataFim: Date;
+  vendas?: any[]; // Receber vendas diretamente do componente pai
 }
 
 // Função auxiliar para formatar percentual corretamente (sem divisão adicional por 100)
@@ -77,97 +75,88 @@ const CanalCard = ({ canal, index, color }: { canal: CanalVendaData, index: numb
   </motion.div>
 );
 
-export function CanalDeVendasUnidade({ dataInicio, dataFim }: CanalDeVendasUnidadeProps) {
-  const [canaisData, setCanaisData] = useState<CanalVendaData[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
+export function CanalDeVendasUnidade({ dataInicio, dataFim, vendas }: CanalDeVendasUnidadeProps) {
   const [visualizacao, setVisualizacao] = useState<'pizza' | 'tabela'>('pizza');
 
-  useEffect(() => {
-    async function fetchData() {
-      setLoading(true);
-      setError(null);
-      
-      try {
-        // Formatar datas para string no formato YYYY-MM-DD
-        const dataInicioStr = dataInicio.toISOString().split('T')[0];
-        const dataFimStr = dataFim.toISOString().split('T')[0];
-        
-        // Buscar dados de canais consolidados usando o endpoint existente
-        let response = await fetch(
-          `/api/dashboard/canais-vendas?dataInicio=${dataInicioStr}&dataFim=${dataFimStr}`
-        );
-        
-        // Se o endpoint principal falhar, tentar o endpoint direto
-        if (!response.ok) {
-          console.log('📊 [CanalDeVendas] Endpoint principal falhou, tentando endpoint direto...');
-          response = await fetch(
-            `/api/dashboard/canais-vendas/direct?dataInicio=${dataInicioStr}&dataFim=${dataFimStr}`
-          );
-        }
-        
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error('Erro na resposta da API:', {
-            status: response.status,
-            statusText: response.statusText,
-            error: errorText
-          });
-          throw new Error(`Erro ao buscar dados: ${response.status} - ${errorText}`);
-        }
-        
-        const data = await response.json();
-        
-        console.log('📊 [CanalDeVendas] Dados recebidos da API:', {
-          temDashboard: !!data.dashboard,
-          temCanalVendasPorUnidade: !!data.dashboard?.canalVendasPorUnidade,
-          quantidadeUnidades: data.dashboard?.canalVendasPorUnidade?.length || 0
-        });
-        
-        // Processar os dados retornados pelo endpoint - pegar apenas os dados consolidados
-        if (data && data.dashboard && data.dashboard.canalVendasPorUnidade) {
-          const unidadesData: UnidadeData[] = data.dashboard.canalVendasPorUnidade;
-          
-          // Buscar a unidade consolidada (Todas as Unidades)
-          const unidadeConsolidada = unidadesData.find(u => u.id === "todos");
-          
-          console.log('📊 [CanalDeVendas] Unidade consolidada encontrada:', {
-            existe: !!unidadeConsolidada,
-            totalCanais: unidadeConsolidada?.canais?.length || 0,
-            totalVendas: unidadeConsolidada?.total || 0
-          });
-          
-          if (unidadeConsolidada && unidadeConsolidada.canais) {
-            setCanaisData(unidadeConsolidada.canais);
-          } else {
-            // Se não houver dados consolidados, usar os dados da primeira unidade
-            if (unidadesData.length > 0 && unidadesData[0].canais) {
-              console.log('📊 [CanalDeVendas] Usando dados da primeira unidade como fallback');
-              setCanaisData(unidadesData[0].canais);
-            } else {
-              console.log('📊 [CanalDeVendas] Nenhum dado de canal encontrado');
-              setCanaisData([]);
-            }
-          }
-        } else {
-          console.error('📊 [CanalDeVendas] Formato de dados inválido:', data);
-          throw new Error("Formato de dados inválido - verifique os logs do console");
-        }
-      } catch (err) {
-        console.error("Erro ao buscar dados de canais:", err);
-        setError("Não foi possível carregar os dados de canal de vendas");
-      } finally {
-        setLoading(false);
-      }
+  // Processar dados de canais a partir das vendas recebidas
+  const canaisData = useMemo(() => {
+    if (!vendas || !Array.isArray(vendas)) {
+      return [];
     }
-    
-    fetchData();
-  }, [dataInicio, dataFim]);
 
-  // Cores para o gráfico
+    console.log('📊 [CanalDeVendas] Processando canais localmente:', {
+      totalVendas: vendas.length,
+      primeirasVendas: vendas.slice(0, 3).map(v => ({
+        id: v.id,
+        canal_venda: v.canal_venda,
+        origem: v.origem
+      }))
+    });
+
+    const canaisMap = new Map<string, { quantidade: number; valor: number }>();
+
+    vendas.forEach((venda: any) => {
+      // Tentar extrair canal de diferentes campos possíveis
+      let canal = venda.canal_venda || 
+                  venda.metadata?.nome_canal_venda ||
+                  venda.metadata?.canal_venda ||
+                  venda.origem || 
+                  venda.canal || 
+                  venda.metadata?.canal ||
+                  venda.metadata?.origem_venda ||
+                  venda.metadata?.fonte ||
+                  venda.metadata?.meio ||
+                  'Não informado';
+      
+      // Normalizar nome do canal
+      if (canal && typeof canal === 'string') {
+        canal = canal.trim();
+        if (canal === '' || canal.toLowerCase() === 'null') {
+          canal = 'Não informado';
+        }
+      } else {
+        canal = 'Não informado';
+      }
+
+      const valor = parseFloat(venda.valor_total || venda.valor || '0');
+
+      if (canaisMap.has(canal)) {
+        const existente = canaisMap.get(canal)!;
+        existente.quantidade += 1;
+        existente.valor += valor;
+      } else {
+        canaisMap.set(canal, { quantidade: 1, valor });
+      }
+    });
+
+    const totalVendas = vendas.length;
+    const canaisProcessados: CanalVendaData[] = Array.from(canaisMap.entries()).map(([canal, dados]) => ({
+      canal,
+      quantidade: dados.quantidade,
+      percentual: totalVendas > 0 ? dados.quantidade / totalVendas : 0
+    }));
+
+    console.log('📊 [CanalDeVendas] Canais processados:', {
+      totalCanais: canaisProcessados.length,
+      totalVendas,
+      canais: canaisProcessados.map(c => ({ canal: c.canal, quantidade: c.quantidade, percentual: c.percentual }))
+    });
+
+    return canaisProcessados.sort((a, b) => b.quantidade - a.quantidade);
+  }, [vendas]);
+
+  // Cores seguindo o padrão ios26-badge da aplicação
   const COLORS = [
-    '#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8',
-    '#82ca9d', '#ffc658', '#8dd1e1', '#a4de6c', '#d0ed57'
+    'hsl(var(--orange-primary))',     // Laranja principal
+    'hsl(var(--yellow-primary))',     // Amarelo principal
+    'hsl(var(--orange-dark))',        // Laranja escuro
+    'hsl(25 95% 70%)',                // Laranja claro
+    'hsl(45 100% 60%)',               // Amarelo vibrante
+    'hsl(25 95% 45%)',                // Laranja médio
+    'hsl(45 100% 70%)',               // Amarelo claro
+    'hsl(25 95% 35%)',                // Laranja escuro
+    'hsl(45 100% 50%)',               // Amarelo médio
+    'hsl(25 95% 60%)'                 // Laranja vibrante
   ];
 
   // Renderizar gráfico e tabela com dados consolidados
@@ -207,25 +196,25 @@ export function CanalDeVendasUnidade({ dataInicio, dataFim }: CanalDeVendasUnida
           <div className="flex space-x-2">
             <button 
               onClick={() => setVisualizacao('pizza')}
-              className={`p-1.5 rounded-md transition-colors ${
+              className={`p-2 rounded-full transition-all duration-200 ${
                 visualizacao === 'pizza' 
-                  ? 'bg-primary/10 text-primary' 
-                  : 'text-muted-foreground hover:text-primary hover:bg-muted'
+                  ? 'ios26-badge' 
+                  : 'text-muted-foreground hover:text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-900/20'
               }`}
               title="Visualizar como gráfico de pizza"
             >
-              <PieChartIcon size={18} />
+              <PieChartIcon size={16} />
             </button>
             <button 
               onClick={() => setVisualizacao('tabela')}
-              className={`p-1.5 rounded-md transition-colors ${
+              className={`p-2 rounded-full transition-all duration-200 ${
                 visualizacao === 'tabela' 
-                  ? 'bg-primary/10 text-primary' 
-                  : 'text-muted-foreground hover:text-primary hover:bg-muted'
+                  ? 'ios26-badge' 
+                  : 'text-muted-foreground hover:text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-900/20'
               }`}
               title="Visualizar como tabela"
             >
-              <BarChartIcon size={18} />
+              <BarChartIcon size={16} />
             </button>
           </div>
         </div>
@@ -394,72 +383,28 @@ export function CanalDeVendasUnidade({ dataInicio, dataFim }: CanalDeVendasUnida
     );
   };
 
-  if (loading) {
+  // Se não há vendas, mostrar estado vazio
+  if (!vendas || vendas.length === 0) {
     return (
-      <Card className="shadow-lg border border-gray-100 dark:border-gray-800">
+      <Card className="shadow-lg bg-card/95 backdrop-blur-sm border-0">
         <CardHeader>
-          <CardTitle><Skeleton className="h-6 w-52" /></CardTitle>
-          <CardDescription><Skeleton className="h-4 w-72" /></CardDescription>
+          <CardTitle className="flex items-center gap-2">
+              <TrendingUp className="h-5 w-5 text-orange-600 dark:text-orange-400" />
+            Canal de Vendas
+          </CardTitle>
+          <CardDescription>Análise de canais de vendas por período</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="h-[400px] w-full flex items-center justify-center">
-            <motion.div 
-              className="flex flex-col items-center"
-              animate={{ 
-                opacity: [0.5, 1, 0.5],
-                scale: [0.98, 1, 0.98]
-              }}
-              transition={{ 
-                repeat: Infinity,
-                duration: 1.5
-              }}
-            >
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mb-4"></div>
-              <p className="text-sm text-muted-foreground">Carregando dados...</p>
-            </motion.div>
+          <div className="flex items-center justify-center h-[300px]">
+            <div className="text-center">
+              <div className="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center mx-auto mb-4">
+                <TrendingUp className="h-8 w-8 text-gray-400" />
           </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  if (error) {
-    return (
-      <Card className="border-gray-100 dark:border-gray-800">
-        <CardHeader>
-          <CardTitle>Canal de Vendas - Por Unidade</CardTitle>
-          <CardDescription>Período: {dataInicio.toLocaleDateString()} a {dataFim.toLocaleDateString()}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <motion.div 
-            className="h-[400px] w-full flex items-center justify-center"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-          >
-            <div className="text-red-500 text-center">
-              <motion.div 
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                transition={{ 
-                  type: "spring",
-                  stiffness: 260,
-                  damping: 20 
-                }}
-                className="flex justify-center mb-4"
-              >
-                <div className="w-16 h-16 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                  </svg>
-                </div>
-              </motion.div>
-              <p className="text-lg font-semibold">{error}</p>
-              <p className="text-sm text-muted-foreground mt-2">
-                Verifique sua conexão ou tente novamente mais tarde.
+              <p className="text-muted-foreground">
+                Nenhum dado de canal de vendas disponível para o período selecionado.
               </p>
             </div>
-          </motion.div>
+          </div>
         </CardContent>
       </Card>
     );
@@ -467,50 +412,41 @@ export function CanalDeVendasUnidade({ dataInicio, dataFim }: CanalDeVendasUnida
 
   if (canaisData.length === 0) {
     return (
-      <Card>
+      <Card className="shadow-lg bg-card/95 backdrop-blur-sm border-0">
         <CardHeader>
-          <CardTitle>Canal de Vendas - Dados Gerais</CardTitle>
-          <CardDescription>Período: {dataInicio.toLocaleDateString()} a {dataFim.toLocaleDateString()}</CardDescription>
+          <CardTitle className="flex items-center gap-2">
+              <TrendingUp className="h-5 w-5 text-orange-600 dark:text-orange-400" />
+            Canal de Vendas
+          </CardTitle>
+          <CardDescription>Análise de canais de vendas por período</CardDescription>
         </CardHeader>
         <CardContent>
-          <motion.div 
-            className="h-[400px] w-full flex items-center justify-center"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.5 }}
-          >
+          <div className="flex items-center justify-center h-[300px]">
             <div className="text-center">
-              <motion.div
-                initial={{ y: 10, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                transition={{ delay: 0.2 }}
-              >
                 <div className="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center mx-auto mb-4">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
+                <TrendingUp className="h-8 w-8 text-gray-400" />
                 </div>
                 <p className="text-muted-foreground">
-                  Nenhum dado disponível para o período selecionado.
+                Nenhum canal de vendas identificado no período selecionado.
                 </p>
-              </motion.div>
             </div>
-          </motion.div>
+          </div>
         </CardContent>
       </Card>
     );
   }
 
   return (
-    <Card className="bg-white dark:bg-gray-900 shadow-sm hover:shadow-md transition-shadow duration-300 border border-gray-100 dark:border-gray-800">
+    <Card className="shadow-lg bg-card/95 backdrop-blur-sm border-0">
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle className="text-xl text-gray-900 dark:text-gray-100">
-              Canal de Vendas - Dados Gerais
+            <CardTitle className="flex items-center gap-2">
+              <TrendingUp className="h-5 w-5 text-orange-600 dark:text-orange-400" />
+              Canal de Vendas
             </CardTitle>
-            <CardDescription className="text-gray-500 dark:text-gray-400">
-              Período: {dataInicio.toLocaleDateString()} a {dataFim.toLocaleDateString()}
+            <CardDescription>
+              Análise de canais de vendas por período
             </CardDescription>
           </div>
           <div className="flex space-x-2">
@@ -524,18 +460,18 @@ export function CanalDeVendasUnidade({ dataInicio, dataFim }: CanalDeVendasUnida
                   totalVendas: canaisData.reduce((sum, c) => sum + c.quantidade, 0)
                 });
               }}
-              className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400"
+                className="p-2 rounded-full hover:bg-orange-50 dark:hover:bg-orange-900/20 text-muted-foreground hover:text-orange-600 transition-all duration-200"
               title="Debug - Ver dados no console"
             >
-              <Info size={18} />
+                <Info size={16} />
             </motion.button>
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400"
+                className="p-2 rounded-full hover:bg-orange-50 dark:hover:bg-orange-900/20 text-muted-foreground hover:text-orange-600 transition-all duration-200"
               title="Compartilhar"
             >
-              <Share2 size={18} />
+                <Share2 size={16} />
             </motion.button>
           </div>
         </div>

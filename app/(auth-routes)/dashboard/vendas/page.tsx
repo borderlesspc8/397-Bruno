@@ -223,8 +223,8 @@ export default function DashboardVendas() {
   // Tab ativa
   const [activeTab, setActiveTab] = useState("ranking");
   
-  // Estado para filtro de situações
-  const [situacoesFiltro, setSituacoesFiltro] = useState<string[]>([]);
+  // Estado para filtro de situações - padrão: apenas "Concretizada"
+  const [situacoesFiltro, setSituacoesFiltro] = useState<string[]>(["concretizada"]);
   
   // Parâmetros do período anterior - memoizado
   const previousDateParams = useMemo(() => {
@@ -276,6 +276,30 @@ export default function DashboardVendas() {
       faturamento: vendedor.valor || 0
     }));
   }, [vendedores]);
+
+  // Log para debug das vendas
+  useEffect(() => {
+    if (vendas && vendas.length > 0) {
+      console.log('📦 [page.tsx] Vendas disponíveis para componentes filhos:', {
+        totalVendas: vendas.length,
+        primeirasVendas: vendas.slice(0, 3).map(v => ({
+          id: v.id,
+          canal_venda: v.canal_venda,
+          origem: v.origem,
+          como_nos_conheceu: v.como_nos_conheceu,
+          metadata: v.metadata ? {
+            canal_venda: v.metadata.canal_venda,
+            origem: v.metadata.origem,
+            como_nos_conheceu: v.metadata.como_nos_conheceu,
+          } : null,
+          valor_total: v.valor_total,
+          // Mostrar TODOS os campos disponíveis
+          todosOsCampos: Object.keys(v),
+          metadataCampos: v.metadata ? Object.keys(v.metadata) : null
+        }))
+      });
+    }
+  }, [vendas]);
 
   // Dados do summary calculados
   const dadosSummary = useMemo(() => {
@@ -333,7 +357,12 @@ export default function DashboardVendas() {
   
   // Abrir modal de detalhes do vendedor
   const handleOpenVendedorDetails = useCallback((vendedor: any, index?: number) => {
-    setVendedorSelecionado(vendedor);
+    // Adicionar a posição correta baseada no índice (index + 1)
+    const vendedorComPosicao = {
+      ...vendedor,
+      posicao: index !== undefined ? index + 1 : 1
+    };
+    setVendedorSelecionado(vendedorComPosicao);
     setModalAberto(true);
   }, []);
   
@@ -527,6 +556,7 @@ export default function DashboardVendas() {
                   dataInicio={dateRange.from}
                   dataFim={dateRange.to}
                   vendedores={vendedoresMapeados}
+                  vendas={vendas}
                 />
               </TabsContent>
               
@@ -536,6 +566,7 @@ export default function DashboardVendas() {
                     dataInicio={dateRange.from}
                     dataFim={dateRange.to}
                     onVendaClick={abrirDetalhesVenda}
+                    vendas={vendas}
                   />
                 </Suspense>
               </TabsContent>
@@ -544,6 +575,7 @@ export default function DashboardVendas() {
                 <ComoNosConheceuUnidade 
                   dataInicio={dateRange.from}
                   dataFim={dateRange.to}
+                  vendas={vendas}
                 />
               </TabsContent>
               
@@ -551,6 +583,7 @@ export default function DashboardVendas() {
                 <CanalDeVendasUnidade 
                   dataInicio={dateRange.from}
                   dataFim={dateRange.to}
+                  vendas={vendas}
                 />
               </TabsContent>
             </div>

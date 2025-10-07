@@ -105,8 +105,8 @@ export function DateRangeSelector({ dateRange: externalDateRange, onDateRangeCha
       name: "Mês Completo", 
       handler: () => {
         const range = { 
-          from: new Date(currentYear, currentMonth, 1),
-          to: endOfMonth(new Date(currentYear, currentMonth, 1)) // Último dia do mês
+          from: new Date(currentYear, currentMonth, 1, 0, 0, 0, 0),
+          to: new Date(currentYear, currentMonth + 1, 0, 23, 59, 59, 999) // Último dia do mês
         };
         onDateRangeChange(range);
         setPresetOpen(false);
@@ -117,8 +117,8 @@ export function DateRangeSelector({ dateRange: externalDateRange, onDateRangeCha
       handler: () => {
         const lastMonth = subMonths(today, 1);
         const range = { 
-          from: new Date(lastMonth.getFullYear(), lastMonth.getMonth(), 1),
-          to: endOfMonth(lastMonth) 
+          from: new Date(lastMonth.getFullYear(), lastMonth.getMonth(), 1, 0, 0, 0, 0),
+          to: new Date(lastMonth.getFullYear(), lastMonth.getMonth() + 1, 0, 23, 59, 59, 999)
         };
         onDateRangeChange(range);
         setPresetOpen(false);
@@ -129,8 +129,8 @@ export function DateRangeSelector({ dateRange: externalDateRange, onDateRangeCha
       handler: () => {
         const twoMonthsAgo = subMonths(today, 2);
         const range = { 
-          from: new Date(twoMonthsAgo.getFullYear(), twoMonthsAgo.getMonth(), 1),
-          to: endOfMonth(twoMonthsAgo) 
+          from: new Date(twoMonthsAgo.getFullYear(), twoMonthsAgo.getMonth(), 1, 0, 0, 0, 0),
+          to: new Date(twoMonthsAgo.getFullYear(), twoMonthsAgo.getMonth() + 1, 0, 23, 59, 59, 999)
         };
         onDateRangeChange(range);
         setPresetOpen(false);
@@ -141,8 +141,8 @@ export function DateRangeSelector({ dateRange: externalDateRange, onDateRangeCha
       handler: () => {
         const threeMonthsAgo = subMonths(today, 3);
         const range = { 
-          from: new Date(threeMonthsAgo.getFullYear(), threeMonthsAgo.getMonth(), 1),
-          to: endOfMonth(threeMonthsAgo) 
+          from: new Date(threeMonthsAgo.getFullYear(), threeMonthsAgo.getMonth(), 1, 0, 0, 0, 0),
+          to: new Date(threeMonthsAgo.getFullYear(), threeMonthsAgo.getMonth() + 1, 0, 23, 59, 59, 999)
         };
         onDateRangeChange(range);
         setPresetOpen(false);
@@ -152,8 +152,8 @@ export function DateRangeSelector({ dateRange: externalDateRange, onDateRangeCha
       name: "Ano Atual", 
       handler: () => {
         const range = { 
-          from: new Date(today.getFullYear(), 0, 1),
-          to: endOfYear(today) 
+          from: new Date(today.getFullYear(), 0, 1, 0, 0, 0, 0),
+          to: new Date(today.getFullYear(), 11, 31, 23, 59, 59, 999) // 31 de dezembro
         };
         onDateRangeChange(range);
         setPresetOpen(false);

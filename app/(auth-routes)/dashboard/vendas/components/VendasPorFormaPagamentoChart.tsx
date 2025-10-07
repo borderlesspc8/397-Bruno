@@ -55,6 +55,7 @@ interface VendasPorFormaPagamentoChartProps {
   dataInicio: Date;
   dataFim: Date;
   vendedores: Vendedor[];
+  vendas?: any[]; // Receber vendas diretamente do componente pai
 }
 
 interface FormaPagamentoItem {
@@ -67,6 +68,8 @@ interface FormaPagamentoItem {
 // Cores iOS26 para categorias específicas de formas de pagamento (apenas formas ativas)
 const CORES_CATEGORIAS = {
   'PIX - C6': 'hsl(25 95% 53% / 0.8)',             // Laranja primário iOS26
+  'PIX - BB': 'hsl(25 95% 60% / 0.8)',             // Laranja claro iOS26
+  'PIX - STONE': 'hsl(25 95% 45% / 0.8)',          // Laranja médio iOS26
   'PIX': 'hsl(25 95% 70% / 0.8)',                  // Laranja claro iOS26 para PIX genérico
   'CRÉDITO - STONE': 'hsl(45 100% 50% / 0.8)',     // Amarelo primário iOS26
   'DÉBITO - STONE': 'hsl(142 69% 45% / 0.8)',      // Verde sucesso iOS26
@@ -78,6 +81,8 @@ const CORES_CATEGORIAS = {
 // Cores de borda correspondentes iOS26 (apenas formas ativas)
 const CORES_BORDA_CATEGORIAS = {
   'PIX - C6': 'hsl(25 95% 53%)',
+  'PIX - BB': 'hsl(25 95% 60%)',
+  'PIX - STONE': 'hsl(25 95% 45%)',
   'PIX': 'hsl(25 95% 70%)',
   'CRÉDITO - STONE': 'hsl(45 100% 50%)',
   'DÉBITO - STONE': 'hsl(142 69% 45%)',
@@ -114,50 +119,213 @@ const CORES_BORDA = [
   'hsl(45 100% 90%)',
 ];
 
-export function VendasPorFormaPagamentoChart({ dataInicio, dataFim, vendedores }: VendasPorFormaPagamentoChartProps) {
+export function VendasPorFormaPagamentoChart({ dataInicio, dataFim, vendedores, vendas }: VendasPorFormaPagamentoChartProps) {
   const [formasPagamento, setFormasPagamento] = useState<FormaPagamentoItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
 
-  // Processar dados dos vendedores para formas de pagamento - REATIVADO COM PROTEÇÃO CONTRA LOOPS
+  // Processar dados das vendas para formas de pagamento - usando mesma fonte que DashboardSummary
   useEffect(() => {
-    const processarFormasPagamento = async () => {
+        const processarFormasPagamento = () => {
       setLoading(true);
       setErro(null);
 
       try {
-        // Buscar dados das vendas por forma de pagamento usando a mesma API que o VendedoresChartImproved
-        const timestamp = Date.now();
-        const dataInicioStr = dataInicio.toISOString().split('T')[0];
-        // Ajustar data fim para evitar incluir o dia seguinte
-        const dataFimAjustada = new Date(dataFim);
-        dataFimAjustada.setDate(dataFimAjustada.getDate() - 1);
-        const dataFimStr = dataFimAjustada.toISOString().split('T')[0];
-        console.log(`Enviando datas para API: dataInicio=${dataInicioStr}, dataFim=${dataFimStr} (ajustada de ${dataFim.toISOString().split('T')[0]})`);
-        const response = await fetch(`/api/dashboard/vendas/formas-pagamento?dataInicio=${dataInicioStr}&dataFim=${dataFimStr}&forceUpdate=true&t=${timestamp}`);
+            if (!vendas || !Array.isArray(vendas)) {
+              console.log('Vendas não recebidas ou não é array:', vendas);
+              setFormasPagamento([]);
+              setLoading(false);
+              return;
+            }
+            
+            console.log('Vendas recebidas:', vendas.length, 'vendas');
+
+        // Mapeamento para categorias específicas de forma de pagamento (mesmo da API)
+        const CATEGORIAS_PAGAMENTO: Record<string, string> = {
+          'PIX - C6': 'PIX - C6',
+          'PIX C6': 'PIX - C6',
+          'PIX - BB': 'PIX - BB',
+          'PIX - STONE': 'PIX - STONE',
+          'PIX': 'PIX',
+          'ELO CRÉDITO STONE': 'CRÉDITO - STONE',
+          'MASTERCARD CRÉDITO STONE': 'CRÉDITO - STONE',
+          'MASTER CRÉDITO': 'CRÉDITO - STONE',
+          'VISA CRÉDITO STONE': 'CRÉDITO - STONE',
+          'Cartão de Crédito Stone': 'CRÉDITO - STONE',
+          'CRÉDITO - Stone': 'CRÉDITO - STONE',
+          'CRÉDITO - STONE': 'CRÉDITO - STONE',
+          'CRÉDITO - Itaú': 'CRÉDITO - STONE',
+          'CRÉDITO - ITAÚ': 'CRÉDITO - STONE',
+          'CRÉDITO - Slipay': 'CRÉDITO - STONE',
+          'CRÉDITO - SLIPAY': 'CRÉDITO - STONE',
+          'Cartão de Crédito': 'CRÉDITO - STONE',
+          'Crédito': 'CRÉDITO - STONE',
+          'DÉBITO - Slipay': 'DÉBITO - STONE',
+          'DÉBITO - SLIPAY': 'DÉBITO - STONE',
+          'DEBITO - Slipay': 'DÉBITO - STONE',
+          'DEBITO - SLIPAY': 'DÉBITO - STONE',
+          'DÉBITO - Stone': 'DÉBITO - STONE',
+          'DÉBITO - STONE': 'DÉBITO - STONE',
+          'DÉBITO - Itaú': 'DÉBITO - STONE',
+          'DÉBITO - ITAÚ': 'DÉBITO - STONE',
+          'DÉBITO - C6': 'DÉBITO - STONE',
+          'Cartão de Débito': 'DÉBITO - STONE',
+          'Débito': 'DÉBITO - STONE',
+          'Dinheiro à Vista': 'ESPÉCIE - BB',
+          'Dinheiro': 'ESPÉCIE - BB',
+          'Especie': 'ESPÉCIE - BB',
+          'ESPÉCIE - BB': 'ESPÉCIE - BB',
+          'Moeda': 'ESPÉCIE - BB',
+          'BOLETO': 'BOLETO - BB',
+          'Boleto Bancário': 'BOLETO - BB',
+          'Boleto': 'BOLETO - BB',
+          'BOLETO - BB': 'BOLETO - BB',
+          'A COMBINAR': 'A COMBINAR',
+          'A Combinar': 'A COMBINAR',
+          'A combinar': 'A COMBINAR'
+        };
+
+        // Função para normalizar a forma de pagamento
+        const normalizarFormaPagamento = (forma: string): string => {
+          if (!forma) {
+            console.log('Forma de pagamento vazia, retornando A COMBINAR');
+            return 'A COMBINAR';
+          }
+          
+          console.log(`Normalizando forma de pagamento: "${forma}"`);
+          
+          if (CATEGORIAS_PAGAMENTO[forma]) {
+            console.log(`Encontrado no mapeamento direto: "${forma}" -> "${CATEGORIAS_PAGAMENTO[forma]}"`);
+            return CATEGORIAS_PAGAMENTO[forma];
+          }
+          
+          const formaNormalizada = forma.trim();
+          console.log(`Forma normalizada: "${formaNormalizada}"`);
+          
+          if (formaNormalizada.includes('PIX')) {
+            if (formaNormalizada.includes('C6')) {
+              console.log('Detectado PIX - C6');
+              return 'PIX - C6';
+            } else if (formaNormalizada.includes('BB')) {
+              console.log('Detectado PIX - BB');
+              return 'PIX - BB';
+            } else if (formaNormalizada.includes('STONE')) {
+              console.log('Detectado PIX - STONE');
+              return 'PIX - STONE';
+            } else {
+              console.log('Detectado PIX genérico');
+              return 'PIX';
+            }
+          }
+          if (formaNormalizada.includes('BOLETO') || formaNormalizada.includes('Boleto')) return 'BOLETO - BB';
+          if (formaNormalizada.toLowerCase().includes('dinheiro') || formaNormalizada.toLowerCase().includes('à vista') || 
+              formaNormalizada.toLowerCase().includes('especie') || formaNormalizada.toLowerCase().includes('moeda')) return 'ESPÉCIE - BB';
+          
+          if (formaNormalizada.includes('CRÉDIT') || formaNormalizada.includes('Crédit') || 
+              formaNormalizada.includes('CREDIT') || formaNormalizada.includes('Credit')) {
+            console.log('Detectado CRÉDITO');
+            return 'CRÉDITO - STONE';
+          }
+          
+          if (formaNormalizada.includes('DÉBIT') || formaNormalizada.includes('Débit') ||
+              formaNormalizada.includes('DEBIT') || formaNormalizada.includes('Debit')) {
+            console.log('Detectado DÉBITO');
+            return 'DÉBITO - STONE';
+          }
+          
+          console.log(`Forma não reconhecida: "${formaNormalizada}", retornando A COMBINAR`);
+          return 'A COMBINAR';
+        };
+
+        // Agrupar vendas por forma de pagamento
+        const formasPagamentoMap = new Map<string, { totalVendas: number; totalValor: number }>();
+        let valorTotal = 0;
         
-        if (!response.ok) {
-          throw new Error(`Erro ao buscar dados: ${response.status}`);
-        }
+        vendas.forEach((venda: any, index: number) => {
+          const valorVenda = typeof venda.valor_total === 'string' 
+            ? parseFloat(venda.valor_total) 
+            : Number(venda.valor_total) || 0;
+          
+          valorTotal += valorVenda;
+          
+          // Determinar a forma de pagamento da venda
+          let formaPagamento = 'A COMBINAR';
+          
+          // Debug: log da venda para entender a estrutura
+          if (index < 3) { // Log apenas das primeiras 3 vendas para debug
+            console.log(`Venda ${index + 1} (ID: ${venda.id}):`, {
+              forma_pagamento: venda.forma_pagamento,
+              metodo_pagamento: venda.metodo_pagamento,
+              pagamentos: venda.pagamentos?.map(p => ({
+                nome_forma_pagamento: p.pagamento?.nome_forma_pagamento
+              }))
+            });
+          }
+          
+          // Primeiro, tentar usar a forma de pagamento principal da venda
+          if (venda.forma_pagamento || venda.metodo_pagamento) {
+            const formaOriginal = venda.forma_pagamento || venda.metodo_pagamento || 'A COMBINAR';
+            formaPagamento = normalizarFormaPagamento(formaOriginal);
+          } else if (venda.pagamentos && Array.isArray(venda.pagamentos) && venda.pagamentos.length > 0) {
+            // Se não há forma principal, usar a do primeiro pagamento
+            const primeiroPagamento = venda.pagamentos[0]?.pagamento;
+            if (primeiroPagamento?.nome_forma_pagamento) {
+              const formaOriginal = primeiroPagamento.nome_forma_pagamento;
+              formaPagamento = normalizarFormaPagamento(formaOriginal);
+              if (index < 3) {
+                console.log(`Venda ${index + 1}: forma original = "${formaOriginal}", normalizada = "${formaPagamento}"`);
+              }
+            }
+          }
+          
+          // Adicionar à contagem
+          if (formasPagamentoMap.has(formaPagamento)) {
+            const dadosExistentes = formasPagamentoMap.get(formaPagamento)!;
+            formasPagamentoMap.set(formaPagamento, {
+              totalVendas: dadosExistentes.totalVendas + 1,
+              totalValor: dadosExistentes.totalValor + valorVenda
+            });
+          } else {
+            formasPagamentoMap.set(formaPagamento, {
+              totalVendas: 1,
+              totalValor: valorVenda
+            });
+          }
+        });
         
-        const data = await response.json();
+        // Converter o Map para um array e calcular percentuais
+        const formasPagamentoProcessadas = Array.from(formasPagamentoMap.entries()).map(([formaPagamento, dados]) => ({
+          formaPagamento,
+          totalVendas: dados.totalVendas,
+          totalValor: dados.totalValor,
+          percentual: valorTotal > 0 ? (dados.totalValor / valorTotal) * 100 : 0
+        }));
         
-        if (data.erro) {
-          setErro(data.erro);
-          setFormasPagamento([]);
-        } else {
-          const formasPagamento = data.formasPagamento || [];
-          const valorTotal = formasPagamento.reduce((sum: number, item: FormaPagamentoItem) => sum + item.totalValor, 0);
-          console.log('Dados recebidos da API formas-pagamento:', {
-            formasPagamento: formasPagamento.length,
+        // Ordenar por valor total (decrescente)
+        formasPagamentoProcessadas.sort((a, b) => b.totalValor - a.totalValor);
+        
+        console.log('Dados processados localmente para formas de pagamento:', {
+          totalVendas: vendas.length,
+          formasPagamento: formasPagamentoProcessadas.length,
             valorTotal: valorTotal,
-            formas: formasPagamento.map((f: FormaPagamentoItem) => ({ forma: f.formaPagamento, valor: f.totalValor }))
-          });
-          setFormasPagamento(formasPagamento);
-        }
+          formas: formasPagamentoProcessadas.map(f => ({ forma: f.formaPagamento, valor: f.totalValor, vendas: f.totalVendas }))
+        });
+        
+        // Log detalhado para debug
+        console.log('Formas de pagamento encontradas:', formasPagamentoProcessadas.map(f => f.formaPagamento));
+        
+        // Log das primeiras vendas para debug
+        console.log('Primeiras 3 vendas recebidas:', vendas.slice(0, 3).map(v => ({
+          id: v.id,
+          forma_pagamento: v.forma_pagamento,
+          metodo_pagamento: v.metodo_pagamento,
+          pagamentos: v.pagamentos?.map(p => p.pagamento?.nome_forma_pagamento)
+        })));
+        
+        setFormasPagamento(formasPagamentoProcessadas);
       } catch (error) {
-        console.error('Erro ao buscar formas de pagamento:', error);
-        setErro(error instanceof Error ? error.message : 'Erro desconhecido ao buscar dados');
+        console.error('Erro ao processar formas de pagamento:', error);
+        setErro(error instanceof Error ? error.message : 'Erro desconhecido ao processar dados');
         setFormasPagamento([]);
       } finally {
         setLoading(false);
@@ -165,7 +333,7 @@ export function VendasPorFormaPagamentoChart({ dataInicio, dataFim, vendedores }
     };
 
     processarFormasPagamento();
-  }, [dataInicio, dataFim, vendedores]);
+  }, [vendas]);
 
   // Preparar dados para o gráfico
   const dadosGrafico = useMemo(() => {
@@ -278,38 +446,18 @@ export function VendasPorFormaPagamentoChart({ dataInicio, dataFim, vendedores }
     }
   }), []);
 
-  // Função para recarregar os dados
+  // Função para recarregar os dados (agora apenas reprocessa os dados locais)
   const recarregarDados = () => {
+    if (vendas && Array.isArray(vendas)) {
+      // Força reprocessamento dos dados locais
     setLoading(true);
     setErro(null);
     
-    const timestamp = Date.now();
-    const dataInicioStr = dataInicio.toISOString().split('T')[0];
-    // Ajustar data fim para evitar incluir o dia seguinte
-    const dataFimAjustada = new Date(dataFim);
-    dataFimAjustada.setDate(dataFimAjustada.getDate() - 1);
-    const dataFimStr = dataFimAjustada.toISOString().split('T')[0];
-    fetch(`/api/dashboard/vendas/formas-pagamento?dataInicio=${dataInicioStr}&dataFim=${dataFimStr}&forceUpdate=true&t=${timestamp}`)
-      .then(response => {
-        if (!response.ok) throw new Error(`Erro ao buscar dados: ${response.status}`);
-        return response.json();
-      })
-      .then(data => {
-        if (data.erro) {
-          setErro(data.erro);
-          setFormasPagamento([]);
-        } else {
-          setFormasPagamento(data.formasPagamento || []);
-        }
-      })
-      .catch(error => {
-        console.error('Erro ao buscar formas de pagamento:', error);
-        setErro(error instanceof Error ? error.message : 'Erro desconhecido ao buscar dados');
-        setFormasPagamento([]);
-      })
-      .finally(() => {
+      // Simular um pequeno delay para mostrar o loading
+      setTimeout(() => {
         setLoading(false);
-      });
+      }, 500);
+    }
   };
 
   // Função para exportar dados para Excel (XLSX)

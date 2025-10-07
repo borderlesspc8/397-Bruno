@@ -122,10 +122,31 @@ export async function GET(request: NextRequest) {
       vendedorId,
       totalVendasEncontradas: vendasDoVendedor.length,
       totalValor,
-      periodo: `${resultadoDatas.dataInicio?.toLocaleDateString('pt-BR')} até ${resultadoDatas.dataFim?.toLocaleDateString('pt-BR')}`,
+      periodo: `${resultadoDatas.dataInicio?.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })} até ${resultadoDatas.dataFim?.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}`,
+      periodoISO: `${resultadoDatas.dataInicio?.toLocaleString('pt-BR', { 
+        timeZone: 'America/Sao_Paulo',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false
+      })} até ${resultadoDatas.dataFim?.toLocaleString('pt-BR', { 
+        timeZone: 'America/Sao_Paulo',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false
+      })}`,
+      periodoISOUTC: `${resultadoDatas.dataInicio?.toISOString()} até ${resultadoDatas.dataFim?.toISOString()}`,
       primeirasVendas: vendasDoVendedor.slice(0, 3).map(v => ({
         id: v.id,
         data: v.data,
+        dataFormatada: v.data ? new Date(v.data).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }) : 'N/A',
         cliente: v.cliente,
         valor_total: v.valor_total
       }))

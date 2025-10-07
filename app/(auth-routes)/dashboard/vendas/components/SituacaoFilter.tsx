@@ -1,10 +1,10 @@
 "use client";
 
 import React, { useState, useEffect, useMemo, useCallback } from "react";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/_components/ui/select";
 import { Label } from "@/app/_components/ui/label";
 import { Badge } from "@/app/_components/ui/badge";
-import { CheckCircle, Clock, XCircle, AlertCircle, Filter } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/app/_components/ui/dialog";
+import { CheckCircle, Clock, XCircle, AlertCircle, Filter, ChevronDown } from "lucide-react";
 
 // Situações padrão baseadas no sistema
 const SITUACOES_PADRAO = [
@@ -19,6 +19,7 @@ interface SituacaoFilterProps {
   value: string[];
   onChange: (situacoes: string[]) => void;
   className?: string;
+  defaultSelected?: string[]; // Adicionar prop para valores padrão
 }
 
 /**
@@ -28,7 +29,8 @@ interface SituacaoFilterProps {
 export const SituacaoFilter: React.FC<SituacaoFilterProps> = ({
   value,
   onChange,
-  className = ""
+  className = "",
+  defaultSelected = ["concretizada"] // Padrão: apenas "Concretizada" selecionada
 }) => {
   const [situacoes, setSituacoes] = useState(SITUACOES_PADRAO);
   const [isLoading, setIsLoading] = useState(false);
@@ -97,15 +99,6 @@ export const SituacaoFilter: React.FC<SituacaoFilterProps> = ({
   };
 
   /**
-   * Valor atual do select baseado nas situações selecionadas
-   */
-  const selectValue = useMemo(() => {
-    if (value.length === 0) return "all";
-    if (value.length === 1) return value[0];
-    return "multiple";
-  }, [value]);
-
-  /**
    * Texto do placeholder baseado na seleção atual
    */
   const getPlaceholderText = () => {
@@ -117,102 +110,92 @@ export const SituacaoFilter: React.FC<SituacaoFilterProps> = ({
     return `${value.length} situações selecionadas`;
   };
 
-  // REMOVIDO: useEffect que causava loop infinito
-  // As situações padrão já são definidas no useState inicial
+  // Aplicar valor padrão quando o componente for montado
+  useEffect(() => {
+    if (value.length === 0 && defaultSelected.length > 0) {
+      onChange(defaultSelected);
+    }
+  }, [value.length, defaultSelected, onChange]);
 
   return (
     <div className={`ios26-animate-fade-in ${className}`}>
-      <Label htmlFor="situacao-filter" className="text-sm font-semibold text-foreground mb-2 flex items-center gap-2">
+      <Label className="text-sm font-semibold text-foreground mb-2 flex items-center gap-2">
         <div className="p-1.5 bg-gradient-to-br from-orange-100 to-yellow-100 dark:from-orange-900/20 dark:to-yellow-900/20 rounded-lg">
           <Filter className="h-3 w-3 text-orange-600 dark:text-orange-400" />
         </div>
         Situação
       </Label>
-      <Select 
-        value={selectValue} 
-        onValueChange={handleValueChange}
-        disabled={isLoading}
-      >
-        <SelectTrigger 
-          id="situacao-filter" 
-          className="w-full ios26-card p-3 border-0 transition-all duration-300 hover:shadow-lg"
-        >
-          <SelectValue placeholder={getPlaceholderText()}>
-            <div className="flex items-center gap-2">
-              {value.length > 1 && (
-                <Badge variant="secondary" className="ios26-badge text-xs">
-                  {value.length}
-                </Badge>
-              )}
-              <span className="truncate font-medium">{getPlaceholderText()}</span>
-            </div>
-          </SelectValue>
-        </SelectTrigger>
-        <SelectContent className="ios26-card border-0 shadow-xl">
-          <SelectItem 
-            value="all"
-            className="rounded-xl hover:bg-muted/50 transition-all duration-200 my-1"
-          >
-            <div className="flex items-center gap-3">
-              <div className="p-1.5 bg-gradient-to-br from-orange-100 to-yellow-100 dark:from-orange-900/20 dark:to-yellow-900/20 rounded-lg">
-                <Filter className="h-3 w-3 text-orange-600 dark:text-orange-400" />
-              </div>
-              <span className="font-medium">Todas as situações</span>
-            </div>
-          </SelectItem>
-          
-          {situacoes.slice(1).map((situacao) => (
-            <SelectItem 
-              key={situacao.id} 
-              value={situacao.id}
-              className="rounded-xl hover:bg-muted/50 transition-all duration-200 my-1 group"
-            >
-              <div className="flex items-center gap-3 w-full">
-                <div className="p-1.5 bg-gradient-to-br from-orange-100 to-yellow-100 dark:from-orange-900/20 dark:to-yellow-900/20 rounded-lg group-hover:scale-110 transition-transform duration-200">
-                  {getSituacaoIcon(situacao.nome) || <AlertCircle className="h-3 w-3 text-orange-600 dark:text-orange-400" />}
-                </div>
-                <span className="flex-1 font-medium">{situacao.nome}</span>
-                <Badge 
-                  variant={situacao.cor as any}
-                  className="ios26-badge text-xs ml-auto"
-                >
-                  {situacao.nome}
-                </Badge>
-                {value.includes(situacao.id) && (
-                  <CheckCircle className="h-3 w-3 text-orange-600 dark:text-orange-400 ml-1" />
-                )}
-              </div>
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
       
-      {/* Exibir badges das situações selecionadas */}
-      {value.length > 0 && (
-        <div className="flex flex-wrap gap-2 mt-3 ios26-animate-scale-in">
-          {value.map(situacaoId => {
-            const situacao = situacoes.find(s => s.id === situacaoId);
-            if (!situacao) return null;
-            
-            return (
-              <Badge 
-                key={situacaoId}
-                variant={situacao.cor as any}
-                className="ios26-badge cursor-pointer hover:opacity-80 transition-all duration-200 hover:scale-105 group"
-                onClick={() => handleValueChange(situacaoId)}
-              >
-                <span className="flex items-center gap-1.5">
-                  <div className="p-0.5 bg-gradient-to-br from-orange-100 to-yellow-100 dark:from-orange-900/20 dark:to-yellow-900/20 rounded group-hover:scale-110 transition-transform duration-200">
-                    {getSituacaoIcon(situacao.nome) || <AlertCircle className="h-2.5 w-2.5 text-orange-600 dark:text-orange-400" />}
-                  </div>
-                  <span className="font-medium">{situacao.nome}</span>
-                  <XCircle className="h-3 w-3 ml-1 hover:text-destructive transition-colors duration-200" />
-                </span>
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="flex-1 min-w-[240px] ios26-card p-3 border-0 transition-all duration-300 hover:shadow-lg rounded-lg bg-background">
+          <div className="flex items-center gap-2">
+            {value.length > 1 && (
+              <Badge variant="secondary" className="ios26-badge text-xs">
+                {value.length}
               </Badge>
-            );
-          })}
+            )}
+            <span className="truncate font-medium text-foreground">{getPlaceholderText()}</span>
+          </div>
         </div>
-      )}
+        
+        <Dialog>
+          <DialogTrigger asChild>
+            <button 
+              className="ios26-button flex items-center gap-2 px-4 py-2 text-sm font-semibold"
+              disabled={isLoading}
+            >
+              <Filter className="h-4 w-4" />
+              <span className="hidden sm:inline-block">Filtros</span>
+              <ChevronDown className="h-4 w-4" />
+            </button>
+          </DialogTrigger>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <div className="p-2 bg-gradient-to-br from-orange-100 to-yellow-100 dark:from-orange-900/20 dark:to-yellow-900/20 rounded-xl">
+                  <Filter className="h-4 w-4 text-orange-600 dark:text-orange-400" />
+                </div>
+                Filtrar por Situação
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-2 mt-4">
+              {situacoes.map((situacao) => (
+                <button
+                  key={situacao.id}
+                  onClick={() => handleValueChange(situacao.id)}
+                  className="w-full text-left px-3 py-2.5 text-sm rounded-xl hover:bg-muted/50 text-foreground transition-all duration-200 flex items-center gap-3 group"
+                >
+                  <div className="p-1.5 bg-gradient-to-br from-orange-100 to-yellow-100 dark:from-orange-900/20 dark:to-yellow-900/20 rounded-lg group-hover:scale-110 transition-transform duration-200">
+                    {situacao.id === "all" ? (
+                      <Filter className="h-3 w-3 text-orange-600 dark:text-orange-400" />
+                    ) : (
+                      getSituacaoIcon(situacao.nome) || <AlertCircle className="h-3 w-3 text-orange-600 dark:text-orange-400" />
+                    )}
+                  </div>
+                  <span className="font-medium flex-1">{situacao.nome}</span>
+                  {situacao.id !== "all" && (
+                    <Badge 
+                      variant={situacao.cor as any}
+                      className="ios26-badge text-xs"
+                    >
+                      {situacao.nome}
+                    </Badge>
+                  )}
+                  {value.includes(situacao.id) && situacao.id !== "all" && (
+                    <CheckCircle className="h-3 w-3 text-orange-600 dark:text-orange-400" />
+                  )}
+                  {value.length === 0 && situacao.id === "all" && (
+                    <CheckCircle className="h-3 w-3 text-orange-600 dark:text-orange-400" />
+                  )}
+                </button>
+              ))}
+            </div>
+          </DialogContent>
+        </Dialog>
+      </div>
+      
+     
+    
     </div>
   );
 };

@@ -23,6 +23,7 @@ interface ProdutosMaisVendidosProps {
   dataInicio: Date;
   dataFim: Date;
   onVendaClick?: (venda: VendaItem) => void;
+  vendas?: any[]; // Receber vendas diretamente do componente pai
 }
 
 interface CategoriasExpandidas {
@@ -118,7 +119,7 @@ const EmptyStateComponent = memo(() => (
 
 EmptyStateComponent.displayName = 'EmptyStateComponent';
 
-export const ProdutosMaisVendidos = memo(({ dataInicio, dataFim, onVendaClick }: ProdutosMaisVendidosProps) => {
+export const ProdutosMaisVendidos = memo(({ dataInicio, dataFim, onVendaClick, vendas }: ProdutosMaisVendidosProps) => {
   // Todos os hooks devem estar no topo, sem condições
   const isMobile = useIsMobile();
 
@@ -146,7 +147,7 @@ export const ProdutosMaisVendidos = memo(({ dataInicio, dataFim, onVendaClick }:
     mudarOrdenacao,
     abrirDetalhesProduto,
     abrirDetalhesVenda
-  } = useProdutosMaisVendidos({ dataInicio, dataFim });
+  } = useProdutosMaisVendidos({ dataInicio, dataFim, vendas });
 
   // Estado para controlar quais categorias estão expandidas
   const [categoriasExpandidas, setCategoriasExpandidas] = useState<CategoriasExpandidas>({

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/app/_components/ui/card";
 import { Badge } from '@/app/_components/ui/badge';
-import { Progress } from '@/app/_components/ui/progress';
+// Progress removido - usando ios26-progress-bar
 import { Pagination, PaginationContent, PaginationItem, PaginationNext, PaginationPrevious } from '@/app/_components/ui/pagination';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/app/_components/ui/dialog';
 import { Button } from "@/app/_components/ui/button";
@@ -22,8 +22,46 @@ import {
   ArrowDown,
   ArrowUp
 } from "lucide-react";
-import { formatarDinheiro } from "@/app/_utils/formatters";
-import VendedorTabelaVendas from "./VendedorTabelaVendas";
+// Imports removidos - não utilizados no componente
+
+// Função utilitária para formatar datas considerando o fuso horário brasileiro
+const formatarDataBrasileira = (dataString: string): string => {
+  if (!dataString) return "Data não disponível";
+  
+  try {
+    // Se a data já está no formato YYYY-MM-DD, criar a data diretamente
+    // para evitar problemas de conversão de timezone
+    let data: Date;
+    
+    if (dataString.includes('T') || dataString.includes('Z')) {
+      // Formato ISO - usar diretamente
+      data = new Date(dataString);
+    } else if (dataString.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      // Formato YYYY-MM-DD - criar data local para evitar problemas de UTC
+      const [ano, mes, dia] = dataString.split('-').map(Number);
+      data = new Date(ano, mes - 1, dia); // mes - 1 porque Date usa 0-11
+    } else {
+      // Outros formatos - tentar conversão normal
+      data = new Date(dataString);
+    }
+    
+    // Verificar se a data é válida
+    if (isNaN(data.getTime())) {
+      return "Data inválida";
+    }
+    
+    // Formatar usando o fuso horário brasileiro
+    return data.toLocaleDateString('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      timeZone: 'America/Sao_Paulo'
+    });
+  } catch (error) {
+    console.error('Erro ao formatar data:', error, { dataString });
+    return "Data inválida";
+  }
+};
 
 // Interface estendida com propriedades adicionais
 interface Vendedor extends BaseVendedor {
@@ -154,7 +192,7 @@ export function VendedorDetalhesModal({
           cliente: v.cliente,
           valor_total: v.valor_total,
           vendedor_id: v.vendedor_id,
-          nome_vendedor: v.nome_vendedor
+          nome_vendedor: (v as any).nome_vendedor
         }))
       });
       
@@ -210,7 +248,7 @@ export function VendedorDetalhesModal({
           <div className="flex justify-between items-center border-b pb-3">
             <h3 className="text-lg font-medium">{vendedor.nome}</h3>
             <Badge variant="outline" className="bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">
-              {vendedor.posicao}º Lugar
+              {vendedor.posicao || 1}º Lugar
             </Badge>
           </div>
           
@@ -219,7 +257,17 @@ export function VendedorDetalhesModal({
             <div className="flex items-center gap-2 text-muted-foreground">
               <Calendar className="h-4 w-4" />
               <span>
-                Período: {dataInicio.toLocaleDateString('pt-BR')} até {dataFim.toLocaleDateString('pt-BR')}
+                Período: {dataInicio.toLocaleDateString('pt-BR', { 
+                  day: '2-digit', 
+                  month: '2-digit', 
+                  year: 'numeric',
+                  timeZone: 'America/Sao_Paulo'
+                })} até {dataFim.toLocaleDateString('pt-BR', { 
+                  day: '2-digit', 
+                  month: '2-digit', 
+                  year: 'numeric',
+                  timeZone: 'America/Sao_Paulo'
+                })}
               </span>
             </div>
           </div>
@@ -258,7 +306,14 @@ export function VendedorDetalhesModal({
                 <span>Performance</span>
                 <span>{vendedor.percentual ? vendedor.percentual.toFixed(2) : ((vendedor.faturamento / totalFaturamento) * 100).toFixed(2)}%</span>
               </div>
-              <Progress value={vendedor.percentual || ((vendedor.faturamento / totalFaturamento) * 100)} className="h-2 bg-gray-200 dark:bg-gray-700" />
+              <div className="ios26-progress">
+                <div 
+                  className="ios26-progress-bar" 
+                  style={{ 
+                    width: `${Math.min(vendedor.percentual || ((vendedor.faturamento / totalFaturamento) * 100), 100)}%` 
+                  }}
+                />
+              </div>
             </div>
           </div>
           
@@ -313,9 +368,7 @@ export function VendedorDetalhesModal({
                       {vendasPaginadas.map((venda, index) => (
                         <tr key={index} className="hover:bg-muted/20 cursor-pointer" onClick={() => onVendaClick(venda)}>
                           <td className="px-2 py-2">
-                            {venda.data 
-                              ? new Date(venda.data).toLocaleDateString('pt-BR')
-                              : "Data não disponível"}
+                            {formatarDataBrasileira(venda.data)}
                           </td>
                           <td className="px-2 py-2">{venda.nome_cliente || "Cliente não identificado"}</td>
                           <td className="px-2 py-2 text-right">

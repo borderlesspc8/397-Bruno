@@ -5,7 +5,7 @@ import { prisma } from "@/app/_lib/prisma";
 import { BetelTecnologiaService } from '@/app/_services/betelTecnologia';
 import { parse, format, startOfMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { getCachedData, CachePrefix, preloadCache } from '@/app/_services/cache';
+// Cache removido para garantir dados em tempo real
 import { BetelVenda } from '@/app/_utils/calculoFinanceiro';
 import { roundToCents, parseValueSafe, sumWithPrecision } from '@/app/_utils/number-processor';
 
@@ -15,7 +15,7 @@ export const dynamic = "force-dynamic";
 
 // Constantes para otimização
 const STATUS_VALIDOS = ["Concretizada", "Em andamento"];
-const CACHE_TTL_VENDAS = 15 * 60 * 1000; // 15 minutos
+// Cache removido - dados sempre em tempo real
 
 // Interface para vendas recebidas da API, estendendo BetelVenda
 interface VendaBetel extends BetelVenda {
@@ -173,31 +173,7 @@ function processProdutosMaisVendidos(vendas: any) {
   return result.length > 0 ? [{ produtos: result }] : [];
 }
 
-// Função para fazer processamento pesado em background
-function preloadRelatedData(dataInicio: string, dataFim: string) {
-  // Pré-carregar dados de vendedores
-  const vendedoresKey = `${CachePrefix.VENDEDORES}${dataInicio}:${dataFim}`;
-  preloadCache(vendedoresKey, async () => {
-    const session = await validateSessionForAPI();
-    const userId = session?.user?.id;
-    
-    // Iniciar a busca de vendedores para este período
-    return await BetelTecnologiaService.buscarVendedores({
-      dataInicio: new Date(dataInicio),
-      dataFim: new Date(dataFim)
-    });
-  }, 'low');
-  
-  // Pré-carregar dados de produtos
-  const produtosKey = `${CachePrefix.PRODUTOS}${dataInicio}:${dataFim}`;
-  preloadCache(produtosKey, async () => {
-    // Iniciar a busca de produtos para este período
-    return await BetelTecnologiaService.buscarProdutosVendidos({
-      dataInicio: new Date(dataInicio),
-      dataFim: new Date(dataFim)
-    });
-  }, 'low');
-}
+// Função de preload removida - dados sempre em tempo real
 
 export async function GET(request: NextRequest) {
   try {
@@ -285,16 +261,10 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Incluir situações na chave de cache para garantir cache correto por filtro
-    const situacoesKey = situacoesFiltro.length > 0 ? situacoesFiltro.sort().join('-') : 'all';
-    // Incluir timestamp para forçar atualização quando forceUpdate=true
-    const timestamp = forceUpdate ? Date.now() : 'stable';
-    const cacheKey = `${CachePrefix.DASHBOARD}vendas:${formattedDataInicio}:${formattedDataFim}:${situacoesKey}:v7:${timestamp}`;
-
-    // Usar a versão aprimorada do serviço de cache (ignorando cache se forceUpdate for true)
-    const resultado = await getCachedData(
-      cacheKey,
-      async () => {
+    // Cache removido - buscando dados diretamente para garantir tempo real
+    console.log('Buscando vendas da API externa (sem cache)...');
+    
+    const resultado = await (async () => {
         console.log('Buscando vendas da API externa...');
 
         // Buscar vendas
@@ -350,8 +320,7 @@ export async function GET(request: NextRequest) {
         vendas.totalVendas = vendas.vendas.length;
         vendas.totalValor = sumWithPrecision(vendas.vendas.map(venda => venda.valor_total));
 
-        // Iniciar o preload de dados relacionados em background
-        preloadRelatedData(formattedDataInicio, formattedDataFim);
+        // Preload removido - dados sempre em tempo real
 
         console.log(`Total de vendas recebidas da API: ${vendas.vendas.length}`);
         
@@ -417,10 +386,7 @@ export async function GET(request: NextRequest) {
             margemLucro
           }
         };
-      },
-      CACHE_TTL_VENDAS, // TTL personalizado para vendas
-      forceUpdate // Ignorar cache se forceUpdate for true
-    );
+    })();
 
     // CORREÇÃO: Não aplicar filtro novamente, usar os dados do resultado diretamente
     // Isso evita reintroduzir vendas que possam ter sido filtradas anteriormente

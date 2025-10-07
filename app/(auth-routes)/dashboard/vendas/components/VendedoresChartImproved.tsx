@@ -3,7 +3,7 @@ import { formatCurrency } from '@/app/_utils/format';
 import { BadgeCheck, TrendingUp, Target } from 'lucide-react';
 import { cn } from '@/app/_lib/utils';
 import { Vendedor as VendedorBetel } from '@/app/_services/betelTecnologia';
-import { useMetas } from '@/app/_hooks/useMetas';
+import { useMetas, Meta } from '@/app/_hooks/useMetas';
 
 // Usamos a interface Vendedor importada diretamente do serviço BetelTecnologia
 interface VendedoresChartImprovedProps {
@@ -135,12 +135,12 @@ export function VendedoresChartImproved({ vendedores, onVendedorClick }: Vendedo
       // Verificar cada vendedor com meta
       console.log('🔍 Verificando vendedores com metas:', metaAtual.metasVendedores);
       
-      metaAtual.metasVendedores.forEach(metaVendedor => {
+      metaAtual.metasVendedores.forEach((metaVendedor: any) => {
         const nomeNormalizado = metaVendedor.vendedorId.toLowerCase().replace(/[()-]/g, '');
         console.log(`🔍 Processando vendedor: ${metaVendedor.vendedorId} -> ${nomeNormalizado}`);
         
         // Mapear IDs de vendedores para nomes e lojas
-        const vendedorInfo = METAS_VENDEDORES_MAPEAMENTO[metaVendedor.vendedorId] || 
+        const vendedorInfo = (METAS_VENDEDORES_MAPEAMENTO as any)[metaVendedor.vendedorId] || 
           Object.entries(VENDEDORES_MAPEAMENTO).find(([nome, id]) => 
             id.toLowerCase().replace(/[()-]/g, '') === nomeNormalizado
           )?.[0];
@@ -237,7 +237,7 @@ export function VendedoresChartImproved({ vendedores, onVendedorClick }: Vendedo
 
           if (vendedorId) {
             // Buscar meta do vendedor pelo ID exato
-            const vendedorMeta = metaAtual.metasVendedores.find(mv => {
+            const vendedorMeta = metaAtual.metasVendedores.find((mv: any) => {
               const idNormalizado = mv.vendedorId.toLowerCase().replace(/[()-]/g, '');
               const vendedorIdNormalizado = vendedorId.toLowerCase().replace(/[()-]/g, '');
               const match = idNormalizado === vendedorIdNormalizado;
@@ -250,8 +250,8 @@ export function VendedoresChartImproved({ vendedores, onVendedorClick }: Vendedo
               console.log(`✅ Meta encontrada para ${vendedor.nome}: ${metaVendedor}`);
             } else {
               // Tentar buscar por nome direto no mapeamento de metas
-              const metaPorNome = metaAtual.metasVendedores.find(mv => {
-                const nomeMeta = METAS_VENDEDORES_MAPEAMENTO[mv.vendedorId];
+              const metaPorNome = metaAtual.metasVendedores.find((mv: any) => {
+                const nomeMeta = (METAS_VENDEDORES_MAPEAMENTO as any)[mv.vendedorId];
                 return nomeMeta && nomeNormalizado.includes(nomeMeta);
               });
               
@@ -365,51 +365,40 @@ export function VendedoresChartImproved({ vendedores, onVendedorClick }: Vendedo
                     {vendedor.lojaNome && ` • ${vendedor.lojaNome}`}
                   </div>
                     
-                  {/* Barra de progresso de vendas totais */}
+                  {/* Barra de progresso de vendas totais - agora baseada na meta */}
                   <div className="mt-3 ios26-progress">
                     <div 
                       className="ios26-progress-bar transition-all duration-500 group-hover:opacity-90"
                       style={{ 
-                        width: `${Math.max(vendedor.percentual, 3)}%`, 
-                        backgroundColor: vendedor.color,
+                        width: `${vendedor.meta > 0 ? Math.min(Math.max(vendedor.percentualMeta, 3), 100) : Math.max(vendedor.percentual, 3)}%`, 
+                        backgroundColor: vendedor.meta > 0 
+                          ? (vendedor.percentualMeta >= 100 
+                              ? '#10B981' // Verde para meta atingida
+                              : vendedor.percentualMeta >= 70 
+                                ? '#F59E0B' // Amarelo para próximo da meta
+                                : '#EF4444') // Vermelho para abaixo da meta
+                          : vendedor.color, // Cor original se não há meta
                         boxShadow: '0 1px 3px rgba(0,0,0,0.12)'
                       }} 
                     />
                   </div>
                   
-                  {/* Barra de progresso em relação à meta - Garantir que seja exibida */}
+                  {/* Informações da meta */}
                   {vendedor.meta > 0 && (
-                    <div className="mt-3 relative w-full">
-                      <div className="flex items-center justify-between text-xs mb-2">
-                        <span className="flex items-center text-muted-foreground font-medium">
-                          <Target className="h-3 w-3 mr-1" /> Meta: {formatCurrency(vendedor.meta)}
-                        </span>
-                        <span className={cn(
-                          "font-semibold",
-                          vendedor.percentualMeta >= 100 
-                            ? "text-green-600 dark:text-green-400" 
-                            : vendedor.percentualMeta >= 70 
-                              ? "text-orange-600 dark:text-orange-400"
-                              : "text-red-600 dark:text-red-400"
-                        )}>
-                          {vendedor.percentualMeta.toFixed(1)}%
-                        </span>
-                      </div>
-                      <div className="ios26-progress">
-                        <div 
-                          className={cn(
-                            "ios26-progress-bar transition-all duration-500",
-                            vendedor.percentualMeta >= 100 
-                              ? "bg-gradient-to-r from-green-500 to-green-600" 
-                              : vendedor.percentualMeta >= 70 
-                                ? "bg-gradient-to-r from-orange-500 to-yellow-500"
-                                : "bg-gradient-to-r from-red-500 to-red-600"
-                          )}
-                          style={{ 
-                            width: `${Math.min(Math.max(vendedor.percentualMeta, 3), 100)}%`,
-                          }} 
-                        />
-                      </div>
+                    <div className="mt-2 flex items-center justify-between text-xs">
+                      <span className="flex items-center text-muted-foreground font-medium">
+                        <Target className="h-3 w-3 mr-1" /> Meta: {formatCurrency(vendedor.meta)}
+                      </span>
+                      <span className={cn(
+                        "font-semibold",
+                        vendedor.percentualMeta >= 100 
+                          ? "text-green-600 dark:text-green-400" 
+                          : vendedor.percentualMeta >= 70 
+                            ? "text-orange-600 dark:text-orange-400"
+                            : "text-red-600 dark:text-red-400"
+                      )}>
+                        {vendedor.percentualMeta.toFixed(1)}%
+                      </span>
                     </div>
                   )}
                 </div>
@@ -420,7 +409,10 @@ export function VendedoresChartImproved({ vendedores, onVendedorClick }: Vendedo
                     {formatCurrency(vendedor.valor)}
                   </div>
                   <div className="text-xs text-muted-foreground">
-                    {vendedor.percentual.toFixed(1)}% do total
+                    {vendedor.meta > 0 
+                      ? `${vendedor.percentualMeta.toFixed(1)}% da meta`
+                      : `${vendedor.percentual.toFixed(1)}% do total`
+                    }
                   </div>
                 </div>
               </div>
