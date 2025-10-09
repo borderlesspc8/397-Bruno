@@ -539,7 +539,7 @@ export function VendedorDetalhesModal({
 
     return canaisProcessados.sort((a, b) => b.quantidade - a.quantidade);
   }, [vendasVendedor]);
-
+  
   if (!vendedor) return null;
   
   return (

@@ -73,6 +73,8 @@ export function Navbar() {
   const isVendasActive = pathname?.includes('/dashboard/vendas');
   const isVendedoresActive = pathname?.includes('/dashboard/vendedores');
   const isMetasActive = pathname?.includes('/dashboard/metas');
+  const isDashboardVendedoresActive = pathname?.includes('/dashboard-vendedores');
+  const isDashboardCeoActive = pathname?.includes('/dashboard-ceo');
   
   const MenuLinks = () => (
     <>
@@ -123,6 +125,38 @@ export function Navbar() {
           <Target className="h-4 w-4 text-purple-600 dark:text-purple-400" />
         </div>
         <span>Metas</span>
+      </Link>
+      <Link 
+        href="/dashboard-vendedores" 
+        className={cn(
+          "flex items-center gap-2 px-3 py-2 text-sm rounded-xl hover:bg-accent hover:text-accent-foreground transition-all duration-200 ios26-link",
+          isDashboardVendedoresActive && "bg-secondary/50 font-medium"
+        )}
+        onClick={() => {
+          setMenuOpen(false);
+          setMobileMenuOpen(false);
+        }}
+      >
+        <div className="p-1.5 bg-gradient-to-br from-amber-100 to-orange-100 dark:from-amber-900/20 dark:to-orange-900/20 rounded-lg">
+          <Users className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+        </div>
+        <span>Dashboard Vendedores</span>
+      </Link>
+      <Link 
+        href="/dashboard-ceo" 
+        className={cn(
+          "flex items-center gap-2 px-3 py-2 text-sm rounded-xl hover:bg-accent hover:text-accent-foreground transition-all duration-200 ios26-link",
+          isDashboardCeoActive && "bg-secondary/50 font-medium"
+        )}
+        onClick={() => {
+          setMenuOpen(false);
+          setMobileMenuOpen(false);
+        }}
+      >
+        <div className="p-1.5 bg-gradient-to-br from-red-100 to-pink-100 dark:from-red-900/20 dark:to-pink-900/20 rounded-lg">
+          <Star className="h-4 w-4 text-red-600 dark:text-red-400" />
+        </div>
+        <span>Dashboard CEO</span>
       </Link>
     </>
   );
