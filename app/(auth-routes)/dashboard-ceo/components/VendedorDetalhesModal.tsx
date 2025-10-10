@@ -28,7 +28,7 @@ import {
   PieChart,
   Table
 } from "lucide-react";
-import { PieChart as RechartsPieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
+import { PieChart as RechartsPieChart, Pie, Cell, Tooltip, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 import { motion, AnimatePresence } from "framer-motion";
 // Imports removidos - não utilizados no componente
 
@@ -437,7 +437,7 @@ export function VendedorDetalhesModal({
   
   return (
     <Dialog open={aberto} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-[900px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[1000px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-xl font-semibold">
             Detalhes do Vendedor
@@ -473,22 +473,25 @@ export function VendedorDetalhesModal({
           </div>
 
           <Tabs value={tabAtiva} onValueChange={setTabAtiva} className="w-full">
-            <TabsList className="grid w-full grid-cols-4">
-              <TabsTrigger value="resumo" className="flex items-center gap-2">
-                <User className="h-4 w-4" />
-                <span className="hidden sm:inline">Resumo</span>
+            <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4">
+              <TabsTrigger value="resumo" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
+                <User className="h-3 w-3 sm:h-4 sm:w-4" />
+                <span>Resumo</span>
               </TabsTrigger>
-              <TabsTrigger value="formas-pagamento" className="flex items-center gap-2">
-                <CreditCard className="h-4 w-4" />
-                <span className="hidden sm:inline">Pagamentos</span>
+              <TabsTrigger value="formas-pagamento" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
+                <CreditCard className="h-3 w-3 sm:h-4 sm:w-4" />
+                <span className="hidden xs:inline">Pagamentos</span>
+                <span className="xs:hidden">Pag.</span>
               </TabsTrigger>
-              <TabsTrigger value="origens" className="flex items-center gap-2">
-                <Users className="h-4 w-4" />
-                <span className="hidden sm:inline">Origens</span>
+              <TabsTrigger value="origens" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
+                <Users className="h-3 w-3 sm:h-4 sm:w-4" />
+                <span className="hidden xs:inline">Origens</span>
+                <span className="xs:hidden">Orig.</span>
               </TabsTrigger>
-              <TabsTrigger value="canais" className="flex items-center gap-2">
-                <TrendingUp className="h-4 w-4" />
-                <span className="hidden sm:inline">Canais</span>
+              <TabsTrigger value="canais" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
+                <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4" />
+                <span className="hidden xs:inline">Canais</span>
+                <span className="xs:hidden">Canal</span>
               </TabsTrigger>
             </TabsList>
 
@@ -636,22 +639,26 @@ export function VendedorDetalhesModal({
                   <CreditCard className="h-5 w-5 text-orange-600" />
                   Formas de Pagamento
                 </h4>
-                <div className="flex gap-2">
+                <div className="flex gap-1 sm:gap-2">
                   <Button
                     variant={visualizacaoFormasPagamento === 'pizza' ? 'default' : 'outline'}
                     size="sm"
                     onClick={() => setVisualizacaoFormasPagamento('pizza')}
+                    className="text-xs sm:text-sm"
                   >
-                    <PieChart className="h-4 w-4 mr-1" />
-                    Gráfico
+                    <PieChart className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
+                    <span className="hidden sm:inline">Gráfico</span>
+                    <span className="sm:hidden">Gráf.</span>
                   </Button>
                   <Button
                     variant={visualizacaoFormasPagamento === 'tabela' ? 'default' : 'outline'}
                     size="sm"
                     onClick={() => setVisualizacaoFormasPagamento('tabela')}
+                    className="text-xs sm:text-sm"
                   >
-                    <Table className="h-4 w-4 mr-1" />
-                    Tabela
+                    <Table className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
+                    <span className="hidden sm:inline">Tabela</span>
+                    <span className="sm:hidden">Tab.</span>
                   </Button>
                 </div>
               </div>
@@ -660,62 +667,146 @@ export function VendedorDetalhesModal({
                 <div className="flex items-center justify-center h-[200px]">
                   <p className="text-muted-foreground">Nenhuma forma de pagamento encontrada</p>
                 </div>
-              ) : visualizacaoFormasPagamento === 'pizza' ? (
-                <div className="h-[300px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <RechartsPieChart>
-                      <Pie
-                        data={formasPagamento.slice(0, 8)}
-                        cx="50%"
-                        cy="50%"
-                        outerRadius={80}
-                        innerRadius={30}
-                        fill="#8884d8"
-                        dataKey="totalValor"
-                        nameKey="formaPagamento"
-                        label={({ percent }) => `${(percent * 100).toFixed(1)}%`}
-                      >
-                        {formasPagamento.slice(0, 8).map((entry, index) => (
-                          <Cell 
-                            key={`cell-${index}`} 
-                            fill={CORES_CATEGORIAS[entry.formaPagamento as keyof typeof CORES_CATEGORIAS] || CORES_GRAFICO[index % CORES_GRAFICO.length]} 
-                          />
-                        ))}
-                      </Pie>
-                      <Tooltip 
-                        formatter={(value: number, name, props) => [
-                          `R$ ${value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
-                          props.payload.formaPagamento
-                        ]}
-                      />
-                    </RechartsPieChart>
-                  </ResponsiveContainer>
-                </div>
               ) : (
-                <div className="space-y-2">
-                  <div className="grid grid-cols-4 gap-2 text-sm font-medium text-muted-foreground border-b pb-2">
-                    <div>Forma de Pagamento</div>
-                    <div className="text-right">Vendas</div>
-                    <div className="text-right">Valor Total</div>
-                    <div className="text-right">%</div>
-                  </div>
-                  {formasPagamento.map((item, index) => (
-                    <div key={index} className="grid grid-cols-4 gap-2 py-2 border-b border-muted/20">
-                      <div className="flex items-center gap-2">
-                        <div 
-                          className="w-3 h-3 rounded-full"
-                          style={{ backgroundColor: CORES_CATEGORIAS[item.formaPagamento as keyof typeof CORES_CATEGORIAS] || CORES_GRAFICO[index % CORES_GRAFICO.length] }}
-                        />
-                        <span className="text-sm">{item.formaPagamento}</span>
-                      </div>
-                      <div className="text-right text-sm">{item.totalVendas}</div>
-                      <div className="text-right text-sm font-medium">
-                        {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.totalValor)}
-                      </div>
-                      <div className="text-right text-sm">{item.percentual.toFixed(1)}%</div>
+                <AnimatePresence mode="wait">
+                  <motion.div 
+                    key={visualizacaoFormasPagamento}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -20 }}
+                    transition={{ duration: 0.3 }}
+                    className="grid grid-cols-1 lg:grid-cols-2 gap-6"
+                  >
+                    {/* Gráfico */}
+                    <div className="h-[300px]">
+                      <ResponsiveContainer width="100%" height="100%">
+                        {visualizacaoFormasPagamento === 'pizza' ? (
+                          <RechartsPieChart>
+                            <Pie
+                              data={formasPagamento.slice(0, 8)}
+                              cx="50%"
+                              cy="50%"
+                              outerRadius={80}
+                              innerRadius={30}
+                              fill="#8884d8"
+                              dataKey="totalValor"
+                              nameKey="formaPagamento"
+                              label={({ name, percent }) => {
+                                const shortName = name.length > 10 ? name.substring(0, 10) + '...' : name;
+                                return `${shortName}: ${(percent * 100).toFixed(1)}%`;
+                              }}
+                              labelLine={true}
+                              animationDuration={800}
+                              animationBegin={0}
+                              animationEasing="ease-out"
+                            >
+                              {formasPagamento.slice(0, 8).map((entry, index) => (
+                                <Cell 
+                                  key={`cell-${index}`} 
+                                  fill={CORES_CATEGORIAS[entry.formaPagamento as keyof typeof CORES_CATEGORIAS] || CORES_GRAFICO[index % CORES_GRAFICO.length]} 
+                                  stroke="rgba(255, 255, 255, 0.5)"
+                                  strokeWidth={1}
+                                />
+                              ))}
+                            </Pie>
+                            <Tooltip 
+                              formatter={(value: number, name, props) => [
+                                `R$ ${value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+                                props.payload.formaPagamento
+                              ]}
+                              contentStyle={{ 
+                                backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                                borderRadius: '8px',
+                                border: 'none',
+                                boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1)',
+                                padding: '12px'
+                              }}
+                            />
+                          </RechartsPieChart>
+                        ) : (
+                          <BarChart
+                            data={formasPagamento.slice(0, 8)}
+                            margin={{ top: 5, right: 20, left: 20, bottom: 5 }}
+                            layout="vertical"
+                          >
+                            <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} />
+                            <XAxis 
+                              type="number" 
+                              tickFormatter={(value) => `R$ ${(value / 1000).toFixed(0)}k`}
+                            />
+                            <YAxis 
+                              dataKey="formaPagamento" 
+                              type="category" 
+                              width={100}
+                              tick={{ fontSize: 12 }}
+                              tickFormatter={(value) => value.length > 15 ? `${value.substring(0, 15)}...` : value}
+                            />
+                            <Tooltip
+                              formatter={(value) => [
+                                `R$ ${value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+                                'Valor'
+                              ]}
+                              contentStyle={{ 
+                                backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                                borderRadius: '8px',
+                                border: 'none',
+                                boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1)',
+                                padding: '12px'
+                              }}
+                            />
+                            <Bar 
+                              dataKey="totalValor" 
+                              animationDuration={1000}
+                              animationBegin={0}
+                              animationEasing="ease-out"
+                            >
+                              {formasPagamento.slice(0, 8).map((_, index) => (
+                                <Cell key={`cell-${index}`} fill={CORES_CATEGORIAS[formasPagamento[index]?.formaPagamento as keyof typeof CORES_CATEGORIAS] || CORES_GRAFICO[index % CORES_GRAFICO.length]} />
+                              ))}
+                            </Bar>
+                          </BarChart>
+                        )}
+                      </ResponsiveContainer>
                     </div>
-                  ))}
-                </div>
+
+                    {/* Tabela */}
+                    <div className="space-y-2">
+                      <div className="text-sm font-medium text-muted-foreground mb-3">
+                        Detalhamento por forma de pagamento
+                      </div>
+                      <div className="grid grid-cols-4 gap-2 text-sm font-medium text-muted-foreground border-b pb-2">
+                        <div>Forma de Pagamento</div>
+                        <div className="text-right">Vendas</div>
+                        <div className="text-right">Valor Total</div>
+                        <div className="text-right">%</div>
+                      </div>
+                      <div className="max-h-[250px] overflow-y-auto pr-2 custom-scrollbar">
+                        {formasPagamento.map((item, index) => (
+                          <motion.div 
+                            key={index} 
+                            initial={{ opacity: 0, x: -10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: index * 0.05 }}
+                            className="grid grid-cols-4 gap-2 py-2 border-b border-muted/20 hover:bg-muted/20 transition-colors"
+                          >
+                            <div className="flex items-center gap-2">
+                              <div 
+                                className="w-3 h-3 rounded-full flex-shrink-0"
+                                style={{ backgroundColor: CORES_CATEGORIAS[item.formaPagamento as keyof typeof CORES_CATEGORIAS] || CORES_GRAFICO[index % CORES_GRAFICO.length] }}
+                              />
+                              <span className="text-sm truncate">{item.formaPagamento}</span>
+                            </div>
+                            <div className="text-right text-sm">{item.totalVendas}</div>
+                            <div className="text-right text-sm font-medium">
+                              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.totalValor)}
+                            </div>
+                            <div className="text-right text-sm">{item.percentual.toFixed(1)}%</div>
+                          </motion.div>
+                        ))}
+                      </div>
+                    </div>
+                  </motion.div>
+                </AnimatePresence>
               )}
             </TabsContent>
 
@@ -725,22 +816,26 @@ export function VendedorDetalhesModal({
                   <Users className="h-5 w-5 text-orange-600" />
                   Como nos Conheceu
                 </h4>
-                <div className="flex gap-2">
+                <div className="flex gap-1 sm:gap-2">
                   <Button
                     variant={visualizacaoOrigens === 'pizza' ? 'default' : 'outline'}
                     size="sm"
                     onClick={() => setVisualizacaoOrigens('pizza')}
+                    className="text-xs sm:text-sm"
                   >
-                    <PieChart className="h-4 w-4 mr-1" />
-                    Gráfico
+                    <PieChart className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
+                    <span className="hidden sm:inline">Gráfico</span>
+                    <span className="sm:hidden">Gráf.</span>
                   </Button>
                   <Button
                     variant={visualizacaoOrigens === 'tabela' ? 'default' : 'outline'}
                     size="sm"
                     onClick={() => setVisualizacaoOrigens('tabela')}
+                    className="text-xs sm:text-sm"
                   >
-                    <Table className="h-4 w-4 mr-1" />
-                    Tabela
+                    <Table className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
+                    <span className="hidden sm:inline">Tabela</span>
+                    <span className="sm:hidden">Tab.</span>
                   </Button>
                 </div>
               </div>
@@ -749,58 +844,139 @@ export function VendedorDetalhesModal({
                 <div className="flex items-center justify-center h-[200px]">
                   <p className="text-muted-foreground">Nenhuma origem encontrada</p>
                 </div>
-              ) : visualizacaoOrigens === 'pizza' ? (
-                <div className="h-[300px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <RechartsPieChart>
-                      <Pie
-                        data={origensData.slice(0, 8)}
-                        cx="50%"
-                        cy="50%"
-                        outerRadius={80}
-                        innerRadius={30}
-                        fill="#8884d8"
-                        dataKey="quantidade"
-                        nameKey="origem"
-                        label={({ percent }) => `${(percent * 100).toFixed(1)}%`}
-                      >
-                        {origensData.slice(0, 8).map((entry, index) => (
-                          <Cell 
-                            key={`cell-${index}`} 
-                            fill={CORES_ORIGENS[index % CORES_ORIGENS.length]} 
-                          />
-                        ))}
-                      </Pie>
-                      <Tooltip 
-                        formatter={(value: number, name, props) => [
-                          `${value} leads`,
-                          props.payload.origem
-                        ]}
-                      />
-                    </RechartsPieChart>
-                  </ResponsiveContainer>
-                </div>
               ) : (
-                <div className="space-y-2">
-                  <div className="grid grid-cols-3 gap-2 text-sm font-medium text-muted-foreground border-b pb-2">
-                    <div>Origem</div>
-                    <div className="text-right">Leads</div>
-                    <div className="text-right">%</div>
-                  </div>
-                  {origensData.map((item, index) => (
-                    <div key={index} className="grid grid-cols-3 gap-2 py-2 border-b border-muted/20">
-                      <div className="flex items-center gap-2">
-                        <div 
-                          className="w-3 h-3 rounded-full"
-                          style={{ backgroundColor: CORES_ORIGENS[index % CORES_ORIGENS.length] }}
-                        />
-                        <span className="text-sm">{item.origem}</span>
-                      </div>
-                      <div className="text-right text-sm">{item.quantidade}</div>
-                      <div className="text-right text-sm">{(item.percentual * 100).toFixed(1)}%</div>
+                <AnimatePresence mode="wait">
+                  <motion.div 
+                    key={visualizacaoOrigens}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -20 }}
+                    transition={{ duration: 0.3 }}
+                    className="grid grid-cols-1 lg:grid-cols-2 gap-6"
+                  >
+                    {/* Gráfico */}
+                    <div className="h-[300px]">
+                      <ResponsiveContainer width="100%" height="100%">
+                        {visualizacaoOrigens === 'pizza' ? (
+                          <RechartsPieChart>
+                            <Pie
+                              data={origensData.slice(0, 8)}
+                              cx="50%"
+                              cy="50%"
+                              outerRadius={80}
+                              innerRadius={30}
+                              fill="#8884d8"
+                              dataKey="quantidade"
+                              nameKey="origem"
+                              label={({ name, percent }) => {
+                                const shortName = name.length > 10 ? name.substring(0, 10) + '...' : name;
+                                return `${shortName}: ${(percent * 100).toFixed(1)}%`;
+                              }}
+                              labelLine={true}
+                              animationDuration={800}
+                              animationBegin={0}
+                              animationEasing="ease-out"
+                            >
+                              {origensData.slice(0, 8).map((entry, index) => (
+                                <Cell 
+                                  key={`cell-${index}`} 
+                                  fill={CORES_ORIGENS[index % CORES_ORIGENS.length]} 
+                                  stroke="rgba(255, 255, 255, 0.5)"
+                                  strokeWidth={1}
+                                />
+                              ))}
+                            </Pie>
+                            <Tooltip 
+                              formatter={(value: number, name, props) => [
+                                `${value} leads`,
+                                props.payload.origem
+                              ]}
+                              contentStyle={{ 
+                                backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                                borderRadius: '8px',
+                                border: 'none',
+                                boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1)',
+                                padding: '12px'
+                              }}
+                            />
+                          </RechartsPieChart>
+                        ) : (
+                          <BarChart
+                            data={origensData.slice(0, 8)}
+                            margin={{ top: 5, right: 20, left: 20, bottom: 5 }}
+                            layout="vertical"
+                          >
+                            <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} />
+                            <XAxis 
+                              type="number" 
+                              tickFormatter={(value) => value > 1000 ? `${(value / 1000).toFixed(1)}k` : value}
+                            />
+                            <YAxis 
+                              dataKey="origem" 
+                              type="category" 
+                              width={100}
+                              tick={{ fontSize: 12 }}
+                              tickFormatter={(value) => value.length > 15 ? `${value.substring(0, 15)}...` : value}
+                            />
+                            <Tooltip
+                              formatter={(value) => [`${value} leads`, 'Quantidade']}
+                              contentStyle={{ 
+                                backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                                borderRadius: '8px',
+                                border: 'none',
+                                boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1)',
+                                padding: '12px'
+                              }}
+                            />
+                            <Bar 
+                              dataKey="quantidade" 
+                              animationDuration={1000}
+                              animationBegin={0}
+                              animationEasing="ease-out"
+                            >
+                              {origensData.slice(0, 8).map((_, index) => (
+                                <Cell key={`cell-${index}`} fill={CORES_ORIGENS[index % CORES_ORIGENS.length]} />
+                              ))}
+                            </Bar>
+                          </BarChart>
+                        )}
+                      </ResponsiveContainer>
                     </div>
-                  ))}
-                </div>
+
+                    {/* Tabela */}
+                    <div className="space-y-2">
+                      <div className="text-sm font-medium text-muted-foreground mb-3">
+                        Detalhamento por origem
+                      </div>
+                      <div className="grid grid-cols-3 gap-2 text-sm font-medium text-muted-foreground border-b pb-2">
+                        <div>Origem</div>
+                        <div className="text-right">Leads</div>
+                        <div className="text-right">%</div>
+                      </div>
+                      <div className="max-h-[250px] overflow-y-auto pr-2 custom-scrollbar">
+                        {origensData.map((item, index) => (
+                          <motion.div 
+                            key={index} 
+                            initial={{ opacity: 0, x: -10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: index * 0.05 }}
+                            className="grid grid-cols-3 gap-2 py-2 border-b border-muted/20 hover:bg-muted/20 transition-colors"
+                          >
+                            <div className="flex items-center gap-2">
+                              <div 
+                                className="w-3 h-3 rounded-full flex-shrink-0"
+                                style={{ backgroundColor: CORES_ORIGENS[index % CORES_ORIGENS.length] }}
+                              />
+                              <span className="text-sm truncate">{item.origem}</span>
+                            </div>
+                            <div className="text-right text-sm">{item.quantidade}</div>
+                            <div className="text-right text-sm">{(item.percentual * 100).toFixed(1)}%</div>
+                          </motion.div>
+                        ))}
+                      </div>
+                    </div>
+                  </motion.div>
+                </AnimatePresence>
               )}
             </TabsContent>
 
@@ -810,22 +986,26 @@ export function VendedorDetalhesModal({
                   <TrendingUp className="h-5 w-5 text-orange-600" />
                   Canal de Vendas
                 </h4>
-                <div className="flex gap-2">
+                <div className="flex gap-1 sm:gap-2">
                   <Button
                     variant={visualizacaoCanais === 'pizza' ? 'default' : 'outline'}
                     size="sm"
                     onClick={() => setVisualizacaoCanais('pizza')}
+                    className="text-xs sm:text-sm"
                   >
-                    <PieChart className="h-4 w-4 mr-1" />
-                    Gráfico
+                    <PieChart className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
+                    <span className="hidden sm:inline">Gráfico</span>
+                    <span className="sm:hidden">Gráf.</span>
                   </Button>
                   <Button
                     variant={visualizacaoCanais === 'tabela' ? 'default' : 'outline'}
                     size="sm"
                     onClick={() => setVisualizacaoCanais('tabela')}
+                    className="text-xs sm:text-sm"
                   >
-                    <Table className="h-4 w-4 mr-1" />
-                    Tabela
+                    <Table className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
+                    <span className="hidden sm:inline">Tabela</span>
+                    <span className="sm:hidden">Tab.</span>
                   </Button>
                 </div>
               </div>
@@ -834,58 +1014,139 @@ export function VendedorDetalhesModal({
                 <div className="flex items-center justify-center h-[200px]">
                   <p className="text-muted-foreground">Nenhum canal encontrado</p>
                 </div>
-              ) : visualizacaoCanais === 'pizza' ? (
-                <div className="h-[300px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <RechartsPieChart>
-                      <Pie
-                        data={canaisData.slice(0, 8)}
-                        cx="50%"
-                        cy="50%"
-                        outerRadius={80}
-                        innerRadius={30}
-                        fill="#8884d8"
-                        dataKey="quantidade"
-                        nameKey="canal"
-                        label={({ percent }) => `${(percent * 100).toFixed(1)}%`}
-                      >
-                        {canaisData.slice(0, 8).map((entry, index) => (
-                          <Cell 
-                            key={`cell-${index}`} 
-                            fill={CORES_ORIGENS[index % CORES_ORIGENS.length]} 
-                          />
-                        ))}
-                      </Pie>
-                      <Tooltip 
-                        formatter={(value: number, name, props) => [
-                          `${value} vendas`,
-                          props.payload.canal
-                        ]}
-                      />
-                    </RechartsPieChart>
-                  </ResponsiveContainer>
-                </div>
               ) : (
-                <div className="space-y-2">
-                  <div className="grid grid-cols-3 gap-2 text-sm font-medium text-muted-foreground border-b pb-2">
-                    <div>Canal</div>
-                    <div className="text-right">Vendas</div>
-                    <div className="text-right">%</div>
-                  </div>
-                  {canaisData.map((item, index) => (
-                    <div key={index} className="grid grid-cols-3 gap-2 py-2 border-b border-muted/20">
-                      <div className="flex items-center gap-2">
-                        <div 
-                          className="w-3 h-3 rounded-full"
-                          style={{ backgroundColor: CORES_ORIGENS[index % CORES_ORIGENS.length] }}
-                        />
-                        <span className="text-sm">{item.canal}</span>
-                      </div>
-                      <div className="text-right text-sm">{item.quantidade}</div>
-                      <div className="text-right text-sm">{(item.percentual * 100).toFixed(1)}%</div>
+                <AnimatePresence mode="wait">
+                  <motion.div 
+                    key={visualizacaoCanais}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -20 }}
+                    transition={{ duration: 0.3 }}
+                    className="grid grid-cols-1 lg:grid-cols-2 gap-6"
+                  >
+                    {/* Gráfico */}
+                    <div className="h-[300px]">
+                      <ResponsiveContainer width="100%" height="100%">
+                        {visualizacaoCanais === 'pizza' ? (
+                          <RechartsPieChart>
+                            <Pie
+                              data={canaisData.slice(0, 8)}
+                              cx="50%"
+                              cy="50%"
+                              outerRadius={80}
+                              innerRadius={30}
+                              fill="#8884d8"
+                              dataKey="quantidade"
+                              nameKey="canal"
+                              label={({ name, percent }) => {
+                                const shortName = name.length > 10 ? name.substring(0, 10) + '...' : name;
+                                return `${shortName}: ${(percent * 100).toFixed(1)}%`;
+                              }}
+                              labelLine={true}
+                              animationDuration={800}
+                              animationBegin={0}
+                              animationEasing="ease-out"
+                            >
+                              {canaisData.slice(0, 8).map((entry, index) => (
+                                <Cell 
+                                  key={`cell-${index}`} 
+                                  fill={CORES_ORIGENS[index % CORES_ORIGENS.length]} 
+                                  stroke="rgba(255, 255, 255, 0.5)"
+                                  strokeWidth={1}
+                                />
+                              ))}
+                            </Pie>
+                            <Tooltip 
+                              formatter={(value: number, name, props) => [
+                                `${value} vendas`,
+                                props.payload.canal
+                              ]}
+                              contentStyle={{ 
+                                backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                                borderRadius: '8px',
+                                border: 'none',
+                                boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1)',
+                                padding: '12px'
+                              }}
+                            />
+                          </RechartsPieChart>
+                        ) : (
+                          <BarChart
+                            data={canaisData.slice(0, 8)}
+                            margin={{ top: 5, right: 20, left: 20, bottom: 5 }}
+                            layout="vertical"
+                          >
+                            <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} />
+                            <XAxis 
+                              type="number" 
+                              tickFormatter={(value) => value > 1000 ? `${(value / 1000).toFixed(1)}k` : value}
+                            />
+                            <YAxis 
+                              dataKey="canal" 
+                              type="category" 
+                              width={100}
+                              tick={{ fontSize: 12 }}
+                              tickFormatter={(value) => value.length > 15 ? `${value.substring(0, 15)}...` : value}
+                            />
+                            <Tooltip
+                              formatter={(value) => [`${value} vendas`, 'Quantidade']}
+                              contentStyle={{ 
+                                backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                                borderRadius: '8px',
+                                border: 'none',
+                                boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1)',
+                                padding: '12px'
+                              }}
+                            />
+                            <Bar 
+                              dataKey="quantidade" 
+                              animationDuration={1000}
+                              animationBegin={0}
+                              animationEasing="ease-out"
+                            >
+                              {canaisData.slice(0, 8).map((_, index) => (
+                                <Cell key={`cell-${index}`} fill={CORES_ORIGENS[index % CORES_ORIGENS.length]} />
+                              ))}
+                            </Bar>
+                          </BarChart>
+                        )}
+                      </ResponsiveContainer>
                     </div>
-                  ))}
-                </div>
+
+                    {/* Tabela */}
+                    <div className="space-y-2">
+                      <div className="text-sm font-medium text-muted-foreground mb-3">
+                        Detalhamento por canal
+                      </div>
+                      <div className="grid grid-cols-3 gap-2 text-sm font-medium text-muted-foreground border-b pb-2">
+                        <div>Canal</div>
+                        <div className="text-right">Vendas</div>
+                        <div className="text-right">%</div>
+                      </div>
+                      <div className="max-h-[250px] overflow-y-auto pr-2 custom-scrollbar">
+                        {canaisData.map((item, index) => (
+                          <motion.div 
+                            key={index} 
+                            initial={{ opacity: 0, x: -10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: index * 0.05 }}
+                            className="grid grid-cols-3 gap-2 py-2 border-b border-muted/20 hover:bg-muted/20 transition-colors"
+                          >
+                            <div className="flex items-center gap-2">
+                              <div 
+                                className="w-3 h-3 rounded-full flex-shrink-0"
+                                style={{ backgroundColor: CORES_ORIGENS[index % CORES_ORIGENS.length] }}
+                              />
+                              <span className="text-sm truncate">{item.canal}</span>
+                            </div>
+                            <div className="text-right text-sm">{item.quantidade}</div>
+                            <div className="text-right text-sm">{(item.percentual * 100).toFixed(1)}%</div>
+                          </motion.div>
+                        ))}
+                      </div>
+                    </div>
+                  </motion.div>
+                </AnimatePresence>
               )}
             </TabsContent>
           </Tabs>
