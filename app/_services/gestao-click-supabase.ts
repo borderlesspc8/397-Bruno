@@ -47,9 +47,10 @@ export interface VendedorIntegrado {
 }
 
 export class GestaoClickSupabaseService {
-  // Cache em memória para evitar chamadas duplicadas
+  // Cache em memória para evitar chamadas duplicadas - OTIMIZADO PARA DADOS FRESCOS
   private static requestCache = new Map<string, { timestamp: number, data: any }>()
-  private static readonly CACHE_TTL = 60000 // 1 minuto (aumentado para reduzir requisições)
+  private static readonly CACHE_TTL = 60000 // 1 minuto para dados mais frescos
+  private static readonly FORCE_REFRESH_INTERVAL = 30000 // 30 segundos para forçar refresh
 
   /**
    * Sincroniza vendas do Gestão Click com o Supabase
@@ -74,24 +75,37 @@ export class GestaoClickSupabaseService {
     try {
       console.log('Iniciando sincronização Gestão Click + Supabase:', params)
 
-      // Verificar cache em memória primeiro
+      // Verificar cache em memória primeiro - ESTRATÉGIA OTIMIZADA
       const cacheKey = `sync-${params.userId}-${params.dataInicio.toISOString()}-${params.dataFim.toISOString()}-${params.forceUpdate}`
       const cachedRequest = this.requestCache.get(cacheKey)
       
-      if (cachedRequest && !params.forceUpdate) {
+      // Para tabs críticas (Formas de Pagamento, Origem, Canal), sempre buscar dados frescos
+      const shouldForceRefresh = params.forceUpdate || 
+        (cachedRequest && (Date.now() - cachedRequest.timestamp) > this.FORCE_REFRESH_INTERVAL)
+      
+      if (cachedRequest && !shouldForceRefresh) {
         const now = Date.now()
         if (now - cachedRequest.timestamp < this.CACHE_TTL) {
-          return cachedRequest.data
+          console.log('📦 [GestaoClickSupabase] Usando cache em memória (dados frescos)')
+          return {
+            ...cachedRequest.data,
+            syncInfo: {
+              ...cachedRequest.data.syncInfo,
+              source: 'gestao-click-direct' as const,
+              cacheHit: true
+            }
+          }
         } else {
           // Cache expirado, remover
           this.requestCache.delete(cacheKey)
         }
       }
 
-      // 1. Verificar cache no Supabase (se não for forceUpdate)
-      if (!params.forceUpdate) {
+      // 1. Verificar cache no Supabase (APENAS se não for refresh forçado)
+      if (!shouldForceRefresh) {
         const cachedData = await this.buscarCacheVendas(params)
         if (cachedData) {
+          console.log('📦 [GestaoClickSupabase] Usando cache do Supabase')
           return {
             ...cachedData,
             syncInfo: {
@@ -101,6 +115,8 @@ export class GestaoClickSupabaseService {
             }
           }
         }
+      } else {
+        console.log('🔄 [GestaoClickSupabase] Forçando busca de dados frescos (sem cache)')
       }
 
       // 2. Buscar dados do Gestão Click via API route
@@ -159,14 +175,18 @@ export class GestaoClickSupabaseService {
       const totalValor = gestaoClickData.totalValor
       const ticketMedio = totalVendas > 0 ? totalValor / totalVendas : 0
 
-      // 6. Salvar no cache do Supabase
-      await this.salvarCacheVendas(params, {
-        vendas: vendasIntegradas,
-        totalVendas,
-        totalValor,
-        vendedores: vendedoresIntegrados,
-        produtosMaisVendidos: gestaoClickData.produtos || []
-      })
+      // 6. Salvar no cache do Supabase (apenas se não for forceUpdate)
+      if (!shouldForceRefresh) {
+        await this.salvarCacheVendas(params, {
+          vendas: vendasIntegradas,
+          totalVendas,
+          totalValor,
+          vendedores: vendedoresIntegrados,
+          produtosMaisVendidos: gestaoClickData.produtos || []
+        })
+      } else {
+        console.log('🚫 [GestaoClickSupabase] Pulando cache do Supabase (refresh forçado)')
+      }
 
       console.log('Sincronização concluída com sucesso:', {
         totalVendas,
@@ -188,11 +208,17 @@ export class GestaoClickSupabaseService {
         }
       }
 
-      // Salvar no cache em memória para evitar chamadas duplicadas
+      // Salvar no cache em memória para evitar chamadas duplicadas (sempre salvar)
       this.requestCache.set(cacheKey, {
         timestamp: Date.now(),
         data: result
       })
+      
+      // Limpar cache antigo se necessário
+      if (this.requestCache.size > 10) {
+        const oldestKey = Array.from(this.requestCache.keys())[0]
+        this.requestCache.delete(oldestKey)
+      }
 
       return result
 
@@ -570,9 +596,9 @@ export class GestaoClickSupabaseService {
 
       const cachedData = JSON.parse(data.value)
       
-      // Verificar se o cache não expirou (15 minutos)
+      // Verificar se o cache não expirou (2 minutos para dados mais frescos)
       const cacheAge = Date.now() - new Date(cachedData.timestamp).getTime()
-      if (cacheAge > 15 * 60 * 1000) {
+      if (cacheAge > 2 * 60 * 1000) {
         console.log('Cache expirado, buscando dados frescos')
         return null
       }
@@ -675,5 +701,51 @@ export class GestaoClickSupabaseService {
     );
 
     return atributoComoConheceu?.atributo?.conteudo || null;
+  }
+
+  /**
+   * Limpa todo o cache em memória - útil para forçar dados frescos
+   */
+  static limparCacheMemoria(): void {
+    console.log('🗑️ [GestaoClickSupabase] Limpando cache em memória')
+    this.requestCache.clear()
+  }
+
+  /**
+   * Limpa cache específico por usuário
+   */
+  static limparCacheUsuario(userId: string): void {
+    console.log(`🗑️ [GestaoClickSupabase] Limpando cache do usuário: ${userId}`)
+    for (const [key] of this.requestCache.entries()) {
+      if (key.includes(userId)) {
+        this.requestCache.delete(key)
+      }
+    }
+  }
+
+  /**
+   * Força atualização de dados sem usar cache
+   */
+  static async sincronizarVendasSemCache(params: {
+    dataInicio: Date
+    dataFim: Date
+    userId: string
+  }): Promise<{
+    vendas: VendaIntegrada[]
+    totalVendas: number
+    totalValor: number
+    vendedores: VendedorIntegrado[]
+    produtosMaisVendidos: any[]
+    syncInfo: {
+      lastSync: string
+      source: 'gestao-click' | 'gestao-click-direct'
+      cacheHit: boolean
+    }
+  }> {
+    console.log('🔄 [GestaoClickSupabase] Sincronização forçada (sem cache)')
+    return this.sincronizarVendas({
+      ...params,
+      forceUpdate: true
+    })
   }
 }

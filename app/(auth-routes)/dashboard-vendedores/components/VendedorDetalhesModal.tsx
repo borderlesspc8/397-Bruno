@@ -524,22 +524,6 @@ export function VendedorDetalhesModal({
                 </div>
               </div>
               
-              <div className="pt-3">
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span>Performance</span>
-                    <span>{vendedor.percentual ? vendedor.percentual.toFixed(2) : ((vendedor.faturamento / totalFaturamento) * 100).toFixed(2)}%</span>
-                  </div>
-                  <div className="ios26-progress">
-                    <div 
-                      className="ios26-progress-bar" 
-                      style={{ 
-                        width: `${Math.min(vendedor.percentual || ((vendedor.faturamento / totalFaturamento) * 100), 100)}%` 
-                      }}
-                    />
-                  </div>
-                </div>
-              </div>
               
               {/* Lista de Vendas do Vendedor */}
               <div className="pt-6 border-t mt-4">

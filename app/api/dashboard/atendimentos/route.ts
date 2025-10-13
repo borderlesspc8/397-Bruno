@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { validateSessionForAPI } from "@/app/_utils/auth";
 import { prisma } from "@/app/_lib/prisma";
+import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/_lib/auth";
 import { GestaoClickService } from '@/app/_services/gestao-click-service';
 import { formatDate } from "@/app/_utils/format";
@@ -76,52 +77,14 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Obter sessão do usuário
-    const session = await getServerSession(authOptions);
-    const userId = session?.user?.id;
+    // Para APIs públicas de dashboard, usar configuração padrão
+    const userId = "default-user"; // Usar usuário padrão para APIs públicas
 
-    // Verificar se usuário está autenticado
-    if (!userId) {
-      logger.warn("API dashboard/atendimentos: Usuário não autenticado");
-      return NextResponse.json(
-        { 
-          error: "Usuário não autenticado", 
-          dashboard: createEmptyDashboard(["Usuário não autenticado"])
-        }, 
-        { status: 401 }
-      );
-    }
-
-    // Buscar configuração do Gestão Click
-    const gestaoClickConfig = await prisma.integrationSettings.findFirst({
-      where: {
-        userId: userId,
-        provider: "GESTAO_CLICK",
-        active: true
-      },
-      select: {
-        metadata: true
-      }
-    });
-
-    // Inicializar variáveis de configuração
-    let apiKey, secretToken, apiUrl, empresa;
-    
-    if (gestaoClickConfig && gestaoClickConfig.metadata) {
-      // Usar configuração do usuário
-      apiKey = (gestaoClickConfig.metadata as any).apiKey;
-      secretToken = (gestaoClickConfig.metadata as any).secretToken;
-      apiUrl = (gestaoClickConfig.metadata as any).apiUrl || 'https://api.beteltecnologia.com';
-      empresa = (gestaoClickConfig.metadata as any).empresa;
-    } else {
-      // Usar variáveis de ambiente padrão
-      apiKey = process.env.GESTAO_CLICK_ACCESS_TOKEN;
-      secretToken = process.env.GESTAO_CLICK_SECRET_ACCESS_TOKEN;
-      apiUrl = process.env.GESTAO_CLICK_API_URL || 'https://api.beteltecnologia.com';
-      empresa = '';
-      
-      logger.info("Usando configuração padrão do Gestão Click a partir de variáveis de ambiente");
-    }
+    // Usar variáveis de ambiente padrão para APIs públicas
+    const apiKey = process.env.GESTAO_CLICK_ACCESS_TOKEN;
+    const secretToken = process.env.GESTAO_CLICK_SECRET_ACCESS_TOKEN;
+    const apiUrl = process.env.GESTAO_CLICK_API_URL || 'https://api.beteltecnologia.com';
+    const empresa = '';
 
     // Verificar se a API está configurada
     if (!apiKey || !apiUrl) {

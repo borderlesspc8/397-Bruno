@@ -66,7 +66,7 @@ const OrigemCard = ({ origem, index, color }: { origem: OrigemData, index: numbe
   >
     <div className="flex items-center justify-between mb-2">
       <span className="font-medium">{origem.origem}</span>
-      <span className="text-sm font-medium">{origem.quantidade} leads</span>
+      <span className="text-sm font-medium">{origem.quantidade} clientes</span>
     </div>
     <AnimatedProgressBar percentual={origem.percentual} color={color} />
     <div className="text-right text-sm text-muted-foreground mt-1">
@@ -99,8 +99,9 @@ export function ComoNosConheceuUnidade({ dataInicio, dataFim, vendas }: ComoNosC
       return [];
     }
 
-    console.log('📊 [ComoNosConheceu] Processando origens localmente:', {
+    console.log('📊 [ComoNosConheceu] Processando origens localmente (DADOS FRESCOS):', {
       totalVendas: vendas.length,
+      timestamp: new Date().toISOString(),
       primeirasVendas: vendas.slice(0, 3).map(v => ({
         id: v.id,
         origem: v.origem,
@@ -189,8 +190,8 @@ export function ComoNosConheceuUnidade({ dataInicio, dataFim, vendas }: ComoNosC
         percentual: origem.percentual
       }));
     
-    // Calcular total de leads
-    const totalLeads = chartData.reduce((sum, origem) => sum + origem.quantidade, 0);
+    // Calcular total de clientes
+    const totalClientes = chartData.reduce((sum, origem) => sum + origem.quantidade, 0);
     
     return (
       <motion.div 
@@ -206,7 +207,7 @@ export function ComoNosConheceuUnidade({ dataInicio, dataFim, vendas }: ComoNosC
               Dados Gerais - Como nos Conheceu
             </h3>
             <p className="text-sm text-muted-foreground">
-              Total de {totalLeads} leads no período
+              Total de {totalClientes} clientes no período
             </p>
           </div>
           <div className="flex space-x-2">
@@ -278,7 +279,7 @@ export function ComoNosConheceuUnidade({ dataInicio, dataFim, vendas }: ComoNosC
                     </Pie>
                     <Tooltip 
                       formatter={(value, name, props) => [
-                        `${props.payload.origem}: ${value} leads (${(props.payload.percentual * 100).toFixed(1)}%)`
+                        `${props.payload.origem}: ${value} clientes (${(props.payload.percentual * 100).toFixed(1)}%)`
                       ]}
                       contentStyle={{ 
                         backgroundColor: 'rgba(255, 255, 255, 0.9)',
@@ -310,7 +311,7 @@ export function ComoNosConheceuUnidade({ dataInicio, dataFim, vendas }: ComoNosC
                       tickFormatter={(value) => value.length > 15 ? `${value.substring(0, 15)}...` : value}
                     />
                     <Tooltip
-                      formatter={(value) => [`${value} leads`, 'Quantidade']}
+                      formatter={(value) => [`${value} clientes`, 'Quantidade']}
                       contentStyle={{ 
                         backgroundColor: 'rgba(255, 255, 255, 0.9)',
                         borderRadius: '8px',
@@ -357,7 +358,7 @@ export function ComoNosConheceuUnidade({ dataInicio, dataFim, vendas }: ComoNosC
                   <thead>
                     <tr className="border-b border-gray-200 dark:border-gray-700">
                       <th className="text-left py-2 font-medium text-gray-700 dark:text-gray-300">Origem</th>
-                      <th className="text-right py-2 font-medium text-gray-700 dark:text-gray-300">Leads</th>
+                      <th className="text-right py-2 font-medium text-gray-700 dark:text-gray-300">Clientes</th>
                       <th className="text-right py-2 font-medium text-gray-700 dark:text-gray-300">%</th>
                     </tr>
                   </thead>
@@ -408,7 +409,7 @@ export function ComoNosConheceuUnidade({ dataInicio, dataFim, vendas }: ComoNosC
               <Users className="h-5 w-5 text-orange-600 dark:text-orange-400" />
             Como nos Conheceu
           </CardTitle>
-          <CardDescription>Análise de origens de leads por período</CardDescription>
+          <CardDescription>Análise de origens de clientes por período</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex items-center justify-center h-[300px]">
@@ -434,7 +435,7 @@ export function ComoNosConheceuUnidade({ dataInicio, dataFim, vendas }: ComoNosC
               <Users className="h-5 w-5 text-orange-600 dark:text-orange-400" />
             Como nos Conheceu
           </CardTitle>
-          <CardDescription>Análise de origens de leads por período</CardDescription>
+          <CardDescription>Análise de origens de clientes por período</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex items-center justify-center h-[300px]">
@@ -462,7 +463,7 @@ export function ComoNosConheceuUnidade({ dataInicio, dataFim, vendas }: ComoNosC
               Como nos Conheceu
             </CardTitle>
             <CardDescription>
-              Análise de origens de leads por período
+              Análise de origens de clientes por período
             </CardDescription>
           </div>
           <div className="flex space-x-2">
@@ -473,7 +474,7 @@ export function ComoNosConheceuUnidade({ dataInicio, dataFim, vendas }: ComoNosC
                 console.log('📊 [Debug] Dados atuais:', {
                   origensData,
                   totalOrigens: origensData.length,
-                  totalLeads: origensData.reduce((sum, o) => sum + o.quantidade, 0)
+                  totalClientes: origensData.reduce((sum, o) => sum + o.quantidade, 0)
                 });
               }}
                 className="p-2 rounded-full hover:bg-orange-50 dark:hover:bg-orange-900/20 text-muted-foreground hover:text-orange-600 transition-all duration-200"

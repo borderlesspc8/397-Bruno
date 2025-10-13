@@ -75,6 +75,12 @@ export default function GerenciamentoVendedores() {
     setModalAberto(true);
   };
   
+  // Abrir modal de detalhes do vendedor
+  const handleAbrirDetalhesVendedor = (vendedor: Vendedor) => {
+    setVendedorSelecionado(vendedor);
+    setModalAberto(true);
+  };
+  
   // Fechar modal e atualizar lista se necessário
   const handleFotoAtualizada = () => {
     // Limpar o cache de imagens antes de recarregar
@@ -146,6 +152,7 @@ export default function GerenciamentoVendedores() {
         <RankingVendedoresPodium 
           vendedores={vendedores}
           onUploadFoto={handleAbrirUploadFoto}
+          onVendedorClick={handleAbrirDetalhesVendedor}
         />
         
         {/* Lista de vendedores */}

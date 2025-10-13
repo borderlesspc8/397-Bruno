@@ -124,21 +124,27 @@ export function VendasPorFormaPagamentoChart({ dataInicio, dataFim, vendedores, 
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
 
-  // Processar dados das vendas para formas de pagamento - usando mesma fonte que DashboardSummary
+  // Processar dados das vendas para formas de pagamento - DADOS SEMPRE FRESCOS
   useEffect(() => {
-        const processarFormasPagamento = () => {
+    const processarFormasPagamento = () => {
       setLoading(true);
       setErro(null);
 
       try {
-            if (!vendas || !Array.isArray(vendas)) {
-              console.log('Vendas não recebidas ou não é array:', vendas);
-              setFormasPagamento([]);
-              setLoading(false);
-              return;
-            }
-            
-            console.log('Vendas recebidas:', vendas.length, 'vendas');
+        if (!vendas || !Array.isArray(vendas)) {
+          console.log('Vendas não recebidas ou não é array:', vendas);
+          setFormasPagamento([]);
+          setLoading(false);
+          return;
+        }
+        
+        console.log('=== PROCESSAMENTO DADOS FRESCOS ===');
+        console.log('Período selecionado:', {
+          dataInicio: dataInicio.toISOString(),
+          dataFim: dataFim.toISOString()
+        });
+        console.log('Vendas recebidas:', vendas.length, 'vendas');
+        console.log('Timestamp:', new Date().toISOString());
 
         // Mapeamento para categorias específicas de forma de pagamento (mesmo da API)
         const CATEGORIAS_PAGAMENTO: Record<string, string> = {
@@ -237,14 +243,102 @@ export function VendasPorFormaPagamentoChart({ dataInicio, dataFim, vendedores, 
           return 'A COMBINAR';
         };
 
+        // Filtrar vendas pelo período selecionado - LOGS DETALHADOS
+        console.log('=== FILTRO DE PERÍODO ===');
+        console.log('Período selecionado:', {
+          dataInicio: dataInicio.toISOString().split('T')[0],
+          dataFim: dataFim.toISOString().split('T')[0]
+        });
+        
+        const vendasFiltradas = vendas.filter((venda: any, index: number) => {
+          // Log das primeiras 5 vendas para debug
+          if (index < 5) {
+            console.log(`Venda ${index + 1} (ID: ${venda.id}):`, {
+              data_venda: venda.data_venda,
+              data_criacao: venda.data_criacao,
+              data_atualizacao: venda.data_atualizacao,
+              valor_total: venda.valor_total,
+              forma_pagamento: venda.forma_pagamento
+            });
+          }
+          
+          // Tentar diferentes campos de data
+          let dataVenda: Date | null = null;
+          let campoDataUsado = '';
+          
+          if (venda.data_venda) {
+            dataVenda = new Date(venda.data_venda);
+            campoDataUsado = 'data_venda';
+          } else if (venda.data_criacao) {
+            dataVenda = new Date(venda.data_criacao);
+            campoDataUsado = 'data_criacao';
+          } else if (venda.data_atualizacao) {
+            dataVenda = new Date(venda.data_atualizacao);
+            campoDataUsado = 'data_atualizacao';
+          }
+          
+          if (!dataVenda || isNaN(dataVenda.getTime())) {
+            console.log(`❌ Venda ${venda.id} sem data válida`);
+            return false;
+          }
+          
+          const dentroDoPeriodo = dataVenda >= dataInicio && dataVenda <= dataFim;
+          
+          if (index < 5) {
+            console.log(`Venda ${index + 1} (${campoDataUsado}):`, {
+              dataVenda: dataVenda.toISOString().split('T')[0],
+              dentroDoPeriodo,
+              valor: venda.valor_total
+            });
+          }
+          
+          if (!dentroDoPeriodo && index < 10) { // Log apenas das primeiras 10 fora do período
+            console.log(`❌ Venda ${venda.id} fora do período:`, {
+              campoUsado: campoDataUsado,
+              dataVenda: dataVenda.toISOString().split('T')[0],
+              dataInicio: dataInicio.toISOString().split('T')[0],
+              dataFim: dataFim.toISOString().split('T')[0]
+            });
+          }
+          
+          return dentroDoPeriodo;
+        });
+        
+        console.log(`Vendas filtradas pelo período: ${vendasFiltradas.length} de ${vendas.length} vendas`);
+        
         // Agrupar vendas por forma de pagamento
         const formasPagamentoMap = new Map<string, { totalVendas: number; totalValor: number }>();
         let valorTotal = 0;
         
-        vendas.forEach((venda: any, index: number) => {
+        console.log('=== CÁLCULO DE VALORES ===');
+        let vendasComValorZero = 0;
+        let vendasComValorInvalido = 0;
+        
+        vendasFiltradas.forEach((venda: any, index: number) => {
           const valorVenda = typeof venda.valor_total === 'string' 
             ? parseFloat(venda.valor_total) 
             : Number(venda.valor_total) || 0;
+          
+          // Log das primeiras 5 vendas para debug de valores
+          if (index < 5) {
+            console.log(`Venda ${index + 1} (ID: ${venda.id}):`, {
+              valor_total_original: venda.valor_total,
+              valor_total_processado: valorVenda,
+              tipo_valor: typeof venda.valor_total
+            });
+          }
+          
+          if (valorVenda === 0) {
+            vendasComValorZero++;
+            if (index < 10) {
+              console.log(`⚠️ Venda ${venda.id} com valor zero:`, venda.valor_total);
+            }
+          }
+          
+          if (isNaN(valorVenda)) {
+            vendasComValorInvalido++;
+            console.log(`❌ Venda ${venda.id} com valor inválido:`, venda.valor_total);
+          }
           
           valorTotal += valorVenda;
           
@@ -256,7 +350,7 @@ export function VendasPorFormaPagamentoChart({ dataInicio, dataFim, vendedores, 
             console.log(`Venda ${index + 1} (ID: ${venda.id}):`, {
               forma_pagamento: venda.forma_pagamento,
               metodo_pagamento: venda.metodo_pagamento,
-              pagamentos: venda.pagamentos?.map(p => ({
+              pagamentos: venda.pagamentos?.map((p: any) => ({
                 nome_forma_pagamento: p.pagamento?.nome_forma_pagamento
               }))
             });
@@ -304,22 +398,33 @@ export function VendasPorFormaPagamentoChart({ dataInicio, dataFim, vendedores, 
         // Ordenar por valor total (decrescente)
         formasPagamentoProcessadas.sort((a, b) => b.totalValor - a.totalValor);
         
+        console.log('=== RESUMO FINAL ===');
         console.log('Dados processados localmente para formas de pagamento:', {
-          totalVendas: vendas.length,
+          totalVendasOriginais: vendas.length,
+          totalVendasFiltradas: vendasFiltradas.length,
+          vendasComValorZero: vendasComValorZero,
+          vendasComValorInvalido: vendasComValorInvalido,
           formasPagamento: formasPagamentoProcessadas.length,
-            valorTotal: valorTotal,
-          formas: formasPagamentoProcessadas.map(f => ({ forma: f.formaPagamento, valor: f.totalValor, vendas: f.totalVendas }))
+          valorTotal: valorTotal,
+          valorTotalFormatado: `R$ ${valorTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+          formas: formasPagamentoProcessadas.map(f => ({ 
+            forma: f.formaPagamento, 
+            valor: f.totalValor, 
+            vendas: f.totalVendas,
+            percentual: f.percentual.toFixed(2) + '%'
+          }))
         });
         
         // Log detalhado para debug
         console.log('Formas de pagamento encontradas:', formasPagamentoProcessadas.map(f => f.formaPagamento));
         
-        // Log das primeiras vendas para debug
-        console.log('Primeiras 3 vendas recebidas:', vendas.slice(0, 3).map(v => ({
+        // Log das primeiras vendas filtradas para debug
+        console.log('Primeiras 3 vendas filtradas:', vendasFiltradas.slice(0, 3).map(v => ({
           id: v.id,
+          data_venda: v.data_venda,
           forma_pagamento: v.forma_pagamento,
           metodo_pagamento: v.metodo_pagamento,
-          pagamentos: v.pagamentos?.map(p => p.pagamento?.nome_forma_pagamento)
+          pagamentos: v.pagamentos?.map((p: any) => p.pagamento?.nome_forma_pagamento)
         })));
         
         setFormasPagamento(formasPagamentoProcessadas);
@@ -333,7 +438,7 @@ export function VendasPorFormaPagamentoChart({ dataInicio, dataFim, vendedores, 
     };
 
     processarFormasPagamento();
-  }, [vendas]);
+  }, [vendas, dataInicio, dataFim]); // Incluir datas para reprocessar quando período mudar
 
   // Preparar dados para o gráfico
   const dadosGrafico = useMemo(() => {
@@ -446,17 +551,31 @@ export function VendasPorFormaPagamentoChart({ dataInicio, dataFim, vendedores, 
     }
   }), []);
 
-  // Função para recarregar os dados (agora apenas reprocessa os dados locais)
-  const recarregarDados = () => {
-    if (vendas && Array.isArray(vendas)) {
-      // Força reprocessamento dos dados locais
-    setLoading(true);
-    setErro(null);
+  // Função para recarregar os dados - força reprocessamento completo
+  const recarregarDados = async () => {
+    console.log('=== FORÇANDO RECARREGAMENTO DOS DADOS ===');
+    console.log('Período atual:', {
+      dataInicio: dataInicio.toISOString(),
+      dataFim: dataFim.toISOString()
+    });
     
-      // Simular um pequeno delay para mostrar o loading
+    try {
+      // Limpar cache e forçar dados frescos
+      const { GestaoClickSupabaseService } = await import('@/app/_services/gestao-click-supabase');
+      GestaoClickSupabaseService.limparCacheMemoria();
+      
+      setLoading(true);
+      setErro(null);
+      
+      // Força reprocessamento dos dados locais
       setTimeout(() => {
         setLoading(false);
+        console.log('✅ Dados recarregados com sucesso');
       }, 500);
+    } catch (error) {
+      console.error('Erro ao recarregar dados:', error);
+      setErro('Erro ao recarregar dados');
+      setLoading(false);
     }
   };
 

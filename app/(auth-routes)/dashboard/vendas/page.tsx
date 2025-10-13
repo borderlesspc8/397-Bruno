@@ -1,9 +1,8 @@
 "use client";
 
-// ATENÇÃO: CACHE SUSPENSO TEMPORARIAMENTE
-// Os dados do dashboard de vendas estão sendo buscados diretamente do Gestão Click
-// sem utilizar o cache do Supabase. Para reativar o cache, reverter as alterações
-// nos arquivos: GestaoClickSupabaseService, API routes e hooks.
+// DASHBOARD DE VENDAS - DADOS EM TEMPO REAL
+// Os dados são buscados diretamente do Gestão Click com configuração de cache otimizada
+// para garantir dados sempre atualizados sem comprometer performance.
 
 import React, { useState, useCallback, Suspense, useMemo, useEffect } from "react";
 import { PageContainer } from "@/app/_components/page-container";
@@ -60,10 +59,14 @@ const LazyProdutosMaisVendidos = React.lazy(() =>
   })
 ) as React.LazyExoticComponent<React.ComponentType<any>>;
 
-// Função para buscar dados com cache
-const fetchSemCache = async (endpoint: string, params: Record<string, string>) => {
+  // Função para buscar dados com cache otimizado
+const fetchWithCache = async (endpoint: string, params: Record<string, string>, forceRefresh = false) => {
   const url = `${endpoint}?${new URLSearchParams(params)}`;
-  const response = await fetch(url, { cache: 'no-store' });
+  const cacheOptions = forceRefresh ? { cache: 'no-store' } : { 
+    cache: 'default',
+    next: { revalidate: 60 } // Cache por 1 minuto para otimizar performance
+  };
+  const response = await fetch(url, cacheOptions);
   if (!response.ok) throw new Error('Erro ao buscar dados');
   return await response.json();
 };
@@ -99,7 +102,7 @@ export default function DashboardVendas() {
   const currentMonth = today.getMonth();
   const currentYear = today.getFullYear();
   
-  // Período de datas padrão: do dia 1 até o dia atual (evita problemas de cache)
+  // Período de datas padrão: do dia 1 até o dia atual (configurado para dados em tempo real)
   const [dateRange, setDateRange] = useState<{ from: Date; to: Date }>(() => {
     const from = new Date(currentYear, currentMonth, 1);
     const to = new Date(today);
@@ -208,9 +211,9 @@ export default function DashboardVendas() {
     dataInicio: dateRange.from,
     dataFim: dateRange.to,
     userId: userId || '',
-    autoRefresh: false, // Desabilitado para evitar loops
-    refreshInterval: 0,
-    forceUpdate: false, // Usar cache quando possível para melhor performance
+    autoRefresh: true, // REATIVADO COM CONTROLE OTIMIZADO
+    refreshInterval: 60000, // 1 minuto para dados frescos
+    forceUpdate: false, // Usar cache otimizado
     enabled: !!userId && !authLoading
   });
   
@@ -382,10 +385,10 @@ export default function DashboardVendas() {
     }
   }, [forceSync]);
 
-  // Função para refresh dos dados sem cache
+  // Função para refresh dos dados com cache otimizado
   const handleRefreshData = useCallback(async () => {
     try {
-      console.log('🔄 Iniciando refresh dos dados sem cache...');
+      console.log('🔄 Iniciando refresh dos dados...');
       await forceSync();
       console.log('✅ Refresh concluído com sucesso');
     } catch (error) {
@@ -394,10 +397,10 @@ export default function DashboardVendas() {
     }
   }, [forceSync]);
 
-  // Forçar atualização dos dados para resolver problema do cache
+  // Atualizar dados quando o período de datas mudar
   useEffect(() => {
     if (dateRange.from && dateRange.to) {
-      console.log('🔄 Forçando atualização dos dados para resolver cache antigo...');
+      console.log('🔄 Atualizando dados para novo período...');
       handleForceSync();
     }
   }, [dateRange.from, dateRange.to, handleForceSync]);

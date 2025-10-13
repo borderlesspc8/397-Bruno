@@ -84,8 +84,9 @@ export function CanalDeVendasUnidade({ dataInicio, dataFim, vendas }: CanalDeVen
       return [];
     }
 
-    console.log('📊 [CanalDeVendas] Processando canais localmente:', {
+    console.log('📊 [CanalDeVendas] Processando canais localmente (DADOS FRESCOS):', {
       totalVendas: vendas.length,
+      timestamp: new Date().toISOString(),
       primeirasVendas: vendas.slice(0, 3).map(v => ({
         id: v.id,
         canal_venda: v.canal_venda,

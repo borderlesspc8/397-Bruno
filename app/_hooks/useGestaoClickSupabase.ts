@@ -303,11 +303,28 @@ export function useGestaoClickSupabase({
     }
   }, [dataInicio?.toISOString(), dataFim?.toISOString(), userId, forceUpdate, enabled])
 
-  // Effect para auto-refresh - DESABILITADO TEMPORARIAMENTE
+  // Effect para auto-refresh - REATIVADO COM CONTROLE OTIMIZADO
   useEffect(() => {
-    // AUTO-REFRESH DESABILITADO PARA EVITAR LOOPS
-    return
-  }, [])
+    if (!autoRefresh || !enabled || !userId) {
+      return
+    }
+
+    console.log('🔄 [useGestaoClickSupabase] Configurando auto-refresh...')
+    
+    const interval = setInterval(() => {
+      // Verificar se não há requisição em andamento
+      if (!fetchingRef.current) {
+        console.log('🔄 [useGestaoClickSupabase] Auto-refresh executado')
+        fetchData()
+      } else {
+        console.log('⏳ [useGestaoClickSupabase] Pulando auto-refresh (requisição em andamento)')
+      }
+    }, refreshInterval)
+
+    return () => {
+      clearInterval(interval)
+    }
+  }, [autoRefresh, refreshInterval, enabled, userId, fetchData])
 
   // Effect para tempo real - DESABILITADO TEMPORARIAMENTE
   useEffect(() => {
