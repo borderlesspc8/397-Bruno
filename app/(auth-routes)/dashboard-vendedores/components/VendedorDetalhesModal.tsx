@@ -30,6 +30,7 @@ import {
 } from "lucide-react";
 import { PieChart as RechartsPieChart, Pie, Cell, Tooltip, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 import { motion, AnimatePresence } from "framer-motion";
+import { useProcessarFormasPagamento } from '@/app/_hooks/useProcessarFormasPagamento';
 // Imports removidos - não utilizados no componente
 
 // Função utilitária para formatar datas considerando o fuso horário brasileiro
@@ -306,51 +307,8 @@ export function VendedorDetalhesModal({
   };
   
   // Processar dados das formas de pagamento
-  const formasPagamento = useMemo(() => {
-    if (!vendasVendedor || vendasVendedor.length === 0) return [];
-
-    // Como a API atual não retorna dados de formas de pagamento, vamos gerar dados baseados nos valores das vendas
-    // para demonstração funcional. Em produção, isso seria substituído por dados reais da API.
-    
-    const formasPagamentoDisponiveis = [
-      { nome: 'PIX - C6', peso: 0.35 },      // 35% das vendas
-      { nome: 'CRÉDITO - STONE', peso: 0.25 }, // 25% das vendas
-      { nome: 'PIX - BB', peso: 0.20 },      // 20% das vendas
-      { nome: 'DÉBITO - STONE', peso: 0.12 }, // 12% das vendas
-      { nome: 'ESPÉCIE - BB', peso: 0.05 },   // 5% das vendas
-      { nome: 'A COMBINAR', peso: 0.03 }      // 3% das vendas
-    ];
-
-    const formasPagamentoMap = new Map<string, { totalVendas: number; totalValor: number }>();
-    let valorTotal = 0;
-    
-    // Calcular valor total primeiro
-    vendasVendedor.forEach((venda: any) => {
-      valorTotal += parseFloat(venda.valor_total) || 0;
-    });
-
-    // Distribuir vendas entre as formas de pagamento baseado nos pesos
-    formasPagamentoDisponiveis.forEach(forma => {
-      const totalVendasForma = Math.round(vendasVendedor.length * forma.peso);
-      const valorTotalForma = valorTotal * forma.peso;
-      
-      if (totalVendasForma > 0) {
-        formasPagamentoMap.set(forma.nome, {
-          totalVendas: totalVendasForma,
-          totalValor: valorTotalForma
-        });
-      }
-    });
-    
-    const formasPagamentoProcessadas = Array.from(formasPagamentoMap.entries()).map(([formaPagamento, dados]) => ({
-      formaPagamento,
-      totalVendas: dados.totalVendas,
-      totalValor: dados.totalValor,
-      percentual: valorTotal > 0 ? (dados.totalValor / valorTotal) * 100 : 0
-    }));
-    
-    return formasPagamentoProcessadas.sort((a, b) => b.totalValor - a.totalValor);
-  }, [vendasVendedor]);
+  // Processar dados das formas de pagamento usando o hook especializado
+  const formasPagamento = useProcessarFormasPagamento(vendasVendedor);
 
   // Processar dados das origens
   const origensData = useMemo(() => {
@@ -872,7 +830,7 @@ export function VendedorDetalhesModal({
                             </Pie>
                             <Tooltip 
                               formatter={(value: number, name, props) => [
-                                `${value} leads`,
+                                `${value} clientes`,
                                 props.payload.origem
                               ]}
                               contentStyle={{ 
@@ -903,7 +861,7 @@ export function VendedorDetalhesModal({
                               tickFormatter={(value) => value.length > 15 ? `${value.substring(0, 15)}...` : value}
                             />
                             <Tooltip
-                              formatter={(value) => [`${value} leads`, 'Quantidade']}
+                              formatter={(value) => [`${value} clientes`, 'Quantidade']}
                               contentStyle={{ 
                                 backgroundColor: 'rgba(255, 255, 255, 0.9)',
                                 borderRadius: '8px',
@@ -934,7 +892,7 @@ export function VendedorDetalhesModal({
                       </div>
                       <div className="grid grid-cols-3 gap-2 text-sm font-medium text-muted-foreground border-b pb-2">
                         <div>Origem</div>
-                        <div className="text-right">Leads</div>
+                        <div className="text-right">Clientes</div>
                         <div className="text-right">%</div>
                       </div>
                       <div className="max-h-[250px] overflow-y-auto pr-2 custom-scrollbar">

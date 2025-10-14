@@ -417,11 +417,20 @@ export function VendedorDetalhesModal({
       const vendedorNome = vendedor.nome.toLowerCase().trim();
       const vendedorIdNormalizado = vendedor.id.replace('gc-', '');
       
-      return vendaVendedorId === vendedorIdNormalizado || 
-             vendaNomeVendedor === vendedorNome ||
-             vendaVendedorNome === vendedorNome ||
-             vendaNomeVendedor.includes(vendedorNome) ||
-             vendaVendedorNome.includes(vendedorNome);
+      // Lógica de filtragem mais robusta para capturar todas as variações
+      const matchById = vendaVendedorId === vendedorIdNormalizado;
+      const matchByNomeExato = vendaNomeVendedor === vendedorNome || vendaVendedorNome === vendedorNome;
+      const matchByInclusao = vendaNomeVendedor.includes(vendedorNome) || vendaVendedorNome.includes(vendedorNome);
+      
+      // Adicionar suporte a nomes sem acentos
+      const vendedorNomeSemAcentos = vendedorNome.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      const vendaNomeSemAcentos = vendaNomeVendedor.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      const vendaVendedorNomeSemAcentos = vendaVendedorNome.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      
+      const matchSemAcentos = vendaNomeSemAcentos.includes(vendedorNomeSemAcentos) || 
+                             vendaVendedorNomeSemAcentos.includes(vendedorNomeSemAcentos);
+      
+      return matchById || matchByNomeExato || matchByInclusao || matchSemAcentos;
     });
 
     console.log('🔍 [VendedorDetalhesModal] Vendas filtradas pelo vendedor:', {
@@ -503,7 +512,7 @@ export function VendedorDetalhesModal({
     }
   };
 
-  // Usar o hook centralizado para processar formas de pagamento
+  // Processar dados das formas de pagamento usando o hook especializado
   const formasPagamento = useProcessarFormasPagamento(vendasParaProcessar);
 
   // Função para extrair "Como nos conheceu" dos atributos (mesmo que ComoNosConheceuUnidade.tsx)

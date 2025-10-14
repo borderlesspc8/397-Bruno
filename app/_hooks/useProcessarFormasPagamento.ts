@@ -229,9 +229,35 @@ export const useProcessarFormasPagamento = (vendas: any[]): FormaPagamentoItem[]
       return [];
     }
 
+    // Verificar se há vendas do Marcus para debug específico
+    const hasMarcusVendas = vendas.some(v => {
+      const nomeVendedor = String(v.nome_vendedor || '').toLowerCase();
+      const vendedorNome = String(v.vendedor_nome || '').toLowerCase();
+      return nomeVendedor.includes('marcus') || vendedorNome.includes('marcus');
+    });
+
     console.log('=== PROCESSAMENTO DADOS FRESCOS (HOOK) ===');
     console.log('Vendas recebidas:', vendas.length, 'vendas');
+    console.log('Has Marcus vendas:', hasMarcusVendas);
     console.log('Timestamp:', new Date().toISOString());
+
+    // Log específico para Marcus se detectado
+    if (hasMarcusVendas) {
+      console.log('🔍 [useProcessarFormasPagamento] DEBUG MARCUS - Vendas detectadas:', {
+        totalVendas: vendas.length,
+        marcusVendas: vendas.filter(v => {
+          const nomeVendedor = String(v.nome_vendedor || '').toLowerCase();
+          const vendedorNome = String(v.vendedor_nome || '').toLowerCase();
+          return nomeVendedor.includes('marcus') || vendedorNome.includes('marcus');
+        }).slice(0, 3).map(v => ({
+          id: v.id,
+          nome_vendedor: v.nome_vendedor,
+          vendedor_nome: v.vendedor_nome,
+          forma_pagamento: v.forma_pagamento,
+          valor_total: v.valor_total
+        }))
+      });
+    }
 
     // Agrupar vendas por forma de pagamento
     const formasPagamentoMap = new Map<string, { totalVendas: number; totalValor: number }>();
@@ -371,6 +397,21 @@ export const useProcessarFormasPagamento = (vendas: any[]): FormaPagamentoItem[]
         percentual: f.percentual.toFixed(2) + '%'
       }))
     });
+
+    // Log específico para Marcus no resultado final
+    if (hasMarcusVendas) {
+      console.log('🔍 [useProcessarFormasPagamento] DEBUG MARCUS - Resultado final:', {
+        totalVendasOriginais: vendas.length,
+        formasPagamentoProcessadas: formasPagamentoProcessadas.length,
+        valorTotal: valorTotal,
+        formas: formasPagamentoProcessadas.map(f => ({ 
+          forma: f.formaPagamento, 
+          valor: f.totalValor, 
+          vendas: f.totalVendas,
+          percentual: f.percentual.toFixed(2) + '%'
+        }))
+      });
+    }
     
     // RELATÓRIO DE ANÁLISE FORENSE COMPLETA
     console.log('🔍 === RELATÓRIO DE ANÁLISE FORENSE COMPLETA (HOOK) ===');
