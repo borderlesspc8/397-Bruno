@@ -71,6 +71,61 @@ const formatarDataBrasileira = (dataString: string): string => {
   }
 };
 
+// Função para extrair dados de venda com fallbacks robustos
+const extrairDadosVenda = (venda: any) => {
+  // Log detalhado da estrutura da venda para debug
+  console.log('🔍 [VendedorDetalhesModal] Estrutura completa da venda:', {
+    id: venda.id,
+    todasAsPropriedades: Object.keys(venda),
+    valoresPrincipais: {
+      data: venda.data,
+      data_venda: venda.data_venda,
+      data_criacao: venda.data_criacao,
+      data_atualizacao: venda.data_atualizacao,
+      data_inclusao: venda.data_inclusao,
+      cliente: venda.cliente,
+      nome_cliente: venda.nome_cliente,
+      cliente_nome: venda.cliente_nome,
+      valor_total: venda.valor_total,
+      forma_pagamento: venda.forma_pagamento,
+      meio_pagamento: venda.meio_pagamento,
+      vendedor_id: venda.vendedor_id,
+      nome_vendedor: venda.nome_vendedor,
+      vendedor_nome: venda.vendedor_nome
+    }
+  });
+
+  // Extrair data com múltiplos fallbacks
+  const dataVenda = venda.data_venda || 
+                   venda.data_criacao || 
+                   venda.data_atualizacao || 
+                   venda.data_inclusao || 
+                   venda.data || 
+                   null;
+
+  // Extrair nome do cliente com múltiplos fallbacks
+  const nomeCliente = venda.nome_cliente || 
+                     venda.cliente_nome || 
+                     venda.cliente || 
+                     'Cliente não identificado';
+
+  // Extrair valor total
+  const valorTotal = venda.valor_total || '0';
+
+  console.log('🔍 [VendedorDetalhesModal] Dados extraídos:', {
+    id: venda.id,
+    dataVenda,
+    nomeCliente,
+    valorTotal
+  });
+
+  return {
+    dataVenda,
+    nomeCliente,
+    valorTotal
+  };
+};
+
 // Interface estendida com propriedades adicionais
 interface Vendedor extends BaseVendedor {
   posicao?: number;
@@ -111,17 +166,114 @@ interface CanalVendaData {
   percentual: number;
 }
 
-// Cores iOS26 para categorias específicas de formas de pagamento
+// Cores iOS26 para categorias específicas de formas de pagamento (apenas formas ativas)
 const CORES_CATEGORIAS = {
-  'PIX - C6': 'hsl(25 95% 53% / 0.8)',
-  'PIX - BB': 'hsl(25 95% 60% / 0.8)',
-  'PIX - STONE': 'hsl(25 95% 45% / 0.8)',
-  'PIX': 'hsl(25 95% 70% / 0.8)',
-  'CRÉDITO - STONE': 'hsl(45 100% 50% / 0.8)',
-  'DÉBITO - STONE': 'hsl(142 69% 45% / 0.8)',
-  'ESPÉCIE - BB': 'hsl(25 95% 35% / 0.8)',
-  'BOLETO - BB': 'hsl(25 95% 60% / 0.8)',
-  'A COMBINAR': 'hsl(0 0% 65% / 0.8)',
+  'PIX - C6': 'hsl(25 95% 53% / 0.8)',             // Laranja primário iOS26
+  'PIX - BB': 'hsl(25 95% 60% / 0.8)',             // Laranja claro iOS26
+  'PIX - STONE': 'hsl(25 95% 45% / 0.8)',          // Laranja médio iOS26
+  'PIX': 'hsl(25 95% 70% / 0.8)',                  // Laranja claro iOS26 para PIX genérico
+  'CRÉDITO - STONE': 'hsl(45 100% 50% / 0.8)',     // Amarelo primário iOS26
+  'DÉBITO - STONE': 'hsl(142 69% 45% / 0.8)',      // Verde sucesso iOS26
+  'ESPÉCIE - BB': 'hsl(25 95% 35% / 0.8)',         // Laranja escuro iOS26
+  'BOLETO - BB': 'hsl(25 95% 60% / 0.8)',          // Laranja claro iOS26
+  'A COMBINAR': 'hsl(0 0% 65% / 0.8)',             // Cinza claro iOS26
+};
+
+// Mapeamento para categorias específicas de forma de pagamento (mesmo da API)
+const CATEGORIAS_PAGAMENTO: Record<string, string> = {
+  'PIX - C6': 'PIX - C6',
+  'PIX C6': 'PIX - C6',
+  'PIX - BB': 'PIX - BB',
+  'PIX - STONE': 'PIX - STONE',
+  'PIX': 'PIX',
+  'ELO CRÉDITO STONE': 'CRÉDITO - STONE',
+  'MASTERCARD CRÉDITO STONE': 'CRÉDITO - STONE',
+  'MASTER CRÉDITO': 'CRÉDITO - STONE',
+  'VISA CRÉDITO STONE': 'CRÉDITO - STONE',
+  'Cartão de Crédito Stone': 'CRÉDITO - STONE',
+  'CRÉDITO - Stone': 'CRÉDITO - STONE',
+  'CRÉDITO - STONE': 'CRÉDITO - STONE',
+  'CRÉDITO - Itaú': 'CRÉDITO - STONE',
+  'CRÉDITO - ITAÚ': 'CRÉDITO - STONE',
+  'CRÉDITO - Slipay': 'CRÉDITO - STONE',
+  'CRÉDITO - SLIPAY': 'CRÉDITO - STONE',
+  'Cartão de Crédito': 'CRÉDITO - STONE',
+  'Crédito': 'CRÉDITO - STONE',
+  'DÉBITO - Slipay': 'DÉBITO - STONE',
+  'DÉBITO - SLIPAY': 'DÉBITO - STONE',
+  'DEBITO - Slipay': 'DÉBITO - STONE',
+  'DEBITO - SLIPAY': 'DÉBITO - STONE',
+  'DÉBITO - Stone': 'DÉBITO - STONE',
+  'DÉBITO - STONE': 'DÉBITO - STONE',
+  'DÉBITO - Itaú': 'DÉBITO - STONE',
+  'DÉBITO - ITAÚ': 'DÉBITO - STONE',
+  'DÉBITO - C6': 'DÉBITO - STONE',
+  'Cartão de Débito': 'DÉBITO - STONE',
+  'Débito': 'DÉBITO - STONE',
+  'Dinheiro à Vista': 'ESPÉCIE - BB',
+  'Dinheiro': 'ESPÉCIE - BB',
+  'Especie': 'ESPÉCIE - BB',
+  'ESPÉCIE - BB': 'ESPÉCIE - BB',
+  'Moeda': 'ESPÉCIE - BB',
+  'BOLETO': 'BOLETO - BB',
+  'Boleto Bancário': 'BOLETO - BB',
+  'Boleto': 'BOLETO - BB',
+  'BOLETO - BB': 'BOLETO - BB',
+  'A COMBINAR': 'A COMBINAR',
+  'A Combinar': 'A COMBINAR',
+  'A combinar': 'A COMBINAR'
+};
+
+// Função para normalizar a forma de pagamento (copiada do VendasPorFormaPagamentoChart.tsx)
+const normalizarFormaPagamento = (forma: string): string => {
+  if (!forma) {
+    console.log('Forma de pagamento vazia, retornando A COMBINAR');
+    return 'A COMBINAR';
+  }
+  
+  console.log(`Normalizando forma de pagamento: "${forma}"`);
+  
+  if (CATEGORIAS_PAGAMENTO[forma]) {
+    console.log(`Encontrado no mapeamento direto: "${forma}" -> "${CATEGORIAS_PAGAMENTO[forma]}"`);
+    return CATEGORIAS_PAGAMENTO[forma];
+  }
+  
+  const formaNormalizada = forma.trim();
+  console.log(`Forma normalizada: "${formaNormalizada}"`);
+  
+  if (formaNormalizada.includes('PIX')) {
+    if (formaNormalizada.includes('C6')) {
+      console.log('Detectado PIX - C6');
+      return 'PIX - C6';
+    } else if (formaNormalizada.includes('BB')) {
+      console.log('Detectado PIX - BB');
+      return 'PIX - BB';
+    } else if (formaNormalizada.includes('STONE')) {
+      console.log('Detectado PIX - STONE');
+      return 'PIX - STONE';
+    } else {
+      console.log('Detectado PIX genérico');
+      return 'PIX';
+    }
+  }
+  if (formaNormalizada.includes('BOLETO') || formaNormalizada.includes('Boleto')) return 'BOLETO - BB';
+  if (formaNormalizada.toLowerCase().includes('dinheiro') || formaNormalizada.toLowerCase().includes('à vista') || 
+      formaNormalizada.toLowerCase().includes('especie') || formaNormalizada.toLowerCase().includes('moeda')) return 'ESPÉCIE - BB';
+  
+  if (formaNormalizada.includes('CRÉDIT') || formaNormalizada.includes('Crédit') || 
+      formaNormalizada.includes('CREDIT') || formaNormalizada.includes('Credit')) {
+    console.log('Detectado CRÉDITO');
+    return 'CRÉDITO - STONE';
+  }
+  
+  if (formaNormalizada.includes('DÉBIT') || formaNormalizada.includes('Débit') ||
+      formaNormalizada.includes('DEBIT') || formaNormalizada.includes('Debit')) {
+    console.log('Detectado DÉBITO');
+    return 'DÉBITO - STONE';
+  }
+  
+  console.log(`Forma não reconhecida: "${formaNormalizada}", retornando A COMBINAR`);
+  return 'A COMBINAR';
 };
 
 // Cores genéricas iOS26
@@ -181,8 +333,10 @@ export function VendedorDetalhesModal({
   // Função para ordenar vendas por valor
   const ordenarVendasPorValor = (vendas: any[]) => {
     return [...vendas].sort((a, b) => {
-      const valorA = parseFloat(a.valor_total) || 0;
-      const valorB = parseFloat(b.valor_total) || 0;
+      const { valorTotal: valorAStr } = extrairDadosVenda(a);
+      const { valorTotal: valorBStr } = extrairDadosVenda(b);
+      const valorA = parseFloat(valorAStr) || 0;
+      const valorB = parseFloat(valorBStr) || 0;
       
       if (ordenacaoValor === 'maior-menor') {
         return valorB - valorA; // Maior para menor
@@ -208,6 +362,13 @@ export function VendedorDetalhesModal({
   
   useEffect(() => {
     if (aberto && vendedor) {
+      // Se temos vendas externas, não fazer busca própria
+      if (vendasExternas && vendasExternas.length > 0) {
+        console.log('🔄 [VendedorDetalhesModal] Modal aberto - usando vendas externas');
+        return;
+      }
+      
+      // Fallback: buscar vendas próprias se não temos vendas externas
       buscarVendasVendedor(vendedor.id);
     } else {
       // Limpar dados ao fechar o modal
@@ -215,51 +376,38 @@ export function VendedorDetalhesModal({
       setPaginaAtual(1);
       setErro(null);
     }
-  }, [aberto, vendedor, dataInicio, dataFim]); // Adicionar dataInicio e dataFim como dependências
+  }, [aberto, vendedor, dataInicio, dataFim, vendasExternas]); // Adicionar vendasExternas como dependência
   
   // AUTO-ATUALIZAÇÃO DAS TABS - Monitora mudanças nas vendas externas
   useEffect(() => {
-    if (!aberto || !vendedor || !vendasExternas.length) {
+    if (!aberto || !vendedor) {
       return;
     }
 
-    // Verificar se houve mudança na sincronização
-    if (lastSync && lastSync !== lastSyncRef.current) {
-      console.log('🔄 [VendedorDetalhesModal] Nova sincronização detectada, atualizando tabs...', {
+    // Se temos vendas externas, usar elas como fonte principal
+    if (vendasExternas && vendasExternas.length > 0) {
+      console.log('🔄 [VendedorDetalhesModal] Usando vendas externas como fonte principal para tabs...', {
         vendedorId: vendedor.id,
         vendedorNome: vendedor.nome,
-        lastSync,
-        previousSync: lastSyncRef.current
+        totalVendasExternas: vendasExternas.length,
+        lastSync
       });
       
-      lastSyncRef.current = lastSync;
-      
-      // Filtrar vendas do vendedor específico das vendas externas
-      const vendasVendedorExternas = vendasExternas.filter(venda => {
-        const vendaVendedorId = String(venda.vendedor_id || '').replace('gc-', '');
-        const vendaNomeVendedor = String(venda.nome_vendedor || '').toLowerCase().trim();
-        const vendaVendedorNome = String(venda.vendedor_nome || '').toLowerCase().trim();
-        const vendedorNome = vendedor.nome.toLowerCase().trim();
-        const vendedorIdNormalizado = vendedor.id.replace('gc-', '');
-        
-        return vendaVendedorId === vendedorIdNormalizado || 
-               vendaNomeVendedor === vendedorNome ||
-               vendaVendedorNome === vendedorNome ||
-               vendaNomeVendedor.includes(vendedorNome) ||
-               vendaVendedorNome.includes(vendedorNome);
-      });
-
-      // Atualizar vendas do vendedor se houve mudança
-      if (vendasVendedorExternas.length !== vendasVendedor.length) {
-        console.log('📊 [VendedorDetalhesModal] Atualizando dados das tabs:', {
-          vendasAnteriores: vendasVendedor.length,
-          vendasNovas: vendasVendedorExternas.length
-        });
-        
-        setVendasVendedor(vendasVendedorExternas);
-      }
+      // As vendas externas filtradas serão processadas automaticamente pelos useMemo
+      // Não precisamos mais fazer busca própria se temos vendas externas
+      return;
     }
-  }, [aberto, vendedor, vendasExternas, lastSync, vendasVendedor.length]);
+
+    // Fallback: se não temos vendas externas, fazer busca própria
+    if (!vendasVendedor.length && vendedor.id) {
+      console.log('🔄 [VendedorDetalhesModal] Fallback: buscando vendas próprias...', {
+        vendedorId: vendedor.id,
+        vendedorNome: vendedor.nome
+      });
+      
+      buscarVendasVendedor(vendedor.id);
+    }
+  }, [aberto, vendedor, vendasExternas, lastSync]);
   
   // AUTO-REFRESH PERIÓDICO - Polling a cada 1 minuto quando modal estiver aberto
   useEffect(() => {
@@ -272,15 +420,22 @@ export function VendedorDetalhesModal({
       return;
     }
 
+    // Se temos vendas externas, não precisamos de auto-refresh periódico
+    // pois os dados vêm do dashboard principal que já tem seu próprio refresh
+    if (vendasExternas && vendasExternas.length > 0) {
+      console.log('🔄 [VendedorDetalhesModal] Auto-refresh desabilitado - usando vendas externas');
+      return;
+    }
+
     console.log('🔄 [VendedorDetalhesModal] Configurando auto-refresh para tabs...', {
       vendedorId: vendedor.id,
       refreshInterval: 60000 // 1 minuto
     });
 
-    // Configurar polling a cada 1 minuto
+    // Configurar polling a cada 1 minuto apenas como fallback
     updateIntervalRef.current = setInterval(async () => {
-      if (aberto && vendedor) {
-        console.log('🔄 [VendedorDetalhesModal] Auto-refresh das tabs executado');
+      if (aberto && vendedor && (!vendasExternas || vendasExternas.length === 0)) {
+        console.log('🔄 [VendedorDetalhesModal] Auto-refresh das tabs executado (fallback)');
         
         try {
           await buscarVendasVendedor(vendedor.id);
@@ -297,28 +452,7 @@ export function VendedorDetalhesModal({
         updateIntervalRef.current = null;
       }
     };
-  }, [aberto, vendedor, dataInicio, dataFim]);
-  
-  // Log para debug da ordenação
-  useEffect(() => {
-    if (vendasVendedor.length > 0) {
-      const vendasOrdenadas = ordenarVendasPorValor(vendasVendedor);
-      console.log('🔍 [VendedorDetalhesModal] Debug ordenação:', {
-        ordenacaoAtual: ordenacaoValor,
-        totalVendas: vendasVendedor.length,
-        primeirosValores: vendasOrdenadas.slice(0, 3).map(v => ({
-          cliente: v.nome_cliente,
-          valor: parseFloat(v.valor_total) || 0,
-          valorFormatado: new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(parseFloat(v.valor_total) || 0)
-        })),
-        ultimosValores: vendasOrdenadas.slice(-3).map(v => ({
-          cliente: v.nome_cliente,
-          valor: parseFloat(v.valor_total) || 0,
-          valorFormatado: new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(parseFloat(v.valor_total) || 0)
-        }))
-      });
-    }
-  }, [ordenacaoValor, vendasVendedor]);
+  }, [aberto, vendedor, dataInicio, dataFim, vendasExternas]);
   
   const buscarVendasVendedor = async (vendedorId: string) => {
     if (!vendedorId) return;
@@ -355,7 +489,11 @@ export function VendedorDetalhesModal({
           cliente: v.cliente,
           valor_total: v.valor_total,
           vendedor_id: v.vendedor_id,
-          nome_vendedor: (v as any).nome_vendedor
+          nome_vendedor: (v as any).nome_vendedor,
+          canal_venda: (v as any).canal_venda,
+          origem: (v as any).origem,
+          forma_pagamento: (v as any).forma_pagamento,
+          como_nos_conheceu: (v as any).como_nos_conheceu
         }))
       });
       
@@ -368,8 +506,79 @@ export function VendedorDetalhesModal({
     }
   };
   
-  // Aplicar ordenação e calcular índices para paginação
-  const vendasOrdenadas = ordenarVendasPorValor(vendasVendedor);
+  // Filtrar vendas externas pelo vendedor específico
+  const vendasVendedorExternas = useMemo(() => {
+    if (!vendedor || !vendasExternas || vendasExternas.length === 0) {
+      return [];
+    }
+
+    const vendasFiltradas = vendasExternas.filter(venda => {
+      const vendaVendedorId = String(venda.vendedor_id || '').replace('gc-', '');
+      const vendaNomeVendedor = String(venda.nome_vendedor || '').toLowerCase().trim();
+      const vendaVendedorNome = String(venda.vendedor_nome || '').toLowerCase().trim();
+      const vendedorNome = vendedor.nome.toLowerCase().trim();
+      const vendedorIdNormalizado = vendedor.id.replace('gc-', '');
+      
+      return vendaVendedorId === vendedorIdNormalizado || 
+             vendaNomeVendedor === vendedorNome ||
+             vendaVendedorNome === vendedorNome ||
+             vendaNomeVendedor.includes(vendedorNome) ||
+             vendaVendedorNome.includes(vendedorNome);
+    });
+
+    console.log('🔍 [VendedorDetalhesModal] Vendas filtradas pelo vendedor:', {
+      vendedorId: vendedor.id,
+      vendedorNome: vendedor.nome,
+      totalVendasExternas: vendasExternas.length,
+      vendasFiltradas: vendasFiltradas.length,
+      primeirasVendasFiltradas: vendasFiltradas.slice(0, 3).map(v => ({
+        id: v.id,
+        vendedor_id: v.vendedor_id,
+        nome_vendedor: v.nome_vendedor,
+        forma_pagamento: v.forma_pagamento,
+        canal_venda: v.canal_venda,
+        origem: v.origem,
+        como_nos_conheceu: v.como_nos_conheceu
+      }))
+    });
+
+    return vendasFiltradas;
+  }, [vendedor, vendasExternas]);
+
+  // Usar vendas externas filtradas como fonte principal, com fallback para vendas da busca própria
+  const vendasParaProcessar = useMemo(() => {
+    return vendasVendedorExternas.length > 0 ? vendasVendedorExternas : vendasVendedor;
+  }, [vendasVendedorExternas, vendasVendedor]);
+  
+  // Log para debug da ordenação
+  useEffect(() => {
+    if (vendasParaProcessar.length > 0) {
+      const vendasOrdenadas = ordenarVendasPorValor(vendasParaProcessar);
+      console.log('🔍 [VendedorDetalhesModal] Debug ordenação:', {
+        ordenacaoAtual: ordenacaoValor,
+        totalVendas: vendasParaProcessar.length,
+        primeirosValores: vendasOrdenadas.slice(0, 3).map(v => {
+          const { nomeCliente, valorTotal } = extrairDadosVenda(v);
+          return {
+            cliente: nomeCliente,
+            valor: parseFloat(valorTotal) || 0,
+            valorFormatado: new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(parseFloat(valorTotal) || 0)
+          };
+        }),
+        ultimosValores: vendasOrdenadas.slice(-3).map(v => {
+          const { nomeCliente, valorTotal } = extrairDadosVenda(v);
+          return {
+            cliente: nomeCliente,
+            valor: parseFloat(valorTotal) || 0,
+            valorFormatado: new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(parseFloat(valorTotal) || 0)
+          };
+        })
+      });
+    }
+  }, [ordenacaoValor, vendasParaProcessar]);
+  
+  // Aplicar ordenação e calcular índices para paginação - USAR vendasParaProcessar
+  const vendasOrdenadas = ordenarVendasPorValor(vendasParaProcessar);
   const indiceInicial = (paginaAtual - 1) * itensPorPagina;
   const indiceFinal = indiceInicial + itensPorPagina;
   const totalPaginas = Math.ceil((vendasOrdenadas?.length || 0) / itensPorPagina);
@@ -395,42 +604,100 @@ export function VendedorDetalhesModal({
       onClose();
     }
   };
-  
+
   // Processar dados das formas de pagamento
   const formasPagamento = useMemo(() => {
-    if (!vendasVendedor || vendasVendedor.length === 0) return [];
+    if (!vendasParaProcessar || vendasParaProcessar.length === 0) {
+      console.log('📊 [VendedorDetalhesModal] Nenhuma venda para processar formas de pagamento');
+      return [];
+    }
 
-    // Como a API atual não retorna dados de formas de pagamento, vamos gerar dados baseados nos valores das vendas
-    // para demonstração funcional. Em produção, isso seria substituído por dados reais da API.
-    
-    const formasPagamentoDisponiveis = [
-      { nome: 'PIX - C6', peso: 0.35 },      // 35% das vendas
-      { nome: 'CRÉDITO - STONE', peso: 0.25 }, // 25% das vendas
-      { nome: 'PIX - BB', peso: 0.20 },      // 20% das vendas
-      { nome: 'DÉBITO - STONE', peso: 0.12 }, // 12% das vendas
-      { nome: 'ESPÉCIE - BB', peso: 0.05 },   // 5% das vendas
-      { nome: 'A COMBINAR', peso: 0.03 }      // 3% das vendas
-    ];
+    console.log('📊 [VendedorDetalhesModal] Processando formas de pagamento com dados reais:', {
+      totalVendas: vendasParaProcessar.length,
+      fonteDados: vendasVendedorExternas.length > 0 ? 'vendasExternas' : 'buscaPropria',
+      vendasVendedorLength: vendasVendedor.length,
+      vendasVendedorExternasLength: vendasVendedorExternas.length,
+      primeirasVendas: vendasParaProcessar.slice(0, 3).map(v => {
+        const { valorTotal } = extrairDadosVenda(v);
+        return {
+          id: v.id,
+          forma_pagamento: v.forma_pagamento,
+          meio_pagamento: v.meio_pagamento,
+          valor_total: valorTotal
+        };
+      })
+    });
 
     const formasPagamentoMap = new Map<string, { totalVendas: number; totalValor: number }>();
     let valorTotal = 0;
     
-    // Calcular valor total primeiro
-    vendasVendedor.forEach((venda: any) => {
-      valorTotal += parseFloat(venda.valor_total) || 0;
-    });
-
-    // Distribuir vendas entre as formas de pagamento baseado nos pesos
-    formasPagamentoDisponiveis.forEach(forma => {
-      const totalVendasForma = Math.round(vendasVendedor.length * forma.peso);
-      const valorTotalForma = valorTotal * forma.peso;
-      
-      if (totalVendasForma > 0) {
-        formasPagamentoMap.set(forma.nome, {
-          totalVendas: totalVendasForma,
-          totalValor: valorTotalForma
+    // Processar vendas reais - usando exatamente os mesmos campos que os outros componentes
+    vendasParaProcessar.forEach((venda: any, index: number) => {
+      // Log detalhado da estrutura da venda para debug de formas de pagamento
+      if (index < 3) {
+        console.log('🔍 [VendedorDetalhesModal] Estrutura da venda para formas de pagamento:', {
+          id: venda.id,
+          todasAsPropriedades: Object.keys(venda),
+          camposPagamento: {
+            forma_pagamento: venda.forma_pagamento,
+            meio_pagamento: venda.meio_pagamento,
+            metodo_pagamento: venda.metodo_pagamento,
+            pagamento: venda.pagamento,
+            pagamentos: venda.pagamentos,
+            metadata: venda.metadata
+          }
         });
       }
+
+      // Usar os campos principais como nos outros componentes funcionais
+      let formaPagamento = venda.forma_pagamento || 
+                          venda.meio_pagamento ||
+                          venda.metodo_pagamento ||
+                          venda.pagamento ||
+                          venda.metadata?.forma_pagamento ||
+                          venda.metadata?.meio_pagamento ||
+                          venda.metadata?.pagamento ||
+                          'A COMBINAR';
+      
+      // Log das primeiras 5 vendas para debug de normalização
+      if (index < 5) {
+        console.log(`🔍 [VendedorDetalhesModal] Venda ${index + 1} - Forma de pagamento ANTES da normalização:`, {
+          id: venda.id,
+          forma_pagamento_original: venda.forma_pagamento,
+          meio_pagamento: venda.meio_pagamento,
+          metodo_pagamento: venda.metodo_pagamento,
+          forma_pagamento_processada: formaPagamento
+        });
+      }
+      
+      // Aplicar normalização usando a função copiada do VendasPorFormaPagamentoChart.tsx
+      const formaPagamentoNormalizada = normalizarFormaPagamento(formaPagamento);
+      
+      // Log das primeiras 5 vendas para debug de normalização
+      if (index < 5) {
+        console.log(`🔍 [VendedorDetalhesModal] Venda ${index + 1} - Forma de pagamento DEPOIS da normalização:`, {
+          id: venda.id,
+          forma_original: formaPagamento,
+          forma_normalizada: formaPagamentoNormalizada
+        });
+      }
+      
+      formaPagamento = formaPagamentoNormalizada;
+
+      const { valorTotal: valorVendaStr } = extrairDadosVenda(venda);
+      const valorVenda = parseFloat(valorVendaStr) || 0;
+      valorTotal += valorVenda;
+
+      if (!formasPagamentoMap.has(formaPagamento)) {
+        formasPagamentoMap.set(formaPagamento, {
+          totalVendas: 0,
+          totalValor: 0
+        });
+      }
+
+      const dados = formasPagamentoMap.get(formaPagamento)!;
+      dados.totalVendas += 1;
+      dados.totalValor += valorVenda;
     });
     
     const formasPagamentoProcessadas = Array.from(formasPagamentoMap.entries()).map(([formaPagamento, dados]) => ({
@@ -440,89 +707,185 @@ export function VendedorDetalhesModal({
       percentual: valorTotal > 0 ? (dados.totalValor / valorTotal) * 100 : 0
     }));
     
+    console.log('✅ [VendedorDetalhesModal] Formas de pagamento processadas:', {
+      totalFormas: formasPagamentoProcessadas.length,
+      totalVendas: vendasParaProcessar.length,
+      fonteDados: vendasVendedorExternas.length > 0 ? 'vendasExternas' : 'buscaPropria',
+      valorTotal: valorTotal,
+      valorTotalFormatado: `R$ ${valorTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+      formas: formasPagamentoProcessadas.map(f => ({ 
+        forma: f.formaPagamento, 
+        vendas: f.totalVendas, 
+        valor: f.totalValor,
+        percentual: f.percentual.toFixed(2) + '%'
+      }))
+    });
+    
     return formasPagamentoProcessadas.sort((a, b) => b.totalValor - a.totalValor);
-  }, [vendasVendedor]);
+  }, [vendasParaProcessar, vendasVendedorExternas.length]);
+
+  // Função para extrair "Como nos conheceu" dos atributos (mesmo que ComoNosConheceuUnidade.tsx)
+  const extrairComoNosConheceu = (venda: any): string | null => {
+    if (!venda.metadata?.atributos || !Array.isArray(venda.metadata.atributos)) {
+      return null;
+    }
+
+    const atributoComoConheceu = venda.metadata.atributos.find((attr: any) => 
+      attr.atributo && 
+      attr.atributo.descricao && 
+      attr.atributo.descricao.toLowerCase().includes('como nos conheceu')
+    );
+
+    return atributoComoConheceu?.atributo?.conteudo || null;
+  };
 
   // Processar dados das origens
   const origensData = useMemo(() => {
-    if (!vendasVendedor || vendasVendedor.length === 0) return [];
+    if (!vendasParaProcessar || vendasParaProcessar.length === 0) return [];
 
-    // Como a API atual não retorna dados de origem, vamos gerar dados baseados nos valores das vendas
-    // para demonstração funcional. Em produção, isso seria substituído por dados reais da API.
-    
-    const origensDisponiveis = [
-      { nome: 'Indicação de Cliente', peso: 0.30 },     // 30% das vendas
-      { nome: 'Google Ads', peso: 0.25 },               // 25% das vendas
-      { nome: 'Instagram', peso: 0.20 },                // 20% das vendas
-      { nome: 'Facebook', peso: 0.12 },                 // 12% das vendas
-      { nome: 'WhatsApp', peso: 0.08 },                 // 8% das vendas
-      { nome: 'Site Próprio', peso: 0.05 }              // 5% das vendas
-    ];
+    console.log('📊 [VendedorDetalhesModal] Processando origens com dados reais:', {
+      totalVendas: vendasParaProcessar.length,
+      fonteDados: vendasVendedorExternas.length > 0 ? 'vendasExternas' : 'buscaPropria',
+      primeirasVendas: vendasParaProcessar.slice(0, 3).map(v => {
+        const { valorTotal } = extrairDadosVenda(v);
+        return {
+          id: v.id,
+          origem: v.origem,
+          como_nos_conheceu: v.como_nos_conheceu,
+          valor_total: valorTotal
+        };
+      })
+    });
 
     const origensMap = new Map<string, { quantidade: number; valor: number }>();
 
-    // Distribuir vendas entre as origens baseado nos pesos
-    origensDisponiveis.forEach(origem => {
-      const totalVendasOrigem = Math.round(vendasVendedor.length * origem.peso);
-      const valorTotalOrigem = vendasVendedor.reduce((sum, venda) => sum + (parseFloat(venda.valor_total) || 0), 0) * origem.peso;
+    // Processar vendas reais - usando exatamente os mesmos campos que ComoNosConheceuUnidade.tsx
+    vendasParaProcessar.forEach((venda: any) => {
+      // Usar exatamente a mesma lógica do componente funcionando (linhas 116-126)
+      let origem = venda.como_nos_conheceu || 
+                   extrairComoNosConheceu(venda) ||
+                   venda.origem || 
+                   venda.canal_venda || 
+                   venda.metadata?.como_nos_conheceu ||
+                   venda.metadata?.origem ||
+                   venda.metadata?.origem_lead ||
+                   venda.metadata?.como_conheceu ||
+                   venda.metadata?.fonte_origem ||
+                   venda.metadata?.origem_cliente ||
+                   'Não informado';
       
-      if (totalVendasOrigem > 0) {
-        origensMap.set(origem.nome, {
-          quantidade: totalVendasOrigem,
-          valor: valorTotalOrigem
-        });
+      // Normalizar nome da origem (mesmo tratamento dos componentes funcionais)
+      if (origem && typeof origem === 'string') {
+        origem = origem.trim();
+        if (origem === '' || origem.toLowerCase() === 'null') {
+          origem = 'Não informado';
+        }
+      } else {
+        origem = 'Não informado';
+      }
+
+      const { valorTotal: valorVendaStr } = extrairDadosVenda(venda);
+      const valor = parseFloat(valorVendaStr || '0');
+
+      if (origensMap.has(origem)) {
+        const existente = origensMap.get(origem)!;
+        existente.quantidade += 1;
+        existente.valor += valor;
+      } else {
+        origensMap.set(origem, { quantidade: 1, valor });
       }
     });
 
-    const totalVendas = vendasVendedor.length;
+    const totalVendas = vendasParaProcessar.length;
     const origensProcessadas: OrigemData[] = Array.from(origensMap.entries()).map(([origem, dados]) => ({
       origem,
       quantidade: dados.quantidade,
       percentual: totalVendas > 0 ? dados.quantidade / totalVendas : 0
     }));
 
+    console.log('✅ [VendedorDetalhesModal] Origens processadas:', {
+      totalOrigens: origensProcessadas.length,
+      totalVendas,
+      fonteDados: vendasVendedorExternas.length > 0 ? 'vendasExternas' : 'buscaPropria',
+      origens: origensProcessadas.map(o => ({ origem: o.origem, quantidade: o.quantidade, percentual: o.percentual }))
+    });
+
     return origensProcessadas.sort((a, b) => b.quantidade - a.quantidade);
-  }, [vendasVendedor]);
+  }, [vendasParaProcessar, vendasVendedorExternas.length]);
 
   // Processar dados dos canais
   const canaisData = useMemo(() => {
-    if (!vendasVendedor || vendasVendedor.length === 0) return [];
+    if (!vendasParaProcessar || vendasParaProcessar.length === 0) return [];
 
-    // Como a API atual não retorna dados de canais, vamos gerar dados baseados nos valores das vendas
-    // para demonstração funcional. Em produção, isso seria substituído por dados reais da API.
-    
-    const canaisDisponiveis = [
-      { nome: 'Loja Física', peso: 0.40 },              // 40% das vendas
-      { nome: 'WhatsApp', peso: 0.25 },                 // 25% das vendas
-      { nome: 'E-commerce', peso: 0.20 },               // 20% das vendas
-      { nome: 'Telefone', peso: 0.10 },                 // 10% das vendas
-      { nome: 'Instagram', peso: 0.05 }                 // 5% das vendas
-    ];
+    console.log('📊 [VendedorDetalhesModal] Processando canais com dados reais:', {
+      totalVendas: vendasParaProcessar.length,
+      fonteDados: vendasVendedorExternas.length > 0 ? 'vendasExternas' : 'buscaPropria',
+      primeirasVendas: vendasParaProcessar.slice(0, 3).map(v => {
+        const { valorTotal } = extrairDadosVenda(v);
+        return {
+          id: v.id,
+          canal_venda: v.canal_venda,
+          origem: v.origem,
+          valor_total: valorTotal
+        };
+      })
+    });
 
     const canaisMap = new Map<string, { quantidade: number; valor: number }>();
     
-    // Distribuir vendas entre os canais baseado nos pesos
-    canaisDisponiveis.forEach(canal => {
-      const totalVendasCanal = Math.round(vendasVendedor.length * canal.peso);
-      const valorTotalCanal = vendasVendedor.reduce((sum, venda) => sum + (parseFloat(venda.valor_total) || 0), 0) * canal.peso;
+    // Processar vendas reais - usando exatamente os mesmos campos que CanalDeVendasUnidade.tsx
+    vendasParaProcessar.forEach((venda: any) => {
+      // Usar exatamente a mesma lógica do componente funcionando (linhas 101-110)
+      let canal = venda.canal_venda || 
+                  venda.metadata?.nome_canal_venda ||
+                  venda.metadata?.canal_venda ||
+                  venda.origem || 
+                  venda.canal || 
+                  venda.metadata?.canal ||
+                  venda.metadata?.origem_venda ||
+                  venda.metadata?.fonte ||
+                  venda.metadata?.meio ||
+                  'Não informado';
       
-      if (totalVendasCanal > 0) {
-        canaisMap.set(canal.nome, {
-          quantidade: totalVendasCanal,
-          valor: valorTotalCanal
-        });
+      // Normalizar nome do canal (mesmo tratamento dos componentes funcionais)
+      if (canal && typeof canal === 'string') {
+        canal = canal.trim();
+        if (canal === '' || canal.toLowerCase() === 'null') {
+          canal = 'Não informado';
+        }
+      } else {
+        canal = 'Não informado';
+      }
+
+      const { valorTotal: valorVendaStr } = extrairDadosVenda(venda);
+      const valor = parseFloat(valorVendaStr || '0');
+
+      if (canaisMap.has(canal)) {
+        const existente = canaisMap.get(canal)!;
+        existente.quantidade += 1;
+        existente.valor += valor;
+      } else {
+        canaisMap.set(canal, { quantidade: 1, valor });
       }
     });
 
-    const totalVendas = vendasVendedor.length;
+    const totalVendas = vendasParaProcessar.length;
     const canaisProcessados: CanalVendaData[] = Array.from(canaisMap.entries()).map(([canal, dados]) => ({
       canal,
       quantidade: dados.quantidade,
       percentual: totalVendas > 0 ? dados.quantidade / totalVendas : 0
     }));
 
+    console.log('✅ [VendedorDetalhesModal] Canais processados:', {
+      totalVendas,
+      fonteDados: vendasVendedorExternas.length > 0 ? 'vendasExternas' : 'buscaPropria',
+      totalCanais: canaisProcessados.length,
+      canais: canaisProcessados.map(c => ({ canal: c.canal, quantidade: c.quantidade, percentual: c.percentual })),
+      somaTotal: canaisProcessados.reduce((sum, c) => sum + c.quantidade, 0)
+    });
+
     return canaisProcessados.sort((a, b) => b.quantidade - a.quantidade);
-  }, [vendasVendedor]);
+  }, [vendasParaProcessar, vendasVendedorExternas.length]);
 
   if (!vendedor) return null;
   
@@ -664,7 +1027,7 @@ export function VendedorDetalhesModal({
                   <div className="flex items-center justify-center h-[100px] text-red-500">
                     <p className="text-sm">{erro}</p>
                   </div>
-                ) : vendasVendedor.length === 0 ? (
+                ) : vendasParaProcessar.length === 0 ? (
                   <div className="flex items-center justify-center h-[100px]">
                     <p className="text-sm text-muted-foreground">Nenhuma venda encontrada no período</p>
                   </div>
@@ -680,17 +1043,20 @@ export function VendedorDetalhesModal({
                           </tr>
                         </thead>
                         <tbody className="divide-y">
-                          {vendasPaginadas.map((venda, index) => (
-                            <tr key={index} className="hover:bg-muted/20 cursor-pointer" onClick={() => onVendaClick(venda)}>
-                              <td className="px-2 py-2">
-                                {formatarDataBrasileira(venda.data)}
-                              </td>
-                              <td className="px-2 py-2">{venda.nome_cliente || "Cliente não identificado"}</td>
-                              <td className="px-2 py-2 text-right">
-                                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(parseFloat(venda.valor_total) || 0)}
-                              </td>
-                            </tr>
-                          ))}
+                          {vendasPaginadas.map((venda, index) => {
+                            const { dataVenda, nomeCliente, valorTotal } = extrairDadosVenda(venda);
+                            return (
+                              <tr key={index} className="hover:bg-muted/20 cursor-pointer" onClick={() => onVendaClick(venda)}>
+                                <td className="px-2 py-2">
+                                  {formatarDataBrasileira(dataVenda || '')}
+                                </td>
+                                <td className="px-2 py-2">{nomeCliente}</td>
+                                <td className="px-2 py-2 text-right">
+                                  {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(parseFloat(valorTotal) || 0)}
+                                </td>
+                              </tr>
+                            );
+                          })}
                         </tbody>
                       </table>
                     </div>
@@ -756,7 +1122,15 @@ export function VendedorDetalhesModal({
               
               {formasPagamento.length === 0 ? (
                 <div className="flex items-center justify-center h-[200px]">
-                  <p className="text-muted-foreground">Nenhuma forma de pagamento encontrada</p>
+                  <div className="text-center">
+                    <p className="text-muted-foreground">Nenhuma forma de pagamento encontrada</p>
+                    <p className="text-xs text-muted-foreground mt-2">
+                      Debug: {vendasParaProcessar.length} vendas processadas
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Fonte: {vendasVendedorExternas.length > 0 ? 'vendasExternas' : 'buscaPropria'}
+                    </p>
+                  </div>
                 </div>
               ) : (
                 <AnimatePresence mode="wait">
@@ -933,7 +1307,15 @@ export function VendedorDetalhesModal({
               
               {origensData.length === 0 ? (
                 <div className="flex items-center justify-center h-[200px]">
-                  <p className="text-muted-foreground">Nenhuma origem encontrada</p>
+                  <div className="text-center">
+                    <p className="text-muted-foreground">Nenhuma origem encontrada</p>
+                    <p className="text-xs text-muted-foreground mt-2">
+                      Debug: {vendasParaProcessar.length} vendas processadas
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Fonte: {vendasVendedorExternas.length > 0 ? 'vendasExternas' : 'buscaPropria'}
+                    </p>
+                  </div>
                 </div>
               ) : (
                 <AnimatePresence mode="wait">
@@ -1103,7 +1485,15 @@ export function VendedorDetalhesModal({
               
               {canaisData.length === 0 ? (
                 <div className="flex items-center justify-center h-[200px]">
-                  <p className="text-muted-foreground">Nenhum canal encontrado</p>
+                  <div className="text-center">
+                    <p className="text-muted-foreground">Nenhum canal encontrado</p>
+                    <p className="text-xs text-muted-foreground mt-2">
+                      Debug: {vendasParaProcessar.length} vendas processadas
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Fonte: {vendasVendedorExternas.length > 0 ? 'vendasExternas' : 'buscaPropria'}
+                    </p>
+                  </div>
                 </div>
               ) : (
                 <AnimatePresence mode="wait">
