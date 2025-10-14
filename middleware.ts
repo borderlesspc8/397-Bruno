@@ -120,6 +120,29 @@ export async function middleware(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser();
 
+  // Se o usuário estiver logado, verificar o role e redirecionar se necessário
+  if (user) {
+    // Buscar dados completos do usuário para obter o role
+    const { data: userData } = await supabase
+      .from('users')
+      .select('role')
+      .eq('id', user.id)
+      .single();
+
+    const userRole = userData?.role || 'user';
+
+    // Se for vendedor, redirecionar para o dashboard de vendedores
+    if (userRole === 'vendor') {
+      // Se estiver tentando acessar qualquer rota que não seja o dashboard de vendedores
+      if (pathname !== '/dashboard/vendedores' && 
+          !pathname.startsWith('/dashboard/vendedores/') &&
+          !pathname.startsWith('/auth') &&
+          !pathname.startsWith('/api')) {
+        return NextResponse.redirect(getSafeRedirectUrl(request.url, "/dashboard/vendedores"));
+      }
+    }
+  }
+
   // O AuthProvider global já cuida do redirecionamento de usuários logados
   // Removido redirecionamento do middleware para evitar conflitos
 

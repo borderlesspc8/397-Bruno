@@ -11,7 +11,7 @@ import { ChevronLeft, ChevronRight, Wallet } from "lucide-react";
 import { SimpleUserButton } from "./SimpleUserButton";
 import { MenuSectionComponent } from "./MenuSection";
 import { MenuSection } from "./types";
-import { MENU_SECTIONS } from "./menu-data";
+import { getMenuSections } from "./menu-data";
 
 export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
@@ -67,7 +67,7 @@ export function Sidebar() {
     >
       <ScrollArea className="flex-1 py-3">
         <div className="px-2 space-y-4">
-          {MENU_SECTIONS.map((section: MenuSection, sIndex: number) => (
+          {getMenuSections().map((section: MenuSection, sIndex: number) => (
             <MenuSectionComponent
               key={section.title}
               section={section}

@@ -61,6 +61,7 @@ import { cn } from "@/app/_lib/utils";
 import { useAuth } from "@/app/_hooks/useAuth";
 import { useMetas } from "@/app/_hooks/useMetas";
 import { createClient } from "@/app/_lib/supabase";
+import { AdminRouteProtection } from "@/app/_components/AdminRouteProtection";
 
   // Esquema de validação para o formulário de meta
 const metaSchema = z.object({
@@ -588,7 +589,8 @@ export default function MetasPage() {
 
   // Renderizar interface
   return (
-    <div className="container mx-auto py-6 space-y-8">
+    <AdminRouteProtection>
+      <div className="container mx-auto py-6 space-y-8">
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold">Metas</h1>
@@ -1145,6 +1147,7 @@ export default function MetasPage() {
           </CardContent>
         </Card>
       )}
-    </div>
+      </div>
+    </AdminRouteProtection>
   );
 } 

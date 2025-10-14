@@ -21,6 +21,7 @@ import { useAuth } from "@/app/_hooks/useAuth";
 import { useGestaoClickSupabase } from "@/app/_hooks/useGestaoClickSupabase";
 import { useMetas } from "@/app/_hooks/useMetas";
 import { createClient } from "@/app/_lib/supabase";
+import { VendorRouteProtection } from "@/app/_components/VendorRouteProtection";
 
 // Criar instância única do Supabase
 const supabase = createClient();
@@ -409,8 +410,9 @@ export default function DashboardVendedores() {
   }
 
   return (
-    <PageContainer>
-      <div className="space-y-6 ios26-animate-fade-in">
+    <VendorRouteProtection allowedRoles={['vendor', 'user', 'admin']}>
+      <PageContainer>
+        <div className="space-y-6 ios26-animate-fade-in">
         {/* Header */}
         <div className="col-span-12">
           <DashboardHeader 
@@ -523,7 +525,8 @@ export default function DashboardVendedores() {
           />
         )}
 
-      </div>
-    </PageContainer>
+        </div>
+      </PageContainer>
+    </VendorRouteProtection>
   );
 }
