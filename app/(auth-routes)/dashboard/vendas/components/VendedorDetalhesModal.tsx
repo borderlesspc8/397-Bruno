@@ -30,6 +30,7 @@ import {
 } from "lucide-react";
 import { PieChart as RechartsPieChart, Pie, Cell, Tooltip, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 import { motion, AnimatePresence } from "framer-motion";
+import { useProcessarFormasPagamento, FormaPagamentoItem } from '@/app/_hooks/useProcessarFormasPagamento';
 // Imports removidos - não utilizados no componente
 
 // Função utilitária para formatar datas considerando o fuso horário brasileiro
@@ -146,13 +147,7 @@ interface VendedorDetalhesModalProps {
   lastSync?: string; // Timestamp da última sincronização
 }
 
-// Interfaces para os dados das tabs
-interface FormaPagamentoItem {
-  formaPagamento: string;
-  totalVendas: number;
-  totalValor: number;
-  percentual: number;
-}
+// Interface FormaPagamentoItem agora importada do hook
 
 interface OrigemData {
   origem: string;
@@ -177,103 +172,6 @@ const CORES_CATEGORIAS = {
   'ESPÉCIE - BB': 'hsl(25 95% 35% / 0.8)',         // Laranja escuro iOS26
   'BOLETO - BB': 'hsl(25 95% 60% / 0.8)',          // Laranja claro iOS26
   'A COMBINAR': 'hsl(0 0% 65% / 0.8)',             // Cinza claro iOS26
-};
-
-// Mapeamento para categorias específicas de forma de pagamento (mesmo da API)
-const CATEGORIAS_PAGAMENTO: Record<string, string> = {
-  'PIX - C6': 'PIX - C6',
-  'PIX C6': 'PIX - C6',
-  'PIX - BB': 'PIX - BB',
-  'PIX - STONE': 'PIX - STONE',
-  'PIX': 'PIX',
-  'ELO CRÉDITO STONE': 'CRÉDITO - STONE',
-  'MASTERCARD CRÉDITO STONE': 'CRÉDITO - STONE',
-  'MASTER CRÉDITO': 'CRÉDITO - STONE',
-  'VISA CRÉDITO STONE': 'CRÉDITO - STONE',
-  'Cartão de Crédito Stone': 'CRÉDITO - STONE',
-  'CRÉDITO - Stone': 'CRÉDITO - STONE',
-  'CRÉDITO - STONE': 'CRÉDITO - STONE',
-  'CRÉDITO - Itaú': 'CRÉDITO - STONE',
-  'CRÉDITO - ITAÚ': 'CRÉDITO - STONE',
-  'CRÉDITO - Slipay': 'CRÉDITO - STONE',
-  'CRÉDITO - SLIPAY': 'CRÉDITO - STONE',
-  'Cartão de Crédito': 'CRÉDITO - STONE',
-  'Crédito': 'CRÉDITO - STONE',
-  'DÉBITO - Slipay': 'DÉBITO - STONE',
-  'DÉBITO - SLIPAY': 'DÉBITO - STONE',
-  'DEBITO - Slipay': 'DÉBITO - STONE',
-  'DEBITO - SLIPAY': 'DÉBITO - STONE',
-  'DÉBITO - Stone': 'DÉBITO - STONE',
-  'DÉBITO - STONE': 'DÉBITO - STONE',
-  'DÉBITO - Itaú': 'DÉBITO - STONE',
-  'DÉBITO - ITAÚ': 'DÉBITO - STONE',
-  'DÉBITO - C6': 'DÉBITO - STONE',
-  'Cartão de Débito': 'DÉBITO - STONE',
-  'Débito': 'DÉBITO - STONE',
-  'Dinheiro à Vista': 'ESPÉCIE - BB',
-  'Dinheiro': 'ESPÉCIE - BB',
-  'Especie': 'ESPÉCIE - BB',
-  'ESPÉCIE - BB': 'ESPÉCIE - BB',
-  'Moeda': 'ESPÉCIE - BB',
-  'BOLETO': 'BOLETO - BB',
-  'Boleto Bancário': 'BOLETO - BB',
-  'Boleto': 'BOLETO - BB',
-  'BOLETO - BB': 'BOLETO - BB',
-  'A COMBINAR': 'A COMBINAR',
-  'A Combinar': 'A COMBINAR',
-  'A combinar': 'A COMBINAR'
-};
-
-// Função para normalizar a forma de pagamento (copiada do VendasPorFormaPagamentoChart.tsx)
-const normalizarFormaPagamento = (forma: string): string => {
-  if (!forma) {
-    console.log('Forma de pagamento vazia, retornando A COMBINAR');
-    return 'A COMBINAR';
-  }
-  
-  console.log(`Normalizando forma de pagamento: "${forma}"`);
-  
-  if (CATEGORIAS_PAGAMENTO[forma]) {
-    console.log(`Encontrado no mapeamento direto: "${forma}" -> "${CATEGORIAS_PAGAMENTO[forma]}"`);
-    return CATEGORIAS_PAGAMENTO[forma];
-  }
-  
-  const formaNormalizada = forma.trim();
-  console.log(`Forma normalizada: "${formaNormalizada}"`);
-  
-  if (formaNormalizada.includes('PIX')) {
-    if (formaNormalizada.includes('C6')) {
-      console.log('Detectado PIX - C6');
-      return 'PIX - C6';
-    } else if (formaNormalizada.includes('BB')) {
-      console.log('Detectado PIX - BB');
-      return 'PIX - BB';
-    } else if (formaNormalizada.includes('STONE')) {
-      console.log('Detectado PIX - STONE');
-      return 'PIX - STONE';
-    } else {
-      console.log('Detectado PIX genérico');
-      return 'PIX';
-    }
-  }
-  if (formaNormalizada.includes('BOLETO') || formaNormalizada.includes('Boleto')) return 'BOLETO - BB';
-  if (formaNormalizada.toLowerCase().includes('dinheiro') || formaNormalizada.toLowerCase().includes('à vista') || 
-      formaNormalizada.toLowerCase().includes('especie') || formaNormalizada.toLowerCase().includes('moeda')) return 'ESPÉCIE - BB';
-  
-  if (formaNormalizada.includes('CRÉDIT') || formaNormalizada.includes('Crédit') || 
-      formaNormalizada.includes('CREDIT') || formaNormalizada.includes('Credit')) {
-    console.log('Detectado CRÉDITO');
-    return 'CRÉDITO - STONE';
-  }
-  
-  if (formaNormalizada.includes('DÉBIT') || formaNormalizada.includes('Débit') ||
-      formaNormalizada.includes('DEBIT') || formaNormalizada.includes('Debit')) {
-    console.log('Detectado DÉBITO');
-    return 'DÉBITO - STONE';
-  }
-  
-  console.log(`Forma não reconhecida: "${formaNormalizada}", retornando A COMBINAR`);
-  return 'A COMBINAR';
 };
 
 // Cores genéricas iOS26
@@ -605,124 +503,8 @@ export function VendedorDetalhesModal({
     }
   };
 
-  // Processar dados das formas de pagamento
-  const formasPagamento = useMemo(() => {
-    if (!vendasParaProcessar || vendasParaProcessar.length === 0) {
-      console.log('📊 [VendedorDetalhesModal] Nenhuma venda para processar formas de pagamento');
-      return [];
-    }
-
-    console.log('📊 [VendedorDetalhesModal] Processando formas de pagamento com dados reais:', {
-      totalVendas: vendasParaProcessar.length,
-      fonteDados: vendasVendedorExternas.length > 0 ? 'vendasExternas' : 'buscaPropria',
-      vendasVendedorLength: vendasVendedor.length,
-      vendasVendedorExternasLength: vendasVendedorExternas.length,
-      primeirasVendas: vendasParaProcessar.slice(0, 3).map(v => {
-        const { valorTotal } = extrairDadosVenda(v);
-        return {
-          id: v.id,
-          forma_pagamento: v.forma_pagamento,
-          meio_pagamento: v.meio_pagamento,
-          valor_total: valorTotal
-        };
-      })
-    });
-
-    const formasPagamentoMap = new Map<string, { totalVendas: number; totalValor: number }>();
-    let valorTotal = 0;
-    
-    // Processar vendas reais - usando exatamente os mesmos campos que os outros componentes
-    vendasParaProcessar.forEach((venda: any, index: number) => {
-      // Log detalhado da estrutura da venda para debug de formas de pagamento
-      if (index < 3) {
-        console.log('🔍 [VendedorDetalhesModal] Estrutura da venda para formas de pagamento:', {
-          id: venda.id,
-          todasAsPropriedades: Object.keys(venda),
-          camposPagamento: {
-            forma_pagamento: venda.forma_pagamento,
-            meio_pagamento: venda.meio_pagamento,
-            metodo_pagamento: venda.metodo_pagamento,
-            pagamento: venda.pagamento,
-            pagamentos: venda.pagamentos,
-            metadata: venda.metadata
-          }
-        });
-      }
-
-      // Usar os campos principais como nos outros componentes funcionais
-      let formaPagamento = venda.forma_pagamento || 
-                          venda.meio_pagamento ||
-                          venda.metodo_pagamento ||
-                          venda.pagamento ||
-                          venda.metadata?.forma_pagamento ||
-                          venda.metadata?.meio_pagamento ||
-                          venda.metadata?.pagamento ||
-                          'A COMBINAR';
-      
-      // Log das primeiras 5 vendas para debug de normalização
-      if (index < 5) {
-        console.log(`🔍 [VendedorDetalhesModal] Venda ${index + 1} - Forma de pagamento ANTES da normalização:`, {
-          id: venda.id,
-          forma_pagamento_original: venda.forma_pagamento,
-          meio_pagamento: venda.meio_pagamento,
-          metodo_pagamento: venda.metodo_pagamento,
-          forma_pagamento_processada: formaPagamento
-        });
-      }
-      
-      // Aplicar normalização usando a função copiada do VendasPorFormaPagamentoChart.tsx
-      const formaPagamentoNormalizada = normalizarFormaPagamento(formaPagamento);
-      
-      // Log das primeiras 5 vendas para debug de normalização
-      if (index < 5) {
-        console.log(`🔍 [VendedorDetalhesModal] Venda ${index + 1} - Forma de pagamento DEPOIS da normalização:`, {
-          id: venda.id,
-          forma_original: formaPagamento,
-          forma_normalizada: formaPagamentoNormalizada
-        });
-      }
-      
-      formaPagamento = formaPagamentoNormalizada;
-
-      const { valorTotal: valorVendaStr } = extrairDadosVenda(venda);
-      const valorVenda = parseFloat(valorVendaStr) || 0;
-      valorTotal += valorVenda;
-
-      if (!formasPagamentoMap.has(formaPagamento)) {
-        formasPagamentoMap.set(formaPagamento, {
-          totalVendas: 0,
-          totalValor: 0
-        });
-      }
-
-      const dados = formasPagamentoMap.get(formaPagamento)!;
-      dados.totalVendas += 1;
-      dados.totalValor += valorVenda;
-    });
-    
-    const formasPagamentoProcessadas = Array.from(formasPagamentoMap.entries()).map(([formaPagamento, dados]) => ({
-      formaPagamento,
-      totalVendas: dados.totalVendas,
-      totalValor: dados.totalValor,
-      percentual: valorTotal > 0 ? (dados.totalValor / valorTotal) * 100 : 0
-    }));
-    
-    console.log('✅ [VendedorDetalhesModal] Formas de pagamento processadas:', {
-      totalFormas: formasPagamentoProcessadas.length,
-      totalVendas: vendasParaProcessar.length,
-      fonteDados: vendasVendedorExternas.length > 0 ? 'vendasExternas' : 'buscaPropria',
-      valorTotal: valorTotal,
-      valorTotalFormatado: `R$ ${valorTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
-      formas: formasPagamentoProcessadas.map(f => ({ 
-        forma: f.formaPagamento, 
-        vendas: f.totalVendas, 
-        valor: f.totalValor,
-        percentual: f.percentual.toFixed(2) + '%'
-      }))
-    });
-    
-    return formasPagamentoProcessadas.sort((a, b) => b.totalValor - a.totalValor);
-  }, [vendasParaProcessar, vendasVendedorExternas.length]);
+  // Usar o hook centralizado para processar formas de pagamento
+  const formasPagamento = useProcessarFormasPagamento(vendasParaProcessar);
 
   // Função para extrair "Como nos conheceu" dos atributos (mesmo que ComoNosConheceuUnidade.tsx)
   const extrairComoNosConheceu = (venda: any): string | null => {

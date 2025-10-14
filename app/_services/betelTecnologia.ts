@@ -34,6 +34,40 @@ interface BetelVenda {
   desconto_porcentagem?: string;
   valor_produtos?: string;
   itens: BetelItem[];
+  // Campos de forma de pagamento
+  forma_pagamento?: string;
+  metodo_pagamento?: string;
+  forma_pagamento_original?: string;
+  tipo_pagamento?: string;
+  payment_method?: string;
+  payment_type?: string;
+  payment_form?: string;
+  forma_pagamento_id?: number;
+  pagamento_id?: number;
+  pagamento_tipo?: string;
+  pagamento_metodo?: string;
+  pagamento_forma?: string;
+  // Array de pagamentos (para vendas com múltiplas formas de pagamento)
+  pagamentos?: Array<{
+    id?: number;
+    valor?: string;
+    status?: string;
+    pagamento?: {
+      id?: number;
+      nome_forma_pagamento?: string;
+      tipo_pagamento?: string;
+      metodo_pagamento?: string;
+      forma_pagamento?: string;
+    };
+  }>;
+  // Campos de metadata e observações
+  metadata?: any;
+  observacoes?: string;
+  notas?: string;
+  info_pagamento?: string;
+  payment_info?: string;
+  transaction_details?: string;
+  detalhes_pagamento?: string;
 }
 
 interface BetelItem {
