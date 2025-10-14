@@ -604,6 +604,8 @@ export default function DashboardVendas() {
             dataFim={dateRange.to}
             totalFaturamento={dadosSummary.faturamento}
             onVendaClick={abrirDetalhesVenda}
+            vendasExternas={vendas}
+            lastSync={lastSync}
           />
         )}
         

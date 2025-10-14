@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/app/_components/ui/card";
 import { Badge } from '@/app/_components/ui/badge';
 // Progress removido - usando ios26-progress-bar
@@ -86,6 +86,9 @@ interface VendedorDetalhesModalProps {
   dataFim: Date;
   totalFaturamento: number;
   onVendaClick: (venda: any) => void;
+  // Props para auto-atualização das tabs
+  vendasExternas?: any[]; // Vendas do dashboard principal para sincronização
+  lastSync?: string; // Timestamp da última sincronização
 }
 
 // Interfaces para os dados das tabs
@@ -156,7 +159,9 @@ export function VendedorDetalhesModal({
   dataInicio,
   dataFim,
   totalFaturamento,
-  onVendaClick
+  onVendaClick,
+  vendasExternas = [],
+  lastSync
 }: VendedorDetalhesModalProps) {
   const [vendasVendedor, setVendasVendedor] = useState<any[]>([]);
   const [loadingVendas, setLoadingVendas] = useState(false);
@@ -168,6 +173,10 @@ export function VendedorDetalhesModal({
   const [visualizacaoOrigens, setVisualizacaoOrigens] = useState<'pizza' | 'tabela'>('pizza');
   const [visualizacaoCanais, setVisualizacaoCanais] = useState<'pizza' | 'tabela'>('pizza');
   const itensPorPagina = 10;
+  
+  // Refs para controle de auto-atualização
+  const lastSyncRef = useRef<string>('');
+  const updateIntervalRef = useRef<NodeJS.Timeout | null>(null);
   
   // Função para ordenar vendas por valor
   const ordenarVendasPorValor = (vendas: any[]) => {
@@ -207,6 +216,88 @@ export function VendedorDetalhesModal({
       setErro(null);
     }
   }, [aberto, vendedor, dataInicio, dataFim]); // Adicionar dataInicio e dataFim como dependências
+  
+  // AUTO-ATUALIZAÇÃO DAS TABS - Monitora mudanças nas vendas externas
+  useEffect(() => {
+    if (!aberto || !vendedor || !vendasExternas.length) {
+      return;
+    }
+
+    // Verificar se houve mudança na sincronização
+    if (lastSync && lastSync !== lastSyncRef.current) {
+      console.log('🔄 [VendedorDetalhesModal] Nova sincronização detectada, atualizando tabs...', {
+        vendedorId: vendedor.id,
+        vendedorNome: vendedor.nome,
+        lastSync,
+        previousSync: lastSyncRef.current
+      });
+      
+      lastSyncRef.current = lastSync;
+      
+      // Filtrar vendas do vendedor específico das vendas externas
+      const vendasVendedorExternas = vendasExternas.filter(venda => {
+        const vendaVendedorId = String(venda.vendedor_id || '').replace('gc-', '');
+        const vendaNomeVendedor = String(venda.nome_vendedor || '').toLowerCase().trim();
+        const vendaVendedorNome = String(venda.vendedor_nome || '').toLowerCase().trim();
+        const vendedorNome = vendedor.nome.toLowerCase().trim();
+        const vendedorIdNormalizado = vendedor.id.replace('gc-', '');
+        
+        return vendaVendedorId === vendedorIdNormalizado || 
+               vendaNomeVendedor === vendedorNome ||
+               vendaVendedorNome === vendedorNome ||
+               vendaNomeVendedor.includes(vendedorNome) ||
+               vendaVendedorNome.includes(vendedorNome);
+      });
+
+      // Atualizar vendas do vendedor se houve mudança
+      if (vendasVendedorExternas.length !== vendasVendedor.length) {
+        console.log('📊 [VendedorDetalhesModal] Atualizando dados das tabs:', {
+          vendasAnteriores: vendasVendedor.length,
+          vendasNovas: vendasVendedorExternas.length
+        });
+        
+        setVendasVendedor(vendasVendedorExternas);
+      }
+    }
+  }, [aberto, vendedor, vendasExternas, lastSync, vendasVendedor.length]);
+  
+  // AUTO-REFRESH PERIÓDICO - Polling a cada 1 minuto quando modal estiver aberto
+  useEffect(() => {
+    if (!aberto || !vendedor) {
+      // Limpar interval se modal fechado
+      if (updateIntervalRef.current) {
+        clearInterval(updateIntervalRef.current);
+        updateIntervalRef.current = null;
+      }
+      return;
+    }
+
+    console.log('🔄 [VendedorDetalhesModal] Configurando auto-refresh para tabs...', {
+      vendedorId: vendedor.id,
+      refreshInterval: 60000 // 1 minuto
+    });
+
+    // Configurar polling a cada 1 minuto
+    updateIntervalRef.current = setInterval(async () => {
+      if (aberto && vendedor) {
+        console.log('🔄 [VendedorDetalhesModal] Auto-refresh das tabs executado');
+        
+        try {
+          await buscarVendasVendedor(vendedor.id);
+        } catch (error) {
+          console.error('❌ [VendedorDetalhesModal] Erro no auto-refresh:', error);
+        }
+      }
+    }, 60000); // 1 minuto
+
+    // Cleanup
+    return () => {
+      if (updateIntervalRef.current) {
+        clearInterval(updateIntervalRef.current);
+        updateIntervalRef.current = null;
+      }
+    };
+  }, [aberto, vendedor, dataInicio, dataFim]);
   
   // Log para debug da ordenação
   useEffect(() => {
