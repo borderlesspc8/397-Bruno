@@ -286,14 +286,14 @@ export function useGestaoClickSupabase({
       return
     }
     
-    // Debounce de 300ms para evitar múltiplas chamadas (reduzido de 500ms)
+    // Debounce de 1000ms para evitar múltiplas chamadas e tela branca
     debounceRef.current = setTimeout(() => {
       // Só executar se não estiver carregando
-      if (!fetchingRef.current) {
+      if (!fetchingRef.current && !isFetching) {
         lastFetchRef.current = key // Marcar como realizada
         fetchData()
       }
-    }, 300)
+    }, 1000) // Aumentado para 1 segundo
     
     // Cleanup do timeout
     return () => {
@@ -303,27 +303,12 @@ export function useGestaoClickSupabase({
     }
   }, [dataInicio?.toISOString(), dataFim?.toISOString(), userId, forceUpdate, enabled])
 
-  // Effect para auto-refresh - REATIVADO COM CONTROLE OTIMIZADO
+  // Effect para auto-refresh - DESABILITADO TEMPORARIAMENTE PARA EVITAR TELA BRANCA
   useEffect(() => {
-    if (!autoRefresh || !enabled || !userId) {
-      return
-    }
-
-    console.log('🔄 [useGestaoClickSupabase] Configurando auto-refresh...')
-    
-    const interval = setInterval(() => {
-      // Verificar se não há requisição em andamento
-      if (!fetchingRef.current) {
-        console.log('🔄 [useGestaoClickSupabase] Auto-refresh executado')
-        fetchData()
-      } else {
-        console.log('⏳ [useGestaoClickSupabase] Pulando auto-refresh (requisição em andamento)')
-      }
-    }, refreshInterval)
-
-    return () => {
-      clearInterval(interval)
-    }
+    // AUTO-REFRESH DESABILITADO PARA EVITAR CONFLITOS E TELA BRANCA
+    // O usuário pode usar o botão de refresh manual quando necessário
+    console.log('🔄 [useGestaoClickSupabase] Auto-refresh desabilitado para evitar tela branca')
+    return
   }, [autoRefresh, refreshInterval, enabled, userId, fetchData])
 
   // Effect para tempo real - DESABILITADO TEMPORARIAMENTE

@@ -208,9 +208,9 @@ export default function DashboardCEO() {
     dataInicio: dateRange.from,
     dataFim: dateRange.to,
     userId: userId || '',
-    autoRefresh: false, // Desabilitado para evitar loops
-    refreshInterval: 0,
-    forceUpdate: false, // Usar cache quando possível para melhor performance
+    autoRefresh: true, // REATIVADO COM CONTROLE OTIMIZADO
+    refreshInterval: 60000, // 1 minuto para dados frescos
+    forceUpdate: false, // Usar cache otimizado
     enabled: !!userId && !authLoading
   });
   
@@ -587,6 +587,8 @@ export default function DashboardCEO() {
             dataFim={dateRange.to}
             totalFaturamento={dadosSummary.faturamento}
             onVendaClick={abrirDetalhesVenda}
+            vendasExternas={vendas}
+            lastSync={lastSync}
           />
         )}
         

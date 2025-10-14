@@ -211,8 +211,8 @@ export default function DashboardVendas() {
     dataInicio: dateRange.from,
     dataFim: dateRange.to,
     userId: userId || '',
-    autoRefresh: true, // REATIVADO COM CONTROLE OTIMIZADO
-    refreshInterval: 60000, // 1 minuto para dados frescos
+    autoRefresh: false, // DESABILITADO PARA EVITAR TELA BRANCA
+    refreshInterval: 300000, // 5 minutos (quando reativado)
     forceUpdate: false, // Usar cache otimizado
     enabled: !!userId && !authLoading
   });

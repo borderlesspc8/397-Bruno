@@ -58,11 +58,11 @@ export function DashboardHeader({ title, description, dateRange, onRefresh, isRe
     }
   };
 
-  // Atualizar a data a cada minuto
+  // Atualizar a data a cada 5 minutos (reduzido para evitar conflitos)
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentDate(new Date());
-    }, 60000);
+    }, 300000); // 5 minutos em vez de 1 minuto
 
     return () => clearInterval(interval);
   }, []);

@@ -334,11 +334,9 @@ export function VendasPorFormaPagamentoChart({ dataInicio, dataFim, vendedores, 
       setLoading(true);
       setErro(null);
       
-      // Força reprocessamento dos dados locais
-      setTimeout(() => {
-        setLoading(false);
-        console.log('✅ Dados recarregados com sucesso');
-      }, 500);
+      // Força reprocessamento dos dados locais (sem timeout desnecessário)
+      setLoading(false);
+      console.log('✅ Dados recarregados com sucesso');
     } catch (error) {
       console.error('Erro ao recarregar dados:', error);
       setErro('Erro ao recarregar dados');

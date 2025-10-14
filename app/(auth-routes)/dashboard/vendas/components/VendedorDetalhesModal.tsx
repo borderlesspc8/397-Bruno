@@ -330,18 +330,9 @@ export function VendedorDetalhesModal({
       refreshInterval: 60000 // 1 minuto
     });
 
-    // Configurar polling a cada 1 minuto apenas como fallback
-    updateIntervalRef.current = setInterval(async () => {
-      if (aberto && vendedor && (!vendasExternas || vendasExternas.length === 0)) {
-        console.log('🔄 [VendedorDetalhesModal] Auto-refresh das tabs executado (fallback)');
-        
-        try {
-          await buscarVendasVendedor(vendedor.id);
-        } catch (error) {
-          console.error('❌ [VendedorDetalhesModal] Erro no auto-refresh:', error);
-        }
-      }
-    }, 60000); // 1 minuto
+    // POLLING DESABILITADO PARA EVITAR TELA BRANCA
+    // O refresh será feito manualmente pelo usuário ou pelo dashboard principal
+    console.log('🔄 [VendedorDetalhesModal] Auto-refresh desabilitado para evitar conflitos');
 
     // Cleanup
     return () => {
