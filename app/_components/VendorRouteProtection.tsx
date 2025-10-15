@@ -25,7 +25,7 @@ export function VendorRouteProtection({
       // Se for vendedor e não estiver na lista de roles permitidos
       if (isVendor && !allowedRoles.includes('vendor')) {
         console.log('🚫 Acesso negado para vendedor. Redirecionando...');
-        router.push('/dashboard/vendedores');
+        router.push('/dashboard-vendedores');
         return;
       }
       
@@ -66,7 +66,7 @@ export function VendorRouteProtection({
             Você não tem permissão para acessar esta página.
           </p>
           <button
-            onClick={() => router.push('/dashboard/vendedores')}
+            onClick={() => router.push('/dashboard-vendedores')}
             className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90"
           >
             Voltar ao Dashboard

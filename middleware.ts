@@ -67,14 +67,62 @@ export async function middleware(request: NextRequest) {
   // Verifique se a rota requer autenticação antes de obter o token
   const pathname = request.nextUrl.pathname;
   
-        // Redirecionar a rota raiz para o dashboard Supabase
+        // Redirecionar a rota raiz para o dashboard apropriado baseado no usuário
         if (pathname === "/") {
-          return NextResponse.redirect(getSafeRedirectUrl(request.url, "/dashboard/vendas"));
+          // Verificar se é vendedor antes de redirecionar
+          const supabase = createServerClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+            {
+              cookies: {
+                getAll() {
+                  return request.cookies.getAll()
+                },
+                setAll(cookiesToSet) {
+                  cookiesToSet.forEach(({ name, value, options }) => request.cookies.set(name, value))
+                },
+              },
+            }
+          );
+          
+          const { data: { user } } = await supabase.auth.getUser();
+          const ADMIN_EMAIL = 'lojapersonalprime@gmail.com';
+          const isVendor = user && user.email !== ADMIN_EMAIL;
+          
+          if (isVendor) {
+            return NextResponse.redirect(getSafeRedirectUrl(request.url, "/dashboard-vendedores"));
+          } else {
+            return NextResponse.redirect(getSafeRedirectUrl(request.url, "/dashboard/vendas"));
+          }
         }
 
-        // Redirecionar a rota /dashboard para /dashboard/vendas
+        // Redirecionar a rota /dashboard para o dashboard apropriado
         if (pathname === "/dashboard" || pathname === "/dashboard/") {
-          return NextResponse.redirect(getSafeRedirectUrl(request.url, "/dashboard/vendas"));
+          // Verificar se é vendedor antes de redirecionar
+          const supabase = createServerClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+            {
+              cookies: {
+                getAll() {
+                  return request.cookies.getAll()
+                },
+                setAll(cookiesToSet) {
+                  cookiesToSet.forEach(({ name, value, options }) => request.cookies.set(name, value))
+                },
+              },
+            }
+          );
+          
+          const { data: { user } } = await supabase.auth.getUser();
+          const ADMIN_EMAIL = 'lojapersonalprime@gmail.com';
+          const isVendor = user && user.email !== ADMIN_EMAIL;
+          
+          if (isVendor) {
+            return NextResponse.redirect(getSafeRedirectUrl(request.url, "/dashboard-vendedores"));
+          } else {
+            return NextResponse.redirect(getSafeRedirectUrl(request.url, "/dashboard/vendas"));
+          }
         }
   
   const isAdminRoute = pathname.startsWith("/admin");
@@ -126,15 +174,15 @@ export async function middleware(request: NextRequest) {
     const isAdmin = user.email === ADMIN_EMAIL;
     const isVendor = user.email !== ADMIN_EMAIL;
 
-    // Se for vendedor (qualquer email exceto o admin), redirecionar para o dashboard de vendedores
+    // Se for vendedor (qualquer email exceto o admin), redirecionar para o dashboard de análise de vendedores
     if (isVendor) {
-      // Se estiver tentando acessar qualquer rota que não seja o dashboard de vendedores
-      if (pathname !== '/dashboard/vendedores' && 
-          !pathname.startsWith('/dashboard/vendedores/') &&
+      // Se estiver tentando acessar qualquer rota que não seja o dashboard de análise de vendedores
+      if (pathname !== '/dashboard-vendedores' && 
+          !pathname.startsWith('/dashboard-vendedores/') &&
           !pathname.startsWith('/auth') &&
           !pathname.startsWith('/api')) {
-        console.log(`[Middleware] Vendedor ${user.email} tentando acessar ${pathname}, redirecionando para /dashboard/vendedores`);
-        return NextResponse.redirect(getSafeRedirectUrl(request.url, "/dashboard/vendedores"));
+        console.log(`[Middleware] Vendedor ${user.email} tentando acessar ${pathname}, redirecionando para /dashboard-vendedores`);
+        return NextResponse.redirect(getSafeRedirectUrl(request.url, "/dashboard-vendedores"));
       }
     }
 

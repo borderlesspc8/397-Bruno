@@ -22,6 +22,7 @@ export interface UserPermissions {
   canAccessIntegrations: boolean;
   canAccessSettings: boolean;
   canAccessHelp: boolean;
+  canAccessVendasVendedores: boolean; // Permissão para vendedores acessarem dados de vendas no dashboard-vendedores
   isVendor: boolean;
   isAdmin: boolean;
   isUser: boolean;
@@ -36,11 +37,11 @@ export function useUserPermissions(): UserPermissions {
   const isVendor = user?.email !== ADMIN_EMAIL && !!user;
   const isUser = !user;
 
-  // Vendedores (todos os emails exceto o admin) só podem acessar o dashboard de vendedores
+  // Vendedores (todos os emails exceto o admin) só podem acessar o dashboard de análise de vendedores
   if (isVendor) {
     return {
       canAccessVendas: false,
-      canAccessVendedores: true, // Único acesso permitido
+      canAccessVendedores: false, // Não podem gerenciar vendedores, apenas ver dashboard de análise
       canAccessMetas: false,
       canAccessDashboardCEO: false,
       canAccessAtendimentos: false,
@@ -58,6 +59,7 @@ export function useUserPermissions(): UserPermissions {
       canAccessIntegrations: false,
       canAccessSettings: false,
       canAccessHelp: false,
+      canAccessVendasVendedores: true, // Podem acessar dados de vendas no dashboard-vendedores
       isVendor: true,
       isAdmin: false,
       isUser: false,
@@ -86,6 +88,7 @@ export function useUserPermissions(): UserPermissions {
       canAccessIntegrations: true,
       canAccessSettings: true,
       canAccessHelp: true,
+      canAccessVendasVendedores: true,
       isVendor: false,
       isAdmin: true,
       isUser: false,
@@ -113,6 +116,7 @@ export function useUserPermissions(): UserPermissions {
     canAccessIntegrations: false,
     canAccessSettings: false,
     canAccessHelp: false,
+    canAccessVendasVendedores: false,
     isVendor: false,
     isAdmin: false,
     isUser: true,

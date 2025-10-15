@@ -19,7 +19,7 @@ export function AdminRouteProtection({ children }: AdminRouteProtectionProps) {
       // Se for vendedor, redirecionar para o dashboard de vendedores
       if (isVendor) {
         console.log('🚫 Vendedor tentando acessar área restrita. Redirecionando...');
-        router.push('/dashboard/vendedores');
+        router.push('/dashboard-vendedores');
         return;
       }
     }
@@ -49,7 +49,7 @@ export function AdminRouteProtection({ children }: AdminRouteProtectionProps) {
             Vendedores não têm permissão para acessar esta área.
           </p>
           <button
-            onClick={() => router.push('/dashboard/vendedores')}
+            onClick={() => router.push('/dashboard-vendedores')}
             className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90"
           >
             Voltar ao Dashboard de Vendedores

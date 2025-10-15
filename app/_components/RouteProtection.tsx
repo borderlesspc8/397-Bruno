@@ -57,7 +57,7 @@ export function RouteProtection({
         if (redirectTo) {
           router.push(redirectTo);
         } else if (isVendor) {
-          router.push('/dashboard/vendedores');
+          router.push('/dashboard-vendedores');
         } else {
           router.push('/auth');
         }
@@ -116,7 +116,7 @@ export function RouteProtection({
             <button
               onClick={() => {
                 if (isVendor) {
-                  router.push('/dashboard/vendedores');
+                  router.push('/dashboard-vendedores');
                 } else {
                   router.push('/auth');
                 }

@@ -41,15 +41,15 @@ export function getMenuSections(): MenuSection[] {
   
   const sections: MenuSection[] = [];
 
-  // Seção Visão Geral - sempre visível
+  // Seção Visão Geral - redireciona para dashboard apropriado baseado no usuário
   sections.push({
     title: "Visão Geral",
     items: [
       {
         label: "Dashboard",
-        href: "/dashboard/vendas",
+        href: permissions.isVendor ? "/dashboard-vendedores" : "/dashboard/vendas",
         icon: LayoutDashboard,
-        description: "Visão geral das suas finanças",
+        description: permissions.isVendor ? "Análise de desempenho e métricas" : "Visão geral das suas finanças",
       },
     ],
   });
@@ -89,11 +89,18 @@ export function getMenuSections(): MenuSection[] {
       icon: ChartPie,
       description: "Dados de vendas e faturamento",
     }] : []),
-    ...(permissions.canAccessVendedores ? [{
+    ...(permissions.canAccessVendedores && !permissions.isVendor ? [{
       label: "Vendedores",
       href: "/dashboard/vendedores",
       icon: Users,
       description: "Gerenciamento de fotos e dados dos vendedores",
+    }] : []),
+    // Dashboard de análise de vendedores - acessível para vendedores
+    ...(permissions.isVendor ? [{
+      label: "Dashboard Vendedores",
+      href: "/dashboard-vendedores",
+      icon: BarChart2,
+      description: "Análise de desempenho e métricas de vendedores",
     }] : []),
     ...(permissions.canAccessConsultores ? [{
       label: "Consultores",

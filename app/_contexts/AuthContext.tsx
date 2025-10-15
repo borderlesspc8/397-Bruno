@@ -73,9 +73,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
     // Administrador tem acesso a tudo
     if (isAdmin) return true;
     
-    // Vendedores só podem acessar dashboard de vendedores
+    // Vendedores só podem acessar dashboard de análise de vendedores
     if (isVendor) {
-      return route === '/dashboard/vendedores' || route.startsWith('/dashboard/vendedores/');
+      return route === '/dashboard-vendedores' || route.startsWith('/dashboard-vendedores/');
     }
     
     return false;
@@ -102,8 +102,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
         console.log(`[AuthProvider] ✅ Admin redirecionando para /dashboard/vendas`);
         window.location.href = '/dashboard/vendas';
       } else if (isVendor) {
-        console.log(`[AuthProvider] ✅ Vendedor redirecionando para /dashboard/vendedores`);
-        window.location.href = '/dashboard/vendedores';
+        console.log(`[AuthProvider] ✅ Vendedor redirecionando para /dashboard-vendedores`);
+        window.location.href = '/dashboard-vendedores';
       }
       return;
     }
@@ -113,7 +113,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       if (!hasAccessTo(pathname)) {
         console.log(`[AuthProvider] ⚠️ Acesso negado para ${pathname}`);
         if (isVendor) {
-          router.push('/dashboard/vendedores');
+          router.push('/dashboard-vendedores');
         } else {
           router.push('/auth');
         }
