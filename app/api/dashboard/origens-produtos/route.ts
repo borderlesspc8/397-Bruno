@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { BetelTecnologiaService } from '@/app/_services/betelTecnologia';
 import { parse, format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { ptBR } from 'date-fns/locale/pt-BR';
 import { BetelVenda } from '@/app/_utils/calculoFinanceiro';
 
 // Configuração para forçar o comportamento dinâmico

@@ -5,7 +5,7 @@ import { GestaoClickClientService } from "@/app/_services/gestao-click-client-se
 import { prisma } from "@/app/_lib/prisma";
 import { BetelTecnologiaService } from '@/app/_services/betelTecnologia';
 import { parse, format, startOfMonth } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { ptBR } from 'date-fns/locale/pt-BR';
 // Cache removido para garantir dados em tempo real
 import { BetelVenda } from '@/app/_utils/calculoFinanceiro';
 import { roundToCents, parseValueSafe, sumWithPrecision } from '@/app/_utils/number-processor';

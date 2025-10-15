@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { format, eachDayOfInterval, isSameDay, isToday, isYesterday, parseISO, isFuture } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { ptBR } from 'date-fns/locale/pt-BR';
 import { 
   CalendarDays, 
   ChevronRight, 

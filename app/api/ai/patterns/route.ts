@@ -3,7 +3,7 @@ import { getAuthSession } from '@/app/_lib/auth';
 import { prisma } from '@/app/_lib/prisma';
 import { detectPatterns } from '@/app/_lib/groq';
 import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { ptBR } from 'date-fns/locale/pt-BR';
 import { startOfMonth, endOfMonth } from 'date-fns';
 
 /**

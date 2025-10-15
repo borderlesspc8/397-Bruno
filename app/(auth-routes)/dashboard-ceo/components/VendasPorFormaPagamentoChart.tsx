@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/app/_components/ui/card';
 import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { ptBR } from 'date-fns/locale/pt-BR';
 import { CreditCard, DownloadCloud, PieChart, AlertTriangle, RefreshCcw, FileSpreadsheet, Image, TrendingUp, BarChart3 } from 'lucide-react';
 import { Alert, AlertDescription } from '@/app/_components/ui/alert';
 import { Button } from '@/app/_components/ui/button';

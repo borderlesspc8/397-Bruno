@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { parse, format, startOfMonth, subMonths } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { ptBR } from 'date-fns/locale/pt-BR';
 import { requireVendedoresAccess } from "@/app/_lib/auth-permissions";
 import { BetelTecnologiaService } from '@/app/_services/betelTecnologia';
 import { getCachedData, CachePrefix } from '@/app/_services/cache';

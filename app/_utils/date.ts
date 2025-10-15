@@ -2,7 +2,7 @@
  * Utilitários para manipulação e formatação de datas
  */
 import { format, parse, isValid, addDays, subDays, startOfMonth, endOfMonth, differenceInDays, Locale } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { ptBR } from 'date-fns/locale/pt-BR';
 
 /**
  * Função auxiliar para normalizar uma data

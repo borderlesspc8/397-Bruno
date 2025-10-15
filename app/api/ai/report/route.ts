@@ -3,7 +3,7 @@ import { getAuthSession } from '@/app/_lib/auth';
 import { prisma } from '@/app/_lib/prisma';
 import { generateFinancialAnalysis } from '@/app/_lib/groq';
 import { format, endOfMonth, startOfMonth, parseISO } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { ptBR } from 'date-fns/locale/pt-BR';
 
 export async function POST(request: NextRequest) {
   try {

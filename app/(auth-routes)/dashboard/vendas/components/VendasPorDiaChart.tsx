@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { format, eachDayOfInterval, isSameDay, isFuture, parseISO } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { ptBR } from 'date-fns/locale/pt-BR';
 import { BarChart, AlertTriangle, RefreshCcw } from 'lucide-react';
 import { Alert, AlertDescription } from '@/app/_components/ui/alert';
 import { Button } from '@/app/_components/ui/button';

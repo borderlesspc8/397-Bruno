@@ -7,7 +7,7 @@ import { Button } from "@/app/_components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/_components/ui/select";
 import { DateRange } from 'react-day-picker';
 import { addDays, subDays, format, parseISO, isAfter, isBefore, isEqual, startOfMonth, endOfMonth, startOfWeek, endOfWeek } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { ptBR } from 'date-fns/locale/pt-BR';
 import { DatePickerWithRange } from "@/app/_components/ui/date-range-picker";
 import { Separator } from "@/app/_components/ui/separator";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, BarChart, Bar, LineChart, Line, PieChart, Pie, Cell } from 'recharts';

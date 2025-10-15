@@ -1,5 +1,5 @@
 import { parse } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { ptBR } from 'date-fns/locale/pt-BR';
 
 /**
  * Interface para resultado do processamento de datas
