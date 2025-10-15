@@ -104,11 +104,16 @@ export default function DashboardVendas() {
   const currentYear = today.getFullYear();
   
   // Período de datas padrão: do dia 1 até o dia atual (configurado para dados em tempo real)
-  const [dateRange, setDateRange] = useState<{ from: Date; to: Date }>(() => {
-    const from = new Date(currentYear, currentMonth, 1);
-    const to = new Date(today);
-    return { from, to };
-  });
+  const [dateRange, setDateRange] = useState<{ from: Date; to: Date } | null>(null);
+  
+  // Inicializar dateRange com valores padrão seguros
+  useEffect(() => {
+    if (!dateRange) {
+      const from = new Date(currentYear, currentMonth, 1);
+      const to = new Date(today);
+      setDateRange({ from, to });
+    }
+  }, [currentYear, currentMonth, today, dateRange]);
   
   // Metas reais do banco de dados
   const metasAtuais = useMemo(() => {
@@ -184,7 +189,8 @@ export default function DashboardVendas() {
   const handleDateRangeChange = useCallback((range: { from: Date; to: Date }) => {
     setDateRange(prevRange => {
       // Só atualizar se realmente mudou
-      if (prevRange.from.getTime() === range.from.getTime() && 
+      if (prevRange && 
+          prevRange.from.getTime() === range.from.getTime() && 
           prevRange.to.getTime() === range.to.getTime()) {
         return prevRange;
       }
@@ -209,13 +215,13 @@ export default function DashboardVendas() {
     dataSource,
     isFromCache
   } = useGestaoClickSupabase({
-    dataInicio: dateRange.from,
-    dataFim: dateRange.to,
+    dataInicio: dateRange?.from || new Date(),
+    dataFim: dateRange?.to || new Date(),
     userId: userId || '',
     autoRefresh: false, // DESABILITADO PARA EVITAR TELA BRANCA
     refreshInterval: 300000, // 5 minutos (quando reativado)
     forceUpdate: false, // Usar cache otimizado
-    enabled: !!userId && !authLoading
+    enabled: !!userId && !authLoading && !!dateRange
   });
   
   // Estados para gerenciar modais
@@ -232,13 +238,20 @@ export default function DashboardVendas() {
   
   // Parâmetros do período anterior - memoizado
   const previousDateParams = useMemo(() => {
+    if (!dateRange?.from) {
+      return {
+        dataInicio: new Date(),
+        dataFim: new Date()
+      };
+    }
+    
     const mesAnteriorInicio = new Date(dateRange.from.getFullYear(), dateRange.from.getMonth() - 1, 1);
     const mesAnteriorFim = endOfMonth(mesAnteriorInicio);
     return {
       dataInicio: mesAnteriorInicio,
       dataFim: mesAnteriorFim
     };
-  }, [dateRange.from]);
+  }, [dateRange?.from]);
 
   // Hook para dados do período anterior - DESABILITADO PARA EVITAR LOOPS
   // const {
@@ -400,14 +413,14 @@ export default function DashboardVendas() {
 
   // Atualizar dados quando o período de datas mudar
   useEffect(() => {
-    if (dateRange.from && dateRange.to) {
+    if (dateRange?.from && dateRange?.to) {
       console.log('🔄 Atualizando dados para novo período...');
       handleForceSync();
     }
-  }, [dateRange.from, dateRange.to, handleForceSync]);
+  }, [dateRange?.from, dateRange?.to, handleForceSync]);
 
-  // Renderizar loading
-  if (loading) {
+  // Renderizar loading (incluindo quando dateRange não está inicializado)
+  if (loading || !dateRange) {
     return (
       <PageContainer>
         <LoadingSkeleton />
@@ -454,7 +467,7 @@ export default function DashboardVendas() {
         
         {/* Informações do período */}
         <div className="text-sm text-muted-foreground font-medium">
-          Dados de {format(dateRange.from, "dd 'de' MMMM", { locale: ptBR })} até {format(dateRange.to, "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
+          Dados de {dateRange.from && format(dateRange.from, "dd 'de' MMMM", { locale: ptBR })} até {dateRange.to && format(dateRange.to, "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
           {situacoesFiltro.length > 0 && (
             <span className="ml-2 text-primary">
               • Filtrado por {situacoesFiltro.length} situação{situacoesFiltro.length > 1 ? 'ões' : ''}
@@ -549,54 +562,64 @@ export default function DashboardVendas() {
                     onVendedorClick={handleOpenVendedorDetails}
                   />
                   
-                  <VendasPorDiaCard 
-                    dataInicio={dateRange.from}
-                    dataFim={dateRange.to}
-                  />
+                  {dateRange && (
+                    <VendasPorDiaCard 
+                      dataInicio={dateRange.from}
+                      dataFim={dateRange.to}
+                    />
+                  )}
                 </div>
               </TabsContent>
               
               <TabsContent value="pagamentos" className="mt-0">
-                <VendasPorFormaPagamentoChart 
-                  dataInicio={dateRange.from}
-                  dataFim={dateRange.to}
-                  vendedores={vendedoresMapeados}
-                  vendas={vendas}
-                />
+                {dateRange && (
+                  <VendasPorFormaPagamentoChart 
+                    dataInicio={dateRange.from}
+                    dataFim={dateRange.to}
+                    vendedores={vendedoresMapeados}
+                    vendas={vendas}
+                  />
+                )}
               </TabsContent>
               
               <TabsContent value="produtos" className="mt-0">
                 <Suspense fallback={<LazyFallback message="Carregando produtos mais vendidos..." />}>
-                  <LazyProdutosMaisVendidos 
-                    dataInicio={dateRange.from}
-                    dataFim={dateRange.to}
-                    onVendaClick={abrirDetalhesVenda}
-                    vendas={vendas}
-                  />
+                  {dateRange && (
+                    <LazyProdutosMaisVendidos 
+                      dataInicio={dateRange.from}
+                      dataFim={dateRange.to}
+                      onVendaClick={abrirDetalhesVenda}
+                      vendas={vendas}
+                    />
+                  )}
                 </Suspense>
               </TabsContent>
               
               <TabsContent value="origem" className="mt-0">
-                <ComoNosConheceuUnidade 
-                  dataInicio={dateRange.from}
-                  dataFim={dateRange.to}
-                  vendas={vendas}
-                />
+                {dateRange && (
+                  <ComoNosConheceuUnidade 
+                    dataInicio={dateRange.from}
+                    dataFim={dateRange.to}
+                    vendas={vendas}
+                  />
+                )}
               </TabsContent>
               
               <TabsContent value="canal" className="mt-0">
-                <CanalDeVendasUnidade 
-                  dataInicio={dateRange.from}
-                  dataFim={dateRange.to}
-                  vendas={vendas}
-                />
+                {dateRange && (
+                  <CanalDeVendasUnidade 
+                    dataInicio={dateRange.from}
+                    dataFim={dateRange.to}
+                    vendas={vendas}
+                  />
+                )}
               </TabsContent>
             </div>
           </Tabs>
         </div>
 
         {/* Modais */}
-        {modalAberto && vendedorSelecionado && (
+        {modalAberto && vendedorSelecionado && dateRange && (
           <VendedorDetalhesModal
             vendedor={vendedorSelecionado}
             aberto={modalAberto}

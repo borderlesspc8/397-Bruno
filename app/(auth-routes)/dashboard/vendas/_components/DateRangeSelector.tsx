@@ -19,7 +19,7 @@ import { Label } from "@/app/_components/ui/label";
 import { Calendar, ChevronDown } from "lucide-react";
 
 interface DateRangeSelectorProps {
-  dateRange: { from: Date; to: Date };
+  dateRange: { from: Date; to: Date } | null;
   onDateRangeChange: (range: { from: Date; to: Date }) => void;
 }
 
@@ -29,10 +29,10 @@ export function DateRangeSelector({ dateRange: externalDateRange, onDateRangeCha
   const currentYear = today.getFullYear();
   
   // Converter o range externo para o formato DateRange
-  const dateRange: DateRange = {
+  const dateRange: DateRange | undefined = externalDateRange ? {
     from: externalDateRange.from,
     to: externalDateRange.to
-  };
+  } : undefined;
   
   const [presetOpen, setPresetOpen] = useState(false);
   
