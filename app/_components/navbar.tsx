@@ -3,6 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useAuth } from "@/app/_hooks/useAuth";
+import { useUserPermissions } from "@/app/_hooks/useUserPermissions";
 import { UserButton } from "@/app/_components/user-button/UserButton";
 import { 
   Star, 
@@ -22,6 +23,7 @@ import { motion, AnimatePresence } from "framer-motion";
 
 export function Navbar() {
   const { user } = useAuth();
+  const permissions = useUserPermissions();
   const pathname = usePathname();
   
   const [menuOpen, setMenuOpen] = useState(false);
@@ -78,86 +80,105 @@ export function Navbar() {
   
   const MenuLinks = () => (
     <>
-      <Link 
-        href="/dashboard/vendas" 
-        className={cn(
-          "flex items-center gap-2 px-3 py-2 text-sm rounded-xl hover:bg-accent hover:text-accent-foreground transition-all duration-200 ios26-link",
-          isVendasActive && "bg-secondary/50 font-medium"
-        )}
-        onClick={() => {
-          setMenuOpen(false);
-          setMobileMenuOpen(false);
-        }}
-      >
-        <div className="p-1.5 bg-gradient-to-br from-blue-100 to-cyan-100 dark:from-blue-900/20 dark:to-cyan-900/20 rounded-lg">
-          <ChartPie className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-        </div>
-        <span>Vendas</span>
-      </Link>
-      <Link 
-        href="/dashboard/vendedores" 
-        className={cn(
-          "flex items-center gap-2 px-3 py-2 text-sm rounded-xl hover:bg-accent hover:text-accent-foreground transition-all duration-200 ios26-link",
-          isVendedoresActive && "bg-secondary/50 font-medium"
-        )}
-        onClick={() => {
-          setMenuOpen(false);
-          setMobileMenuOpen(false);
-        }}
-      >
-        <div className="p-1.5 bg-gradient-to-br from-green-100 to-emerald-100 dark:from-green-900/20 dark:to-emerald-900/20 rounded-lg">
-          <Users className="h-4 w-4 text-green-600 dark:text-green-400" />
-        </div>
-        <span>Vendedores</span>
-      </Link>
-      <Link 
-        href="/dashboard/metas" 
-        className={cn(
-          "flex items-center gap-2 px-3 py-2 text-sm rounded-xl hover:bg-accent hover:text-accent-foreground transition-all duration-200 ios26-link",
-          isMetasActive && "bg-secondary/50 font-medium"
-        )}
-        onClick={() => {
-          setMenuOpen(false);
-          setMobileMenuOpen(false);
-        }}
-      >
-        <div className="p-1.5 bg-gradient-to-br from-purple-100 to-violet-100 dark:from-purple-900/20 dark:to-violet-900/20 rounded-lg">
-          <Target className="h-4 w-4 text-purple-600 dark:text-purple-400" />
-        </div>
-        <span>Metas</span>
-      </Link>
-      <Link 
-        href="/dashboard-vendedores" 
-        className={cn(
-          "flex items-center gap-2 px-3 py-2 text-sm rounded-xl hover:bg-accent hover:text-accent-foreground transition-all duration-200 ios26-link",
-          isDashboardVendedoresActive && "bg-secondary/50 font-medium"
-        )}
-        onClick={() => {
-          setMenuOpen(false);
-          setMobileMenuOpen(false);
-        }}
-      >
-        <div className="p-1.5 bg-gradient-to-br from-amber-100 to-orange-100 dark:from-amber-900/20 dark:to-orange-900/20 rounded-lg">
-          <Users className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-        </div>
-        <span>Dashboard Vendedores</span>
-      </Link>
-      <Link 
-        href="/dashboard-ceo" 
-        className={cn(
-          "flex items-center gap-2 px-3 py-2 text-sm rounded-xl hover:bg-accent hover:text-accent-foreground transition-all duration-200 ios26-link",
-          isDashboardCeoActive && "bg-secondary/50 font-medium"
-        )}
-        onClick={() => {
-          setMenuOpen(false);
-          setMobileMenuOpen(false);
-        }}
-      >
-        <div className="p-1.5 bg-gradient-to-br from-red-100 to-pink-100 dark:from-red-900/20 dark:to-pink-900/20 rounded-lg">
-          <Star className="h-4 w-4 text-red-600 dark:text-red-400" />
-        </div>
-        <span>Dashboard CEO</span>
-      </Link>
+      {/* Dashboard Vendas - apenas para admin */}
+      {permissions.canAccessVendas && (
+        <Link 
+          href="/dashboard/vendas" 
+          className={cn(
+            "flex items-center gap-2 px-3 py-2 text-sm rounded-xl hover:bg-accent hover:text-accent-foreground transition-all duration-200 ios26-link",
+            isVendasActive && "bg-secondary/50 font-medium"
+          )}
+          onClick={() => {
+            setMenuOpen(false);
+            setMobileMenuOpen(false);
+          }}
+        >
+          <div className="p-1.5 bg-gradient-to-br from-blue-100 to-cyan-100 dark:from-blue-900/20 dark:to-cyan-900/20 rounded-lg">
+            <ChartPie className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+          </div>
+          <span>Vendas</span>
+        </Link>
+      )}
+      
+      {/* Dashboard Vendedores - para todos os usuários autenticados */}
+      {permissions.canAccessVendedores && (
+        <Link 
+          href="/dashboard/vendedores" 
+          className={cn(
+            "flex items-center gap-2 px-3 py-2 text-sm rounded-xl hover:bg-accent hover:text-accent-foreground transition-all duration-200 ios26-link",
+            isVendedoresActive && "bg-secondary/50 font-medium"
+          )}
+          onClick={() => {
+            setMenuOpen(false);
+            setMobileMenuOpen(false);
+          }}
+        >
+          <div className="p-1.5 bg-gradient-to-br from-green-100 to-emerald-100 dark:from-green-900/20 dark:to-emerald-900/20 rounded-lg">
+            <Users className="h-4 w-4 text-green-600 dark:text-green-400" />
+          </div>
+          <span>Vendedores</span>
+        </Link>
+      )}
+      
+      {/* Dashboard Metas - apenas para admin */}
+      {permissions.canAccessMetas && (
+        <Link 
+          href="/dashboard/metas" 
+          className={cn(
+            "flex items-center gap-2 px-3 py-2 text-sm rounded-xl hover:bg-accent hover:text-accent-foreground transition-all duration-200 ios26-link",
+            isMetasActive && "bg-secondary/50 font-medium"
+          )}
+          onClick={() => {
+            setMenuOpen(false);
+            setMobileMenuOpen(false);
+          }}
+        >
+          <div className="p-1.5 bg-gradient-to-br from-purple-100 to-violet-100 dark:from-purple-900/20 dark:to-violet-900/20 rounded-lg">
+            <Target className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+          </div>
+          <span>Metas</span>
+        </Link>
+      )}
+      
+      {/* Dashboard Vendedores (alternativo) - apenas para admin */}
+      {permissions.canAccessVendedores && permissions.isAdmin && (
+        <Link 
+          href="/dashboard-vendedores" 
+          className={cn(
+            "flex items-center gap-2 px-3 py-2 text-sm rounded-xl hover:bg-accent hover:text-accent-foreground transition-all duration-200 ios26-link",
+            isDashboardVendedoresActive && "bg-secondary/50 font-medium"
+          )}
+          onClick={() => {
+            setMenuOpen(false);
+            setMobileMenuOpen(false);
+          }}
+        >
+          <div className="p-1.5 bg-gradient-to-br from-amber-100 to-orange-100 dark:from-amber-900/20 dark:to-orange-900/20 rounded-lg">
+            <Users className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+          </div>
+          <span>Dashboard Vendedores</span>
+        </Link>
+      )}
+      
+      {/* Dashboard CEO - apenas para admin */}
+      {permissions.canAccessDashboardCEO && (
+        <Link 
+          href="/dashboard-ceo" 
+          className={cn(
+            "flex items-center gap-2 px-3 py-2 text-sm rounded-xl hover:bg-accent hover:text-accent-foreground transition-all duration-200 ios26-link",
+            isDashboardCeoActive && "bg-secondary/50 font-medium"
+          )}
+          onClick={() => {
+            setMenuOpen(false);
+            setMobileMenuOpen(false);
+          }}
+        >
+          <div className="p-1.5 bg-gradient-to-br from-red-100 to-pink-100 dark:from-red-900/20 dark:to-pink-900/20 rounded-lg">
+            <Star className="h-4 w-4 text-red-600 dark:text-red-400" />
+          </div>
+          <span>Dashboard CEO</span>
+        </Link>
+      )}
     </>
   );
   

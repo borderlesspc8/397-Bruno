@@ -8,6 +8,9 @@ interface AuthContextType {
   user: any;
   loading: boolean;
   isAuthenticated: boolean;
+  isAdmin: boolean;
+  isVendor: boolean;
+  hasAccessTo: (route: string) => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -58,7 +61,27 @@ export function AuthProvider({ children }: AuthProviderProps) {
   
   const isAuthenticated = !!user;
 
-  // Redirecionamento automático baseado no estado de autenticação - OTIMIZADO
+  // Sistema de controle de acesso baseado em email
+  const ADMIN_EMAIL = 'lojapersonalprime@gmail.com';
+  const isAdmin = user?.email === ADMIN_EMAIL;
+  const isVendor = user?.email !== ADMIN_EMAIL && isAuthenticated;
+
+  // Função para verificar acesso a rotas específicas
+  const hasAccessTo = (route: string): boolean => {
+    if (!isAuthenticated) return false;
+    
+    // Administrador tem acesso a tudo
+    if (isAdmin) return true;
+    
+    // Vendedores só podem acessar dashboard de vendedores
+    if (isVendor) {
+      return route === '/dashboard/vendedores' || route.startsWith('/dashboard/vendedores/');
+    }
+    
+    return false;
+  };
+
+  // Redirecionamento automático baseado no estado de autenticação e permissões - OTIMIZADO
   useEffect(() => {
     // Só executar se não estiver carregando
     if (loading) {
@@ -74,11 +97,30 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
     // Se está autenticado e está em rota de login
     if (isAuthenticated && pathname?.includes('/auth')) {
-      console.log(`[AuthProvider] ✅ Redirecionando para /dashboard/vendas`);
-      window.location.href = '/dashboard/vendas';
+      // Redirecionar baseado no tipo de usuário
+      if (isAdmin) {
+        console.log(`[AuthProvider] ✅ Admin redirecionando para /dashboard/vendas`);
+        window.location.href = '/dashboard/vendas';
+      } else if (isVendor) {
+        console.log(`[AuthProvider] ✅ Vendedor redirecionando para /dashboard/vendedores`);
+        window.location.href = '/dashboard/vendedores';
+      }
       return;
     }
-  }, [loading, isAuthenticated, isProtectedRoute, pathname, router]); // Dependências otimizadas
+
+    // Verificar se usuário tem acesso à rota atual
+    if (isAuthenticated && isProtectedRoute && pathname) {
+      if (!hasAccessTo(pathname)) {
+        console.log(`[AuthProvider] ⚠️ Acesso negado para ${pathname}`);
+        if (isVendor) {
+          router.push('/dashboard/vendedores');
+        } else {
+          router.push('/auth');
+        }
+        return;
+      }
+    }
+  }, [loading, isAuthenticated, isProtectedRoute, pathname, router, isAdmin, isVendor, hasAccessTo]); // Dependências otimizadas
 
   // Mostrar loading durante verificação de autenticação
   if (loading) {
@@ -100,7 +142,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const value: AuthContextType = {
     user,
     loading,
-    isAuthenticated
+    isAuthenticated,
+    isAdmin,
+    isVendor,
+    hasAccessTo
   };
 
   return (
@@ -109,3 +154,4 @@ export function AuthProvider({ children }: AuthProviderProps) {
     </AuthContext.Provider>
   );
 }
+

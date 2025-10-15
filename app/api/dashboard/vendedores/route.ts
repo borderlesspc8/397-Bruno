@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { parse, format, startOfMonth, subMonths } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { requireVendedoresAccess } from "@/app/_lib/auth-permissions";
 import { BetelTecnologiaService } from '@/app/_services/betelTecnologia';
 import { getCachedData, CachePrefix } from '@/app/_services/cache';
 
@@ -30,6 +31,19 @@ const CACHE_TTL_VENDEDORES = 15 * 60; // segundos
 
 export async function GET(request: NextRequest) {
   try {
+    // Verificar permissões de acesso
+    const { success, error } = await requireVendedoresAccess(request);
+    if (!success) {
+      return NextResponse.json(
+        { 
+          erro: 'Acesso negado',
+          mensagem: error || 'Você não tem permissão para acessar esta rota',
+          vendedores: []
+        },
+        { status: 403 }
+      );
+    }
+
     const searchParams = request.nextUrl.searchParams;
     
     // Parâmetros de filtro da data

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { validateSessionForAPI } from "@/app/_utils/auth";
+import { requireVendasAccess } from "@/app/_lib/auth-permissions";
 import { GestaoClickClientService } from "@/app/_services/gestao-click-client-service";
 import { prisma } from "@/app/_lib/prisma";
 import { BetelTecnologiaService } from '@/app/_services/betelTecnologia';
@@ -177,6 +178,21 @@ function processProdutosMaisVendidos(vendas: any) {
 
 export async function GET(request: NextRequest) {
   try {
+    // Verificar permissões de acesso
+    const { success, error } = await requireVendasAccess(request);
+    if (!success) {
+      return NextResponse.json(
+        { 
+          erro: 'Acesso negado',
+          mensagem: error || 'Você não tem permissão para acessar esta rota',
+          vendas: [],
+          totalVendas: 0,
+          totalValor: 0
+        },
+        { status: 403 }
+      );
+    }
+
     const { searchParams } = new URL(request.url);
     const dataInicio = searchParams.get('dataInicio');
     const dataFim = searchParams.get('dataFim');

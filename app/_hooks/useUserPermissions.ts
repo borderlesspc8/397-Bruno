@@ -30,12 +30,13 @@ export interface UserPermissions {
 export function useUserPermissions(): UserPermissions {
   const { user } = useAuth();
   
-  const role = user?.role || 'user';
-  const isVendor = role === 'vendor';
-  const isAdmin = role === 'admin';
-  const isUser = role === 'user';
+  // Sistema de controle de acesso baseado em email
+  const ADMIN_EMAIL = 'lojapersonalprime@gmail.com';
+  const isAdmin = user?.email === ADMIN_EMAIL;
+  const isVendor = user?.email !== ADMIN_EMAIL && !!user;
+  const isUser = !user;
 
-  // Vendedores só podem acessar o dashboard de vendedores
+  // Vendedores (todos os emails exceto o admin) só podem acessar o dashboard de vendedores
   if (isVendor) {
     return {
       canAccessVendas: false,
@@ -63,29 +64,57 @@ export function useUserPermissions(): UserPermissions {
     };
   }
 
-  // Usuários normais e admins têm acesso completo
+  // Administrador (lojapersonalprime@gmail.com) tem acesso completo
+  if (isAdmin) {
+    return {
+      canAccessVendas: true,
+      canAccessVendedores: true,
+      canAccessMetas: true,
+      canAccessDashboardCEO: true,
+      canAccessAtendimentos: true,
+      canAccessConsultores: true,
+      canAccessConversao: true,
+      canAccessPerformance: true,
+      canAccessReports: true,
+      canAccessCategories: true,
+      canAccessAI: true,
+      canAccessGoals: true,
+      canAccessBudgets: true,
+      canAccessCashFlow: true,
+      canAccessGestaoClick: true,
+      canAccessExport: true,
+      canAccessIntegrations: true,
+      canAccessSettings: true,
+      canAccessHelp: true,
+      isVendor: false,
+      isAdmin: true,
+      isUser: false,
+    };
+  }
+
+  // Usuário não autenticado - sem acesso
   return {
-    canAccessVendas: true,
-    canAccessVendedores: true,
-    canAccessMetas: true,
-    canAccessDashboardCEO: true,
-    canAccessAtendimentos: true,
-    canAccessConsultores: true,
-    canAccessConversao: true,
-    canAccessPerformance: true,
-    canAccessReports: true,
-    canAccessCategories: true,
-    canAccessAI: true,
-    canAccessGoals: true,
-    canAccessBudgets: true,
-    canAccessCashFlow: true,
-    canAccessGestaoClick: true,
-    canAccessExport: true,
-    canAccessIntegrations: true,
-    canAccessSettings: true,
-    canAccessHelp: true,
+    canAccessVendas: false,
+    canAccessVendedores: false,
+    canAccessMetas: false,
+    canAccessDashboardCEO: false,
+    canAccessAtendimentos: false,
+    canAccessConsultores: false,
+    canAccessConversao: false,
+    canAccessPerformance: false,
+    canAccessReports: false,
+    canAccessCategories: false,
+    canAccessAI: false,
+    canAccessGoals: false,
+    canAccessBudgets: false,
+    canAccessCashFlow: false,
+    canAccessGestaoClick: false,
+    canAccessExport: false,
+    canAccessIntegrations: false,
+    canAccessSettings: false,
+    canAccessHelp: false,
     isVendor: false,
-    isAdmin: isAdmin,
-    isUser: isUser,
+    isAdmin: false,
+    isUser: true,
   };
 }

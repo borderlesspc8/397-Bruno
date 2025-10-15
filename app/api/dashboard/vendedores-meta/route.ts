@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { validateSessionForAPI } from "@/app/_utils/auth";
+import { requireMetasAccess } from "@/app/_lib/auth-permissions";
 import { db } from "@/app/_lib/prisma";
 
 // Configuração para forçar o comportamento dinâmico
@@ -8,13 +9,15 @@ export const dynamic = "force-dynamic";
 // GET - Listar todos os vendedores para o formulário de metas
 export async function GET(request: NextRequest) {
   try {
-    // Verificar autenticação
-    const session = await getServerSession(authOptions);
-
-    if (!session) {
+    // Verificar permissões de acesso
+    const { success, error } = await requireMetasAccess(request);
+    if (!success) {
       return NextResponse.json(
-        { error: "Não autorizado" },
-        { status: 401 }
+        { 
+          error: 'Acesso negado',
+          message: error || 'Você não tem permissão para acessar esta rota'
+        },
+        { status: 403 }
       );
     }
 

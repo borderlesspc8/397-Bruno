@@ -120,26 +120,27 @@ export async function middleware(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser();
 
-  // Se o usuário estiver logado, verificar o role e redirecionar se necessário
+  // Sistema de controle de acesso baseado em email
   if (user) {
-    // Buscar dados completos do usuário para obter o role
-    const { data: userData } = await supabase
-      .from('users')
-      .select('role')
-      .eq('id', user.id)
-      .single();
+    const ADMIN_EMAIL = 'lojapersonalprime@gmail.com';
+    const isAdmin = user.email === ADMIN_EMAIL;
+    const isVendor = user.email !== ADMIN_EMAIL;
 
-    const userRole = userData?.role || 'user';
-
-    // Se for vendedor, redirecionar para o dashboard de vendedores
-    if (userRole === 'vendor') {
+    // Se for vendedor (qualquer email exceto o admin), redirecionar para o dashboard de vendedores
+    if (isVendor) {
       // Se estiver tentando acessar qualquer rota que não seja o dashboard de vendedores
       if (pathname !== '/dashboard/vendedores' && 
           !pathname.startsWith('/dashboard/vendedores/') &&
           !pathname.startsWith('/auth') &&
           !pathname.startsWith('/api')) {
+        console.log(`[Middleware] Vendedor ${user.email} tentando acessar ${pathname}, redirecionando para /dashboard/vendedores`);
         return NextResponse.redirect(getSafeRedirectUrl(request.url, "/dashboard/vendedores"));
       }
+    }
+
+    // Se for admin, permitir acesso a todas as rotas administrativas
+    if (isAdmin) {
+      console.log(`[Middleware] Admin ${user.email} acessando ${pathname} - acesso permitido`);
     }
   }
 
