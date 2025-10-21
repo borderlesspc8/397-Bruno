@@ -208,7 +208,7 @@ export default function RankingVendedores({
             const posicaoReal = index === 0 ? 1 : index === 1 ? 0 : 2;
             const empty = vendedor.id < 0;
             const alturas = ["h-32", "h-40", "h-28"];
-            const cores = ["from-blue-500 to-blue-600", "from-amber-500 to-amber-600", "from-orange-500 to-orange-600"];
+            const cores = ["from-orange-500 to-orange-600", "from-amber-500 to-amber-600", "from-orange-500 to-orange-600"];
             
             return (
               <motion.div

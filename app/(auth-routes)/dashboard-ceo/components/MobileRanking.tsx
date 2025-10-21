@@ -97,7 +97,7 @@ export function MobileRanking({
                   
                   {/* Quantidade em destaque */}
                   <div className="flex items-center">
-                    <div className="text-blue-400 font-bold text-xl mr-1">
+                    <div className="text-orange-400 font-bold text-xl mr-1">
                       {produto.quantidade}
                     </div>
                     <ChevronRight className="h-5 w-5 text-gray-400" />

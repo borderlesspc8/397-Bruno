@@ -308,7 +308,7 @@ export const ProdutosMaisVendidos = memo(({ dataInicio, dataFim, onVendaClick, v
         {produtosOrdenados.acessoriosSextavados.length > 0 && (
           <CategoriaCard
             titulo="Halteres Sextavados"
-            icone={<Dumbbell className="h-5 w-5 text-blue-500" />}
+            icone={<Dumbbell className="h-5 w-5 text-orange-500" />}
             produtos={produtosOrdenados.acessoriosSextavados}
             corGrafico="rgba(75, 192, 192, 0.8)"
             ordenacao={ordenacao}

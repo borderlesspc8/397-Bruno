@@ -1,0 +1,163 @@
+﻿[
+    {
+        "Endpoint":  "vendas",
+        "Status":  200,
+        "Success":  true,
+        "Time_ms":  1382,
+        "Items":  0
+    },
+    {
+        "Endpoint":  "situacoes_vendas",
+        "Status":  200,
+        "Success":  true,
+        "Time_ms":  115,
+        "Items":  0
+    },
+    {
+        "Endpoint":  "atributos_vendas",
+        "Status":  200,
+        "Success":  true,
+        "Time_ms":  113,
+        "Items":  0
+    },
+    {
+        "Endpoint":  "centros_custos",
+        "Status":  200,
+        "Success":  true,
+        "Time_ms":  139,
+        "Items":  0
+    },
+    {
+        "Endpoint":  "planos_contas",
+        "Status":  200,
+        "Success":  true,
+        "Time_ms":  197,
+        "Items":  0
+    },
+    {
+        "Endpoint":  "contas_bancarias",
+        "Status":  200,
+        "Success":  true,
+        "Time_ms":  123,
+        "Items":  0
+    },
+    {
+        "Endpoint":  "formas_pagamentos",
+        "Status":  200,
+        "Success":  true,
+        "Time_ms":  167,
+        "Items":  0
+    },
+    {
+        "Endpoint":  "recebimentos",
+        "Status":  200,
+        "Success":  true,
+        "Time_ms":  263,
+        "Items":  0
+    },
+    {
+        "Endpoint":  "pagamentos",
+        "Status":  200,
+        "Success":  true,
+        "Time_ms":  268,
+        "Items":  0
+    },
+    {
+        "Endpoint":  "notas_fiscais_servicos",
+        "Status":  200,
+        "Success":  true,
+        "Time_ms":  128,
+        "Items":  0
+    },
+    {
+        "Endpoint":  "notas_fiscais_consumidores",
+        "Status":  200,
+        "Success":  true,
+        "Time_ms":  173,
+        "Items":  0
+    },
+    {
+        "Endpoint":  "notas_fiscais_produtos",
+        "Status":  200,
+        "Success":  true,
+        "Time_ms":  2929,
+        "Items":  0
+    },
+    {
+        "Endpoint":  "situacoes_compras",
+        "Status":  200,
+        "Success":  true,
+        "Time_ms":  135,
+        "Items":  0
+    },
+    {
+        "Endpoint":  "compras",
+        "Status":  200,
+        "Success":  true,
+        "Time_ms":  1226,
+        "Items":  0
+    },
+    {
+        "Endpoint":  "ordens_servicos",
+        "Status":  200,
+        "Success":  true,
+        "Time_ms":  185,
+        "Items":  0
+    },
+    {
+        "Endpoint":  "situacoes_orcamentos",
+        "Status":  200,
+        "Success":  true,
+        "Time_ms":  121,
+        "Items":  0
+    },
+    {
+        "Endpoint":  "orcamentos",
+        "Status":  200,
+        "Success":  true,
+        "Time_ms":  1188,
+        "Items":  0
+    },
+    {
+        "Endpoint":  "servicos",
+        "Status":  200,
+        "Success":  true,
+        "Time_ms":  237,
+        "Items":  0
+    },
+    {
+        "Endpoint":  "grupos_produto",
+        "Status":  404,
+        "Success":  false,
+        "Time_ms":  97,
+        "Items":  0
+    },
+    {
+        "Endpoint":  "produtos",
+        "Status":  200,
+        "Success":  true,
+        "Time_ms":  649,
+        "Items":  0
+    },
+    {
+        "Endpoint":  "clientes",
+        "Status":  200,
+        "Success":  true,
+        "Time_ms":  517,
+        "Items":  0
+    },
+    {
+        "Endpoint":  "fornecedores",
+        "Status":  200,
+        "Success":  true,
+        "Time_ms":  188,
+        "Items":  0
+    },
+    {
+        "Endpoint":  "funcionarios",
+        "Status":  200,
+        "Success":  true,
+        "Time_ms":  144,
+        "Items":  0
+    }
+]

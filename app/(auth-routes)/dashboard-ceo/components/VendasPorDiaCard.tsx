@@ -64,7 +64,7 @@ export function VendasPorDiaCard({
       <CardHeader className="px-4 py-4 flex flex-row justify-between items-center">
         <div>
           <CardTitle className="flex items-center gap-2 text-lg font-bold">
-            <Calendar className="h-5 w-5 text-blue-500" />
+            <Calendar className="h-5 w-5 text-orange-500" />
             Vendas por Dia
           </CardTitle>
           <CardDescription>

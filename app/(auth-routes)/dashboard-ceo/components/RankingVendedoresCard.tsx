@@ -106,7 +106,7 @@ export function RankingVendedoresCard({
             <DropdownMenuContent align="end" className="w-48">
               <DropdownMenuGroup>
                 <DropdownMenuItem onClick={() => setOrdenacao("faturamento")}>
-                  <TrendingUp className="mr-2 h-4 w-4 text-blue-500" />
+                  <TrendingUp className="mr-2 h-4 w-4 text-orange-500" />
                   <span>Por faturamento</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setOrdenacao("vendas")}>

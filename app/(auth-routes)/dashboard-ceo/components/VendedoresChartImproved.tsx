@@ -347,7 +347,7 @@ export function VendedoresChartImproved({ vendedores, onVendedorClick }: Vendedo
                 <div className={cn(
                   "flex-shrink-0 w-10 h-10 rounded-2xl flex items-center justify-center text-sm font-bold shadow-sm transition-transform group-hover:scale-110",
                   index === 0 ? "bg-gradient-to-br from-yellow-400 to-orange-500 text-white" : 
-                  index === 1 ? "bg-gradient-to-br from-blue-400 to-blue-600 text-white" : 
+                  index === 1 ? "bg-gradient-to-br from-orange-400 to-orange-600 text-white" : 
                   index === 2 ? "bg-gradient-to-br from-orange-400 to-red-500 text-white" : 
                   "bg-gradient-to-br from-gray-200 to-gray-300 text-gray-700 dark:from-gray-700 dark:to-gray-600 dark:text-gray-300"
                 )}>

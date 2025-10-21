@@ -1,22 +1,18 @@
-"use client";
+import { Metadata } from 'next';
 
-import { usePathname } from "next/navigation";
-import { DashboardHeader } from "@/app/_components/dashboard-header";
+export const metadata: Metadata = {
+  title: 'Dashboard CEO - Loja Personal Prime',
+  description: 'Dashboard executivo com métricas estratégicas e indicadores de performance',
+};
 
-export default function DashboardCEOLayout({
-  children,
-}: {
+interface CEODashboardLayoutProps {
   children: React.ReactNode;
-}) {
+}
+
+export default function CEODashboardLayout({ children }: CEODashboardLayoutProps) {
   return (
-    <div className="w-full">
-      {/* Header de navegação do dashboard */}
-      <DashboardHeader />
-      
-      {/* Main content */}
-      <main className="w-full bg-background min-h-screen">
-        {children}
-      </main>
+    <div className="ceo-dashboard-layout">
+      {children}
     </div>
   );
 }

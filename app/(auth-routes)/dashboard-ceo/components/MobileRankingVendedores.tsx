@@ -119,7 +119,7 @@ export function MobileRankingVendedores({ vendedores, onVendedorClick }: MobileR
             <div className={cn(
               "w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium",
               index === 0 ? "bg-amber-500 text-white" :
-              index === 1 ? "bg-blue-500 text-white" :
+              index === 1 ? "bg-orange-500 text-white" :
               index === 2 ? "bg-orange-500 text-white" :
               "bg-gray-200 text-gray-700"
             )}>

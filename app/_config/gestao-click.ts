@@ -32,7 +32,7 @@ const secretToken =
 // Configurações padrão
 const defaultConfig = {
   apiUrl:
-    process.env.GESTAO_CLICK_API_URL || "https://api.beteltecnologia.com.br",
+    process.env.GESTAO_CLICK_API_URL || "https://api.beteltecnologia.com",
   accessToken: apiKey,
   secretAccessToken: secretToken,
   apiKey: apiKey,

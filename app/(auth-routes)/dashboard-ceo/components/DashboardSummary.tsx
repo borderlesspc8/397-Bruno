@@ -294,8 +294,8 @@ export const DashboardSummary = React.memo(({ totais, metas, vendedores }: Dashb
           onClick={() => toggleSection('vendas')}
         >
           <div className="flex items-center gap-3">
-            <div className="p-3 bg-gradient-to-br from-blue-100 to-cyan-100 dark:from-blue-900/20 dark:to-cyan-900/20 rounded-2xl">
-              <ShoppingCart className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+            <div className="p-3 bg-gradient-to-br from-orange-100 to-cyan-100 dark:from-orange-900/20 dark:to-cyan-900/20 rounded-2xl">
+              <ShoppingCart className="h-6 w-6 text-orange-600 dark:text-orange-400" />
             </div>
             <h3 className="text-lg font-bold text-foreground">
               Total de Vendas

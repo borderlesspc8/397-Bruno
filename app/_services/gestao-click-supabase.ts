@@ -268,6 +268,9 @@ export class GestaoClickSupabaseService {
         vendedor_id: venda.vendedor_id ? `gc-${venda.vendedor_id}` : undefined,
         vendedor_nome: venda.nome_vendedor,
         data_venda: venda.data || venda.data_venda,
+        // ✅ ADICIONAR centro_custo_id no objeto principal
+        centro_custo_id: venda.centro_custo_id,
+        nome_centro_custo: venda.nome_centro_custo,
         // Adicionar campos financeiros diretamente no objeto principal
         valor_custo: parseFloat(venda.valor_custo || '0'),
         desconto_valor: parseFloat(venda.desconto_valor || '0'),
@@ -297,6 +300,11 @@ export class GestaoClickSupabaseService {
           situacao_id: venda.situacao_id,
           loja_id: venda.loja_id,
           loja_nome: venda.loja_nome,
+          // ✅ ADICIONAR centro_custo (mesmo que vazio)
+          centro_custo_id: venda.centro_custo_id,
+          nome_centro_custo: venda.nome_centro_custo,
+          plano_conta_id: venda.plano_conta_id,
+          nome_plano_conta: venda.nome_plano_conta,
           pagamentos: venda.pagamentos,
           forma_pagamento: venda.forma_pagamento,
           metodo_pagamento: venda.metodo_pagamento,
