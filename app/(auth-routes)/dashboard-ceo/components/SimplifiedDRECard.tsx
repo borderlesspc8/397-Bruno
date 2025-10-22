@@ -4,9 +4,10 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/app/_components/ui/card';
 import { Button } from '@/app/_components/ui/button';
 import { Badge } from '@/app/_components/ui/badge';
-import { TrendingUp, TrendingDown, Minus, FileText, RefreshCw, ChevronDown, ChevronUp, DollarSign, Calculator, BarChart3 } from 'lucide-react';
-import { CEODashboardParams } from '../types/ceo-dashboard.types';
-import { CEODREService, DetailedDREData, DRERatios, DRETrendAnalysis } from '../services/dre-service';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/app/_components/ui/select';
+import { TrendingUp, TrendingDown, Minus, FileText, RefreshCw, ChevronDown, ChevronUp, DollarSign, Calculator, BarChart3, Building2, Store } from 'lucide-react';
+import { CEODashboardParams, DetailedDREData, DRERatios, DRETrendAnalysis } from '../types/ceo-dashboard.types';
+import { DRERealService, TipoDRE } from '../services/dre-real-service-v2';
 import { CardSkeleton, ErrorState, FadeIn } from './loading-states';
 
 interface SimplifiedDRECardProps {
@@ -15,7 +16,7 @@ interface SimplifiedDRECardProps {
   onRefresh?: () => void;
 }
 
-export function SimplifiedDRECard({ params, isLoading = false, onRefresh }: SimplifiedDRECardProps) {
+function SimplifiedDRECard({ params, isLoading = false, onRefresh }: SimplifiedDRECardProps) {
   const [dreData, setDreData] = useState<DetailedDREData | null>(null);
   const [ratios, setRatios] = useState<DRERatios | null>(null);
   const [trendAnalysis, setTrendAnalysis] = useState<DRETrendAnalysis[]>([]);
@@ -29,17 +30,18 @@ export function SimplifiedDRECard({ params, isLoading = false, onRefresh }: Simp
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState(false);
+  const [tipoDRE, setTipoDRE] = useState<TipoDRE>('geral');
 
-  const loadData = async () => {
+  const loadData = async (tipo: TipoDRE = tipoDRE) => {
     try {
       setLoading(true);
       setError(null);
 
-      // Garantir que sempre usa as datas do dashboard CEO
-      const startDate = params.startDate.toISOString().split('T')[0];
-      const endDate = params.endDate.toISOString().split('T')[0];
-      
-      console.log('[DRE Simplificada] Carregando dados para período:', { startDate, endDate });
+      console.log('[DRE Simplificada] Carregando dados para período:', { 
+        startDate: params.startDate.toISOString().split('T')[0], 
+        endDate: params.endDate.toISOString().split('T')[0],
+        tipo 
+      });
 
       const [
         dre,
@@ -47,10 +49,10 @@ export function SimplifiedDRECard({ params, isLoading = false, onRefresh }: Simp
         trend,
         marginEvo
       ] = await Promise.all([
-        CEODREService.getDetailedDRE(params),
-        CEODREService.getDRERatios(params),
-        CEODREService.getDRETrendAnalysis(params, 6),
-        CEODREService.getMarginEvolution(params)
+        DRERealService.getDetailedDRE(params, tipo),
+        DRERealService.getDRERatios(params, tipo),
+        DRERealService.getDRETrendAnalysis(params, tipo, 6),
+        DRERealService.getMarginEvolution(params, tipo)
       ]);
 
       setDreData(dre || null);
@@ -59,6 +61,7 @@ export function SimplifiedDRECard({ params, isLoading = false, onRefresh }: Simp
       setMarginEvolution(marginEvo || null);
       
       console.log('[DRE Simplificada] Dados carregados:', {
+        tipo,
         receita: dre?.netRevenue,
         custos: dre?.totalCostOfGoodsSold,
         lucroBruto: dre?.grossProfit,
@@ -81,6 +84,29 @@ export function SimplifiedDRECard({ params, isLoading = false, onRefresh }: Simp
     onRefresh?.();
   };
 
+  const handleTipoChange = (value: TipoDRE) => {
+    setTipoDRE(value);
+    loadData(value);
+  };
+
+  const getTituloDRE = () => {
+    switch (tipoDRE) {
+      case 'geral': return 'DRE Geral (Todas as Unidades)';
+      case 'matriz': return 'DRE Unidade Matriz';
+      case 'golden': return 'DRE Filial Golden';
+      default: return 'DRE Simplificada';
+    }
+  };
+
+  const getDescricaoDRE = () => {
+    switch (tipoDRE) {
+      case 'geral': return 'Demonstração consolidada de todas as unidades';
+      case 'matriz': return 'Demonstração específica da Unidade Matriz';
+      case 'golden': return 'Demonstração específica da Filial Golden';
+      default: return 'Demonstração do Resultado do Exercício';
+    }
+  };
+
   const getTrendIcon = (trend: string) => {
     switch (trend) {
       case 'improving': return <TrendingUp className="h-4 w-4 text-green-600" />;
@@ -98,7 +124,7 @@ export function SimplifiedDRECard({ params, isLoading = false, onRefresh }: Simp
   };
 
   const getMarginStatus = (margin: number): { status: string; color: string } => {
-    if (margin >= 15) return { status: 'Excelente', color: 'bg-green-README.md' };
+    if (margin >= 15) return { status: 'Excelente', color: 'bg-green-100 text-green-800' };
     if (margin >= 10) return { status: 'Boa', color: 'bg-orange-100 text-orange-800' };
     if (margin >= 5) return { status: 'Adequada', color: 'bg-yellow-100 text-yellow-800' };
     if (margin >= 0) return { status: 'Baixa', color: 'bg-red-100 text-red-800' };
@@ -144,10 +170,10 @@ export function SimplifiedDRECard({ params, isLoading = false, onRefresh }: Simp
         <CardHeader>
           <div className="flex items-center space-x-2">
             <FileText className="h-5 w-5 text-purple-600" />
-            <CardTitle className="text-lg">DRE Simplificada</CardTitle>
+            <CardTitle className="text-lg">{getTituloDRE()}</CardTitle>
           </div>
           <CardDescription>
-            Demonstração do Resultado do Exercício
+            {getDescricaoDRE()}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -170,9 +196,34 @@ export function SimplifiedDRECard({ params, isLoading = false, onRefresh }: Simp
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
               <FileText className="h-5 w-5 text-purple-600" />
-              <CardTitle className="text-lg">DRE Simplificada</CardTitle>
+              <CardTitle className="text-lg">{getTituloDRE()}</CardTitle>
             </div>
             <div className="flex items-center space-x-2">
+              <Select value={tipoDRE} onValueChange={handleTipoChange}>
+                <SelectTrigger className="w-48">
+                  <SelectValue placeholder="Selecione o tipo de DRE" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="geral">
+                    <div className="flex items-center space-x-2">
+                      <BarChart3 className="h-4 w-4" />
+                      <span>DRE Geral</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="matriz">
+                    <div className="flex items-center space-x-2">
+                      <Building2 className="h-4 w-4" />
+                      <span>DRE Matriz</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="golden">
+                    <div className="flex items-center space-x-2">
+                      <Store className="h-4 w-4" />
+                      <span>DRE Golden</span>
+                    </div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
               <Button onClick={() => setExpanded(!expanded)} variant="outline" size="sm">
                 {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
               </Button>
@@ -182,7 +233,7 @@ export function SimplifiedDRECard({ params, isLoading = false, onRefresh }: Simp
             </div>
           </div>
           <CardDescription>
-            Demonstração do Resultado do Exercício - Período: {params.startDate.toLocaleDateString('pt-BR')} até {params.endDate.toLocaleDateString('pt-BR')}
+            {getDescricaoDRE()} - Período: {params.startDate.toLocaleDateString('pt-BR')} até {params.endDate.toLocaleDateString('pt-BR')}
           </CardDescription>
         </CardHeader>
         
@@ -518,3 +569,6 @@ export function SimplifiedDRECard({ params, isLoading = false, onRefresh }: Simp
     </FadeIn>
   );
 }
+
+export { SimplifiedDRECard };
+export default SimplifiedDRECard;

@@ -168,3 +168,4 @@ Depois que eu ajustar baseado nos dados reais:
 
 **Está pronto! Acesse o diagnóstico e me envie os resultados!** 🚀
 
+

@@ -349,3 +349,4 @@ app/(auth-routes)/
 **Estrutura de Arquivos**  
 **Atualizado:** ${new Date().toLocaleDateString('pt-BR')}
 
+

@@ -4,7 +4,7 @@
  */
 
 import dynamic from 'next/dynamic';
-import { ComponentType } from 'react';
+import { ComponentType, useState, useEffect, useRef } from 'react';
 
 // Loading component personalizado
 const LoadingSpinner = () => (
@@ -159,7 +159,7 @@ export const LazyVendedoresChart = createLazyComponent(
 );
 
 // Hooks lazy loading
-export const useLazyHook = <T>(
+export const useLazyHook = <T,>(
   hookFactory: () => T,
   dependencies: any[] = []
 ): T | null => {
@@ -281,7 +281,3 @@ export const LazyIntersectionObserver = ({
     </div>
   );
 };
-
-// Import necessário para hooks
-import { useState, useEffect, useRef } from 'react';
-

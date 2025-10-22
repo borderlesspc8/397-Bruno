@@ -159,3 +159,4 @@ http://localhost:3000/api/ceo/diagnostico
 **GARANTIA:** Esta API não vai afetar absolutamente nada nos outros dashboards. É apenas leitura e análise.
 
 
+

@@ -231,3 +231,4 @@ export function RentabilidadeCentroCustoTable({ dados }: RentabilidadeCentroCust
 export default RentabilidadeCentroCustoTable;
 
 
+

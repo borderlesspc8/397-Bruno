@@ -144,3 +144,4 @@ app/(auth-routes)/dashboard/ceo/_types/ceo-dashboard.types.ts
 
 **AGORA SIM! Interfaces corretas + Dados reais = Dashboard funcional!** ✅
 
+
