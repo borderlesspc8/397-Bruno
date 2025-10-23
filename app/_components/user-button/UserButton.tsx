@@ -66,25 +66,41 @@ export function UserButton() {
     return null;
   }
   
+  // Debug para verificar se o UserButton está sendo renderizado
+  console.log('UserButton renderizado:', { user: user?.name, email: user?.email });
+  
   const { name, email, image } = user || {};
   const initials = generateInitials(name, email);
   
   const handleLogout = async () => {
-    await signOut();
+    try {
+      await signOut();
+    } catch (error) {
+      console.error('Erro ao fazer logout:', error);
+    }
   };
   
   return (
     <>
-      <DropdownMenu>
+      <DropdownMenu onOpenChange={(open) => console.log('Dropdown menu aberto:', open)}>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon" className="relative rounded-full h-8 w-8 overflow-hidden">
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="relative rounded-full h-8 w-8 overflow-hidden"
+            onClick={() => console.log('UserButton clicado')}
+          >
             <Avatar className="h-8 w-8">
               <AvatarImage src={image || ""} alt={name || "Avatar do usuário"} />
               <AvatarFallback className="bg-primary/10 text-primary">{initials}</AvatarFallback>
             </Avatar>
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-64">
+        <DropdownMenuContent 
+          align="end" 
+          className="w-64 z-[9999]"
+          onOpenChange={(open) => console.log('Dropdown aberto:', open)}
+        >
           <div className="flex flex-col p-2 gap-2">
             <div className="flex items-center gap-2">
               <div className="relative">
@@ -157,7 +173,15 @@ export function UserButton() {
           
           <DropdownMenuSeparator />
           
-          <DropdownMenuItem onClick={handleLogout} className="cursor-pointer">
+          <DropdownMenuItem 
+            onClick={handleLogout} 
+            className="cursor-pointer"
+            onSelect={(e) => {
+              e.preventDefault();
+              console.log('Logout clicado');
+              handleLogout();
+            }}
+          >
             <LogOut className="mr-2 h-4 w-4" />
             <span>Sair</span>
           </DropdownMenuItem>

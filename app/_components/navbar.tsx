@@ -4,7 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useAuth } from "@/app/_hooks/useAuth";
 import { useUserPermissions } from "@/app/_hooks/useUserPermissions";
-import { UserButton } from "@/app/_components/user-button/UserButton";
+import { WorkingUserButton } from "@/app/_components/WorkingUserButton";
 import { 
   Star, 
   ChevronDown,
@@ -257,7 +257,7 @@ export function Navbar() {
 
         {/* Botão de usuário à direita */}
         <div className="flex items-center">
-          <UserButton />
+          <WorkingUserButton />
         </div>
       </div>
       
@@ -298,6 +298,15 @@ export function Navbar() {
           isolation: isolate !important;
         }
         
+        /* Garantir que o dropdown do UserButton apareça acima de tudo */
+        [data-radix-popper-content-wrapper] {
+          z-index: 9999 !important;
+        }
+        
+        [data-radix-dropdown-menu-content] {
+          z-index: 9999 !important;
+        }
+        
         /* Garantir que o conteúdo da página fique atrás do navbar */
         .app-layout-with-navbar main {
           position: relative;
@@ -308,6 +317,20 @@ export function Navbar() {
         .app-layout-with-navbar .page-container {
           position: relative;
           z-index: 10;
+        }
+        
+        /* Garantir que o dropdown do UserButton não seja cortado */
+        .app-layout-with-navbar {
+          overflow: visible !important;
+        }
+        
+        .app-layout-with-navbar main {
+          overflow: visible !important;
+        }
+        
+        /* Garantir que o portal do dropdown funcione */
+        [data-radix-portal] {
+          z-index: 9999 !important;
         }
       `}</style>
     </div>

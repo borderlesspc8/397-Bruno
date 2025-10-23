@@ -411,7 +411,8 @@ export default function DashboardVendedores() {
 
   return (
     <VendorRouteProtection allowedRoles={['vendor', 'user', 'admin']}>
-      <PageContainer>
+      <div style={{ overflow: 'visible', position: 'relative' }}>
+        <PageContainer>
         <div className="space-y-6 ios26-animate-fade-in">
         {/* Header */}
         <div className="col-span-12">
@@ -425,6 +426,7 @@ export default function DashboardVendedores() {
         </div>
 
         {/* ===== COMPONENTES TOTALMENTE FUNCIONAIS ===== */}
+        
         
         {/* Informações do período */}
         <div className="text-sm text-muted-foreground font-medium">
@@ -526,7 +528,8 @@ export default function DashboardVendedores() {
         )}
 
         </div>
-      </PageContainer>
+        </PageContainer>
+      </div>
     </VendorRouteProtection>
   );
 }

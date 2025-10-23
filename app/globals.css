@@ -2,6 +2,40 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Garantir que dropdowns funcionem corretamente */
+[data-radix-dropdown-menu-content] {
+  z-index: 99999 !important;
+  position: fixed !important;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1) !important;
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+[data-radix-popper-content-wrapper] {
+  z-index: 99999 !important;
+}
+
+[data-radix-portal] {
+  z-index: 99999 !important;
+}
+
+/* Garantir que o layout não corte dropdowns */
+.app-layout-with-navbar {
+  overflow: visible !important;
+}
+
+.app-layout-with-navbar main {
+  overflow: visible !important;
+}
+
+/* Garantir que o portal funcione */
+body {
+  overflow-x: visible !important;
+}
+
+
+
 :root, .light {
   /* iOS 26 Design System - Cores predominantes: Laranja, Preto e Amarelo */
   --background: 0 0% 100%;

@@ -76,5 +76,9 @@ export function VendorRouteProtection({
     );
   }
 
-  return <>{children}</>;
+  return (
+    <div style={{ overflow: 'visible', position: 'relative' }}>
+      {children}
+    </div>
+  );
 }

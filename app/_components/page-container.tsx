@@ -38,7 +38,7 @@ export function PageContainer({
       "page-container mx-auto px-4 py-6 relative z-10",
       fullWidth ? "w-full" : "container max-w-screen-2xl",
       className
-    )}>
+    )} style={{ overflow: 'visible', position: 'relative' }}>
       
       
       {/* Cabeçalho da página com melhor espaçamento e responsividade */}

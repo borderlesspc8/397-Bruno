@@ -9,12 +9,12 @@ export default function DashboardVendedoresLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="w-full">
+    <div className="w-full" style={{ overflow: 'visible' }}>
       {/* Header de navegação do dashboard */}
       <DashboardHeader />
       
       {/* Main content */}
-      <main className="w-full bg-background min-h-screen">
+      <main className="w-full bg-background min-h-screen" style={{ overflow: 'visible' }}>
         {children}
       </main>
     </div>
