@@ -59,6 +59,10 @@ interface VendaPorDia {
 interface VendasPorDiaChartProps {
   dataInicio: Date;
   dataFim: Date;
+  // Adicionar props para receber dados da mesma fonte
+  vendas?: any[];
+  totalVendas?: number;
+  totalValor?: number;
 }
 
 // Definir tipos para o contexto do tooltip e Chart.js
@@ -69,9 +73,15 @@ interface TooltipContext {
   raw: number;
 }
 
-export function VendasPorDiaChart({ dataInicio, dataFim }: VendasPorDiaChartProps) {
+export function VendasPorDiaChart({ 
+  dataInicio, 
+  dataFim, 
+  vendas = [], 
+  totalVendas = 0, 
+  totalValor = 0 
+}: VendasPorDiaChartProps) {
   const [vendasPorDia, setVendasPorDia] = useState<VendaPorDia[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false); // Iniciar como false já que receberemos dados como props
   const [erro, setErro] = useState<string | null>(null);
   const [isMounted, setIsMounted] = useState(false);
 
@@ -80,40 +90,40 @@ export function VendasPorDiaChart({ dataInicio, dataFim }: VendasPorDiaChartProp
     setIsMounted(true);
   }, []);
 
-  // Buscar dados das vendas por dia - REATIVADO COM PROTEÇÃO CONTRA LOOPS
+  // Processar dados recebidos como props (mesma fonte do DashboardSummary)
   useEffect(() => {
-    if (!isMounted) return;
+    if (!isMounted || !vendas || vendas.length === 0) {
+      setVendasPorDia([]);
+      return;
+    }
     
-    const buscarVendasPorDia = async () => {
-      setLoading(true);
-      setErro(null);
-
-      try {
-        const response = await fetch(`/api/dashboard/vendas/diario?dataInicio=${dataInicio.toISOString()}&dataFim=${dataFim.toISOString()}`);
-        
-        if (!response.ok) {
-          throw new Error(`Erro ao buscar dados: ${response.status}`);
-        }
-        
-        const data = await response.json();
-        
-        if (data.erro) {
-          setErro(data.erro);
-          setVendasPorDia([]);
-        } else {
-          setVendasPorDia(data.vendasPorDia || []);
-        }
-      } catch (error) {
-        console.error('Erro ao buscar vendas por dia:', error);
-        setErro(error instanceof Error ? error.message : 'Erro desconhecido ao buscar dados');
-        setVendasPorDia([]);
-      } finally {
-        setLoading(false);
+    // Processar vendas para agrupar por dia
+    const vendasPorDiaMap = new Map<string, { totalVendas: number; totalValor: number; vendas: any[] }>();
+    
+    vendas.forEach((venda: any) => {
+      const dataVenda = new Date(venda.data_venda || venda.created_at);
+      const dataStr = dataVenda.toISOString().split('T')[0]; // YYYY-MM-DD
+      
+      if (!vendasPorDiaMap.has(dataStr)) {
+        vendasPorDiaMap.set(dataStr, { totalVendas: 0, totalValor: 0, vendas: [] });
       }
-    };
-
-    buscarVendasPorDia();
-  }, [dataInicio, dataFim, isMounted]);
+      
+      const diaData = vendasPorDiaMap.get(dataStr)!;
+      diaData.totalVendas += 1;
+      diaData.totalValor += parseFloat(String(venda.valor_total || 0));
+      diaData.vendas.push(venda);
+    });
+    
+    // Converter para array
+    const vendasPorDiaArray = Array.from(vendasPorDiaMap.entries()).map(([data, dados]) => ({
+      data,
+      totalVendas: dados.totalVendas,
+      totalValor: dados.totalValor,
+      vendas: dados.vendas
+    }));
+    
+    setVendasPorDia(vendasPorDiaArray);
+  }, [vendas, isMounted]);
 
   // Preparar dados para o gráfico usando exatamente a mesma lógica de processamento do VendasPorDia
   const dadosGrafico = useMemo(() => {

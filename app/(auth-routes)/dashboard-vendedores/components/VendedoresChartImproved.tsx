@@ -9,6 +9,11 @@ import { useMetas, Meta } from '@/app/_hooks/useMetas';
 interface VendedoresChartImprovedProps {
   vendedores: VendedorBetel[];
   onVendedorClick?: (vendedor: VendedorBetel, index?: number) => void;
+  // Adicionar props para receber dados da mesma fonte
+  vendas?: any[];
+  totalVendas?: number;
+  totalValor?: number;
+  ticketMedio?: number;
 }
 
 
@@ -51,7 +56,14 @@ const COLORS = [
   '#673AB7', // Deep Purple 500
 ];
 
-export function VendedoresChartImproved({ vendedores, onVendedorClick }: VendedoresChartImprovedProps) {
+export function VendedoresChartImproved({ 
+  vendedores, 
+  onVendedorClick, 
+  vendas = [], 
+  totalVendas = 0, 
+  totalValor = 0, 
+  ticketMedio = 0 
+}: VendedoresChartImprovedProps) {
   const [isClient, setIsClient] = useState(false);
   const { metas, loading: isLoadingMetas } = useMetas();
   const [metaAtual, setMetaAtual] = useState<Meta | null>(null);
@@ -286,16 +298,14 @@ export function VendedoresChartImproved({ vendedores, onVendedorClick }: Vendedo
     });
   }, [vendedoresFiltrados, metaAtual?.metasVendedores, metaAtual?.metaCoordenador]);
 
-  // Calcular totais apenas com vendedores não administrativos
+  // Calcular totais usando os dados recebidos como props (mesma fonte do DashboardSummary)
   const totais = useMemo(() => {
-    if (!vendedoresFiltrados || vendedoresFiltrados.length === 0) 
-      return { valorTotal: 0, vendasTotal: 0 };
-    
+    // Usar os dados recebidos como props em vez de calcular localmente
     return {
-      valorTotal: vendedoresFiltrados.reduce((acc, curr) => acc + curr.faturamento, 0),
-      vendasTotal: vendedoresFiltrados.reduce((acc, curr) => acc + curr.vendas, 0)
+      valorTotal: totalValor,
+      vendasTotal: totalVendas
     };
-  }, [vendedoresFiltrados]);
+  }, [totalValor, totalVendas]);
 
   if (!isClient) {
     return null; // Evita renderização no servidor

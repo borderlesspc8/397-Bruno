@@ -10,11 +10,18 @@ import { VendaDetalheModal } from './VendaDetalheModal';
 interface VendasPorDiaCardProps {
   dataInicio: Date;
   dataFim: Date;
+  // Adicionar props para receber dados da mesma fonte
+  vendas?: any[];
+  totalVendas?: number;
+  totalValor?: number;
 }
 
 export function VendasPorDiaCard({
   dataInicio,
-  dataFim
+  dataFim,
+  vendas = [],
+  totalVendas = 0,
+  totalValor = 0
 }: VendasPorDiaCardProps) {
   const [isMobile, setIsMobile] = useState(false);
   const [visualizacao, setVisualizacao] = useState<"grafico" | "lista">("grafico");
@@ -104,12 +111,18 @@ export function VendasPorDiaCard({
           <VendasPorDiaChart 
             dataInicio={dataInicio}
             dataFim={dataFim}
+            vendas={vendas}
+            totalVendas={totalVendas}
+            totalValor={totalValor}
           />
         ) : (
           <VendasPorDia 
             dataInicio={dataInicio}
             dataFim={dataFim}
             onDiaClick={handleDiaClick}
+            vendas={vendas}
+            totalVendas={totalVendas}
+            totalValor={totalValor}
           />
         )}
       </CardContent>

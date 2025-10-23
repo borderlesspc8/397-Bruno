@@ -463,21 +463,29 @@ export default function DashboardVendedores() {
           />
         </div>
 
-        <div className="ios26-grid">
-          <div className="hidden lg:block">
-            <VendedoresChartImproved 
-              vendedores={vendedoresMapeados}
-              onVendedorClick={handleOpenVendedorDetails}
-            />
-          </div>
-          
-          <div className="lg:hidden">
-            <MobileRankingVendedores 
-                vendedores={vendedoresMapeados}
-              onVendedorClick={handleOpenVendedorDetails}
-              />
-          </div>
-        </div>
+         <div className="ios26-grid">
+           <div className="hidden lg:block">
+             <VendedoresChartImproved 
+               vendedores={vendedoresMapeados}
+               onVendedorClick={handleOpenVendedorDetails}
+               vendas={vendas}
+               totalVendas={totalVendas}
+               totalValor={totalValor}
+               ticketMedio={ticketMedio}
+             />
+           </div>
+           
+           <div className="lg:hidden">
+             <MobileRankingVendedores 
+                 vendedores={vendedoresMapeados}
+               onVendedorClick={handleOpenVendedorDetails}
+               vendas={vendas}
+               totalVendas={totalVendas}
+               totalValor={totalValor}
+               ticketMedio={ticketMedio}
+               />
+           </div>
+         </div>
         
         <div className="ios26-card p-6">
           <div className="space-y-6">
@@ -493,12 +501,19 @@ export default function DashboardVendedores() {
             <RankingVendedoresPodium 
               vendedores={vendedoresMapeados}
               onVendedorClick={handleOpenVendedorDetails}
+              vendas={vendas}
+              totalVendas={totalVendas}
+              totalValor={totalValor}
+              ticketMedio={ticketMedio}
             />
             
-            <VendasPorDiaCard 
-              dataInicio={dateRange.from}
-              dataFim={dateRange.to}
-            />
+             <VendasPorDiaCard 
+               dataInicio={dateRange.from}
+               dataFim={dateRange.to}
+               vendas={vendas}
+               totalVendas={totalVendas}
+               totalValor={totalValor}
+             />
           </div>
         </div>
 
@@ -533,3 +548,5 @@ export default function DashboardVendedores() {
     </VendorRouteProtection>
   );
 }
+
+

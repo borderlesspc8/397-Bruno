@@ -15,6 +15,10 @@ interface VendasPorDiaProps {
   dataInicio: Date;
   dataFim: Date;
   onDiaClick?: (data: string, vendas: any[]) => void;
+  // Adicionar props para receber dados da mesma fonte
+  vendas?: any[];
+  totalVendas?: number;
+  totalValor?: number;
 }
 
 interface VendaDiaria {
@@ -24,9 +28,16 @@ interface VendaDiaria {
   vendas?: any[];
 }
 
-export function VendasPorDia({ dataInicio, dataFim, onDiaClick }: VendasPorDiaProps) {
+export function VendasPorDia({ 
+  dataInicio, 
+  dataFim, 
+  onDiaClick, 
+  vendas = [], 
+  totalVendas = 0, 
+  totalValor = 0 
+}: VendasPorDiaProps) {
   const [vendasPorDia, setVendasPorDia] = useState<VendaDiaria[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false); // Iniciar como false já que receberemos dados como props
   const [erro, setErro] = useState<string | null>(null);
   const [isMounted, setIsMounted] = useState(false);
 
@@ -35,40 +46,40 @@ export function VendasPorDia({ dataInicio, dataFim, onDiaClick }: VendasPorDiaPr
     setIsMounted(true);
   }, []);
 
-  // Buscar dados das vendas por dia - REATIVADO COM PROTEÇÃO CONTRA LOOPS
+  // Processar dados recebidos como props (mesma fonte do DashboardSummary)
   useEffect(() => {
-    if (!isMounted) return;
+    if (!isMounted || !vendas || vendas.length === 0) {
+      setVendasPorDia([]);
+      return;
+    }
     
-    const buscarVendasPorDia = async () => {
-      setLoading(true);
-      setErro(null);
-
-      try {
-        const response = await fetch(`/api/dashboard/vendas/diario?dataInicio=${dataInicio.toISOString()}&dataFim=${dataFim.toISOString()}`);
-        
-        if (!response.ok) {
-          throw new Error(`Erro ao buscar dados: ${response.status}`);
-        }
-        
-        const data = await response.json();
-        
-        if (data.erro) {
-          setErro(data.erro);
-          setVendasPorDia([]);
-        } else {
-          setVendasPorDia(data.vendasPorDia || []);
-        }
-      } catch (error) {
-        console.error('Erro ao buscar vendas por dia:', error);
-        setErro(error instanceof Error ? error.message : 'Erro desconhecido ao buscar dados');
-        setVendasPorDia([]);
-      } finally {
-        setLoading(false);
+    // Processar vendas para agrupar por dia
+    const vendasPorDiaMap = new Map<string, { totalVendas: number; totalValor: number; vendas: any[] }>();
+    
+    vendas.forEach((venda: any) => {
+      const dataVenda = new Date(venda.data_venda || venda.created_at);
+      const dataStr = dataVenda.toISOString().split('T')[0]; // YYYY-MM-DD
+      
+      if (!vendasPorDiaMap.has(dataStr)) {
+        vendasPorDiaMap.set(dataStr, { totalVendas: 0, totalValor: 0, vendas: [] });
       }
-    };
-
-    buscarVendasPorDia();
-  }, [dataInicio, dataFim, isMounted]);
+      
+      const diaData = vendasPorDiaMap.get(dataStr)!;
+      diaData.totalVendas += 1;
+      diaData.totalValor += parseFloat(String(venda.valor_total || 0));
+      diaData.vendas.push(venda);
+    });
+    
+    // Converter para array
+    const vendasPorDiaArray = Array.from(vendasPorDiaMap.entries()).map(([data, dados]) => ({
+      data,
+      totalVendas: dados.totalVendas,
+      totalValor: dados.totalValor,
+      vendas: dados.vendas
+    }));
+    
+    setVendasPorDia(vendasPorDiaArray);
+  }, [vendas, isMounted]);
 
   // Preparar dados para exibição
   const dadosFormatados = useMemo(() => {
@@ -124,12 +135,11 @@ export function VendasPorDia({ dataInicio, dataFim, onDiaClick }: VendasPorDiaPr
       });
   }, [vendasPorDia, dataInicio, dataFim]);
 
-  // Calcular total de vendas e valor para o período
+  // Calcular total de vendas e valor para o período usando dados recebidos como props
   const totais = useMemo(() => {
-    const totalVendas = vendasPorDia.reduce((acc, curr) => acc + curr.totalVendas, 0);
-    const totalValor = vendasPorDia.reduce((acc, curr) => acc + curr.totalValor, 0);
+    // Usar os dados recebidos como props (mesma fonte do DashboardSummary)
     return { totalVendas, totalValor };
-  }, [vendasPorDia]);
+  }, [totalVendas, totalValor]);
 
   if (!isMounted) {
     return null;

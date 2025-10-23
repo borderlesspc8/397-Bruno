@@ -24,6 +24,11 @@ interface RankingVendedoresPodiumProps {
   onVendedorClick?: (vendedor: Vendedor) => void;
   erro?: string | null;
   isRankingComponent?: boolean;
+  // Adicionar props para receber dados da mesma fonte
+  vendas?: any[];
+  totalVendas?: number;
+  totalValor?: number;
+  ticketMedio?: number;
 }
 
 // Componente de Cabeçalho memoizado para evitar re-renders desnecessários
@@ -145,7 +150,11 @@ export default function RankingVendedoresPodium({
   onUploadFoto,
   onVendedorClick,
   erro = null,
-  isRankingComponent = true // Por padrão, consideramos como componente de ranking
+  isRankingComponent = true, // Por padrão, consideramos como componente de ranking
+  vendas = [],
+  totalVendas = 0,
+  totalValor = 0,
+  ticketMedio = 0
 }: RankingVendedoresPodiumProps) {
   const [ordenacao, setOrdenacao] = useState<"faturamento" | "vendas" | "ticket">("faturamento");
   
@@ -225,8 +234,8 @@ export default function RankingVendedoresPodium({
         </div>
         
         <CardFooter_Memo 
-          quantidade={vendedores.length} // Mantém o total geral de vendedores
-          valorTotal={totalOrdenacao}
+          quantidade={vendedores.length} // Total de todos os vendedores
+          valorTotal={totalValor} // Usar o valor da mesma fonte do DashboardSummary
           ordenacao={ordenacao}
         />
       </CardContent>

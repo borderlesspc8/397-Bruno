@@ -15,6 +15,11 @@ interface VendedorComMeta extends Vendedor {
 interface MobileRankingVendedoresProps {
   vendedores: Vendedor[];
   onVendedorClick?: (vendedor: Vendedor, index?: number) => void;
+  // Adicionar props para receber dados da mesma fonte
+  vendas?: any[];
+  totalVendas?: number;
+  totalValor?: number;
+  ticketMedio?: number;
 }
 
 // Objeto de mapeamento entre nomes de vendedores e IDs usados no sistema de metas
@@ -27,7 +32,14 @@ const VENDEDORES_MAPEAMENTO = {
   "ADMINISTRATIVO": "administrativo"
 };
 
-export function MobileRankingVendedores({ vendedores, onVendedorClick }: MobileRankingVendedoresProps) {
+export function MobileRankingVendedores({ 
+  vendedores, 
+  onVendedorClick, 
+  vendas = [], 
+  totalVendas = 0, 
+  totalValor = 0, 
+  ticketMedio = 0 
+}: MobileRankingVendedoresProps) {
   const { metas, loading: isLoadingMetas } = useMetas();
   const [metaAtual, setMetaAtual] = useState<Meta | null>(null);
 
