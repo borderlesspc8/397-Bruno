@@ -371,3 +371,4 @@ Melhorias futuras que podem ser implementadas:
 **Data:** ${new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}
 
 
+

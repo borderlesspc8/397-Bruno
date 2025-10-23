@@ -16,6 +16,8 @@ import CEOMetasService from './ceo-metas.service';
 import GestaoClickAPIService from './gestao-click-api.service';
 import BetelCompleteAPIService from './betel-complete-api.service';
 import CEOIndicadoresService from './ceo-indicadores.service';
+import CEODREBetelService from './ceo-dre-betel.service';
+import CEODREGerencialService from './ceo-dre-gerencial.service';
 import type { CEODashboardData, CEODashboardFilters, CEODashboardResponse } from '../_types/ceo-dashboard.types';
 import { GestaoClickSupabaseService } from '@/app/_services/gestao-click-supabase';
 
@@ -96,6 +98,14 @@ class CEODashboardService {
     // 🔥 PASSO 2: CALCULAR TODOS OS INDICADORES COM DADOS REAIS
     console.log('[CEODashboardService] 📊 Calculando TODOS os indicadores...');
     const todosIndicadores = CEOIndicadoresService.calcularTodosIndicadores(betelDados);
+    
+      // 🆕 PASSO 2.5: CALCULAR DRE SIMPLIFICADA COM DADOS REAIS DA BETEL
+      console.log('[CEODashboardService] 📊 Calculando DRE simplificada com dados reais...');
+      const dreSimplificada = await CEODREBetelService.calcularDREConsolidada(dataInicio, dataFim);
+      
+      // 🆕 PASSO 2.6: CALCULAR DRE GERENCIAL COM DADOS REAIS DO GESTÃO CLICK
+      console.log('[CEODashboardService] 📊 Calculando DRE Gerencial com dados reais do GestãoClick...');
+      const dreGerencial = await CEODREGerencialService.calcularDREConsolidadaGerencial(dataInicio, dataFim);
     
     console.log('[CEODashboardService] ✅ Indicadores calculados:', {
       dre: `R$ ${todosIndicadores.dre.lucroLiquido.toFixed(2)}`,
@@ -200,6 +210,8 @@ class CEODashboardService {
       dadosBrutos: {
         betel: betelDados,
         indicadores: todosIndicadores,
+        dreSimplificada: dreSimplificada,
+        dreGerencial: dreGerencial,
       },
     };
     

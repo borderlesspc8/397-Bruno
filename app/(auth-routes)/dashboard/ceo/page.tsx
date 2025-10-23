@@ -20,6 +20,8 @@ import { AlertCard } from './_components/AlertCard';
 import { SimpleLineChart } from './_components/SimpleLineChart';
 import { RentabilidadeCentroCustoTable } from './_components/RentabilidadeCentroCustoTable';
 import { DespesasOperacionaisCard } from './_components/DespesasOperacionaisCard';
+import { DRESimplificadaCard } from './_components/DRESimplificadaCard';
+import { DREGerencialCard } from './_components/DREGerencialCard';
 // 🆕 NOVOS COMPONENTES COM DADOS REAIS
 import { IndicadoresEficienciaCard } from './_components/IndicadoresEficienciaCard';
 import { IndicadoresLiquidezCard } from './_components/IndicadoresLiquidezCard';
@@ -286,40 +288,19 @@ export default function CEODashboardPage() {
           </div>
         )}
         
-        {/* Resumo DRE */}
-        <div className="bg-white rounded-lg shadow-sm p-6 mb-8">
-          <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-            <span className="text-2xl">📊</span>
-            DRE Resumida
-          </h2>
-          <div className="space-y-3">
-            <DREItem label="Receita Bruta" valor={data.visaoGeral.dre.receitaBruta} />
-            <DREItem label="(-) Impostos" valor={-data.visaoGeral.dre.impostos} negativo />
-            <DREItem label="(=) Receita Líquida" valor={data.visaoGeral.dre.receitaLiquida} destaque />
-            <DREItem label="(-) CMV" valor={-data.visaoGeral.dre.cmv} negativo />
-            <DREItem label="(=) Margem Bruta" valor={data.visaoGeral.dre.margemBruta} destaque />
-            <DREItem label="(-) Despesas Operacionais" valor={-data.visaoGeral.dre.despesasOperacionais} negativo />
-            <DREItem label="(=) Lucro Operacional" valor={data.visaoGeral.dre.lucroOperacional} destaque />
-            <DREItem label="(+/-) Resultado Financeiro" valor={data.visaoGeral.dre.resultadoFinanceiro} />
-            <DREItem label="(=) Lucro Líquido" valor={data.visaoGeral.dre.lucroLiquido} destaque final />
-          </div>
-          
-          {/* Margem Percentual */}
-          <div className="mt-6 pt-6 border-t border-gray-200 grid grid-cols-2 gap-4">
-            <div className="text-center">
-              <p className="text-sm text-gray-600 mb-1">Margem Bruta</p>
-              <p className="text-2xl font-bold text-blue-600">
-                {data.visaoGeral.dre.margemBrutaPercent.toFixed(1)}%
-              </p>
-            </div>
-            <div className="text-center">
-              <p className="text-sm text-gray-600 mb-1">Margem Líquida</p>
-              <p className="text-2xl font-bold text-green-600">
-                {data.visaoGeral.dre.lucroLiquidoPercent.toFixed(1)}%
-              </p>
-            </div>
-          </div>
-        </div>
+        {/* DRE Simplificada com Dados Reais */}
+        <DRESimplificadaCard 
+          dataInicio={dataInicio}
+          dataFim={dataFim}
+          dadosDashboard={data}
+        />
+
+        {/* DRE Gerencial com Dados Reais do GestãoClick */}
+        <DREGerencialCard 
+          dataInicio={dataInicio}
+          dataFim={dataFim}
+          dadosDashboard={data}
+        />
         
         {/* Gráfico de Tendência */}
         {data.visaoGeral.tendenciaGeral.length > 0 && (

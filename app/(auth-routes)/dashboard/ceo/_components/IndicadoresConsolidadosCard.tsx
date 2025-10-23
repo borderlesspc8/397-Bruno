@@ -340,3 +340,4 @@ export function IndicadoresConsolidadosCard({ sustentabilidade, previsibilidade,
 }
 
 
+
