@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import CEODREGerencialService from '../../(auth-routes)/dashboard/ceo/_services/ceo-dre-gerencial.service';
+import CEODREGerencialService from '../../../(auth-routes)/dashboard/ceo/_services/ceo-dre-gerencial.service';
 
 export const dynamic = 'force-dynamic';
 
