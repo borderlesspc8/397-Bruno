@@ -35,6 +35,9 @@ export class VendedorImagensService {
   // Cache em memória para minimizar requisições repetidas
   private static cacheImagens: Map<string, string> = new Map();
   
+  // Cache de vendedores sem imagem para evitar buscas repetidas
+  private static cacheSemImagem: Set<string> = new Set();
+  
   // Imagem padrão quando não há foto disponível
   private static readonly DEFAULT_IMAGE = '/images/default-avatar.svg';
   
@@ -48,7 +51,11 @@ export class VendedorImagensService {
     try {
       // Verificar se ID é válido
       if (!vendedorId) {
-        console.warn('ID do vendedor não fornecido para buscar imagem');
+        return this.DEFAULT_IMAGE;
+      }
+      
+      // Se já sabemos que não tem imagem, retornar padrão imediatamente
+      if (!forceRefresh && this.cacheSemImagem.has(vendedorId)) {
         return this.DEFAULT_IMAGE;
       }
       
@@ -65,63 +72,35 @@ export class VendedorImagensService {
             ? `${supabaseUrl}&t=${Date.now()}` 
             : `${supabaseUrl}?t=${Date.now()}`;
           this.cacheImagens.set(vendedorId, urlComTimestamp);
+          // Remover do cache de "sem imagem" se estava lá
+          this.cacheSemImagem.delete(vendedorId);
           return urlComTimestamp;
         }
       } catch (supabaseError) {
-        console.warn(`Supabase Storage não disponível para vendedor ${vendedorId}:`, supabaseError);
+        // Supabase não disponível, continuar para fallback local
       }
 
-      // Fallback: tentar formatos conhecidos localmente
+      // Fallback: tentar APENAS o formato principal localmente
       const vendedorIdReal = vendedorId.startsWith('gc-') ? vendedorId.replace('gc-', '') : vendedorId;
-      const formatosConhecidos = [
-        `/uploads/vendedores/vendedor_${vendedorIdReal}.png`,
-        `/uploads/vendedores/vendedor_${vendedorIdReal}.jpg`,
-        `/uploads/vendedores/${vendedorIdReal}.jpg`,
-        `/uploads/vendedores/${vendedorIdReal}.png`
-      ];
+      const formatoPrincipal = `/uploads/vendedores/vendedor_${vendedorIdReal}.png`;
 
-      // Verificar se algum formato conhecido existe
-      for (const formato of formatosConhecidos) {
-        try {
-          const response = await fetch(formato, { method: 'HEAD' });
-          if (response.ok) {
-            const urlComTimestamp = formato.includes('?') 
-              ? `${formato}&t=${Date.now()}` 
-              : `${formato}?t=${Date.now()}`;
-            this.cacheImagens.set(vendedorId, urlComTimestamp);
-            return urlComTimestamp;
-          }
-        } catch (e) {
-          // Continuar para o próximo formato
-          continue;
+      try {
+        const response = await fetch(formatoPrincipal, { method: 'HEAD' });
+        if (response.ok) {
+          const urlComTimestamp = `${formatoPrincipal}?t=${Date.now()}`;
+          this.cacheImagens.set(vendedorId, urlComTimestamp);
+          this.cacheSemImagem.delete(vendedorId);
+          return urlComTimestamp;
         }
+      } catch (e) {
+        // Formato principal não encontrado
       }
       
-      // Último fallback: tentar a API legada
-      try {
-        const { data } = await api.get<ImagemVendedorResponse>(
-          `/api/dashboard/vendedores/${vendedorId}/imagem`,
-          { params: { t: Date.now() } } // Adicionar timestamp para evitar cache do navegador
-        );
-        
-        if (data.erro || !data.url) {
-          console.warn(`Imagem não encontrada para vendedor ${vendedorId}:`, data.erro);
-          return this.DEFAULT_IMAGE;
-        }
-        
-        // Adicionar parâmetro de timestamp à URL para prevenir cache
-        const urlComTimestamp = data.url.includes('?') 
-          ? `${data.url}&t=${Date.now()}` 
-          : `${data.url}?t=${Date.now()}`;
-        
-        // Guardar no cache
-        this.cacheImagens.set(vendedorId, urlComTimestamp);
-        
-        return urlComTimestamp;
-      } catch (apiError) {
-        console.warn(`API legada não disponível para vendedor ${vendedorId}, usando imagem padrão`);
-        return this.DEFAULT_IMAGE;
-      }
+      // Se chegou aqui, não tem imagem - cachear isso para evitar buscas futuras
+      this.cacheSemImagem.add(vendedorId);
+      this.cacheImagens.set(vendedorId, this.DEFAULT_IMAGE);
+      
+      return this.DEFAULT_IMAGE;
     } catch (error) {
       console.error(`Erro ao buscar imagem do vendedor ${vendedorId}:`, error);
       return this.DEFAULT_IMAGE;
@@ -163,8 +142,9 @@ export class VendedorImagensService {
         const result = await SupabaseStorageService.uploadImage(vendedorId, imagemFile, position);
         
         if (result.success && result.url) {
-          // Atualizar o cache com a nova URL
+          // Atualizar o cache com a nova URL e remover do cache de "sem imagem"
           this.cacheImagens.set(vendedorId, result.url);
+          this.cacheSemImagem.delete(vendedorId);
           console.log(`Imagem salva com sucesso no Supabase Storage para vendedor ${vendedorId}`);
           return true;
         } else {
@@ -223,9 +203,11 @@ export class VendedorImagensService {
             : `${fileUrl}?t=${Date.now()}`;
           
           this.cacheImagens.set(vendedorId, urlComTimestamp);
+          this.cacheSemImagem.delete(vendedorId);
         } else {
           // Se não retornou URL, limpar o cache para forçar nova busca
           this.cacheImagens.delete(vendedorId);
+          this.cacheSemImagem.delete(vendedorId);
         }
         
         return true;
@@ -246,8 +228,10 @@ export class VendedorImagensService {
   static limparCache(vendedorId?: string): void {
     if (vendedorId) {
       this.cacheImagens.delete(vendedorId);
+      this.cacheSemImagem.delete(vendedorId);
     } else {
       this.cacheImagens.clear();
+      this.cacheSemImagem.clear();
     }
   }
 } 

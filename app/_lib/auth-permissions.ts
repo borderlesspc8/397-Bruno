@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { createServerClient } from '@supabase/ssr';
+import { createClient as createServerClient } from './supabase-server';
 
 // Email do administrador
 const ADMIN_EMAIL = 'lojapersonalprime@gmail.com';
@@ -39,22 +39,8 @@ export async function getUserPermissions(request: NextRequest): Promise<{
   error?: string;
 }> {
   try {
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return request.cookies.getAll();
-          },
-          setAll(cookiesToSet) {
-            cookiesToSet.forEach(({ name, value, options }) => 
-              request.cookies.set(name, value)
-            );
-          },
-        },
-      }
-    );
+    // Usar o createClient do supabase-server que usa cookies() do Next.js
+    const supabase = createServerClient();
 
     const { data: { user }, error } = await supabase.auth.getUser();
 

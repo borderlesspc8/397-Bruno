@@ -35,6 +35,7 @@ import { VendaDetalheModal } from "./components/VendaDetalheModal";
 import { VendasPorDiaCard } from "./components/VendasPorDiaCard";
 import { VendedoresChartImproved } from "./components/VendedoresChartImproved";
 import { MobileRankingVendedores } from "./components/MobileRankingVendedores";
+import { ApiErrorAlert } from "./components/ApiErrorAlert";
 
 
 // Função para buscar dados com cache
@@ -394,16 +395,11 @@ export default function DashboardVendedores() {
     return (
       <PageContainer>
         <div className="space-y-6">
-          <div className="rounded-lg border border-red-200 bg-red-50 p-6">
-            <h3 className="text-lg font-semibold text-red-800">Erro ao carregar dados</h3>
-            <p className="text-red-600">{error}</p>
-            <button 
-              onClick={refresh}
-              className="mt-4 rounded-md bg-red-600 px-4 py-2 text-white hover:bg-red-700"
-            >
-              Tentar novamente
-            </button>
-          </div>
+          <ApiErrorAlert 
+            error={error}
+            onRetry={refresh}
+            isRetrying={loading}
+          />
         </div>
       </PageContainer>
     );

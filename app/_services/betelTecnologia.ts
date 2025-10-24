@@ -242,9 +242,31 @@ export class BetelTecnologiaService {
           throw new Error(`Erro de autenticação: credenciais inválidas ou expiradas para a API Betel Tecnologia${responseDetails}`);
         }
         
+        // Tratar erro de autorização (403)
+        if (response.status === 403) {
+          let responseDetails = '';
+          try {
+            const responseBody = await response.text();
+            responseDetails = ` - Detalhes: ${responseBody || 'Sem detalhes adicionais'}`;
+          } catch (e) {
+            // Ignorar erro se não conseguir obter o texto da resposta
+          }
+          
+          console.error(`Erro de autorização (403) ao acessar ${url}${responseDetails}`);
+          throw new Error(`Erro de autorização: acesso negado pela API Betel Tecnologia. Verifique se as credenciais têm permissão para acessar este recurso${responseDetails}`);
+        }
+        
         // Tratar outros erros HTTP
         if (!response.ok) {
-          throw new Error(`Erro na API externa: ${response.status} - ${response.statusText}`);
+          let responseDetails = '';
+          try {
+            const responseBody = await response.text();
+            responseDetails = ` - Detalhes: ${responseBody || 'Sem detalhes adicionais'}`;
+          } catch (e) {
+            // Ignorar erro se não conseguir obter o texto da resposta
+          }
+          
+          throw new Error(`Erro na API externa: ${response.status} - ${response.statusText}${responseDetails}`);
         }
         
         const data = await response.json();

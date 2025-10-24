@@ -1,68 +1,37 @@
-import { createClient as createSupabaseClient } from '@supabase/supabase-js'
+import { createBrowserClient } from '@supabase/ssr'
 
 // Usar variáveis de ambiente para configuração
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
 // Singleton para cliente do browser - GLOBAL para evitar múltiplas instâncias
-let supabaseClient: ReturnType<typeof createSupabaseClient> | null = null
-
-// Singleton para cliente do servidor
-let supabaseServerClient: ReturnType<typeof createSupabaseClient> | null = null
+let supabaseClient: ReturnType<typeof createBrowserClient> | null = null
 
 // Flag para controlar logs de criação
 let isClientCreated = false
 
-// Função para criar cliente Supabase (para compatibilidade) - OTIMIZADA
+// Função para criar cliente Supabase no browser usando SSR com cookies
 export function createClient() {
-  // Se estiver no browser, usar o singleton do cliente
-  if (typeof window !== 'undefined') {
-    if (!supabaseClient) {
-      if (!isClientCreated) {
-        console.log('🔧 Criando instância única do cliente Supabase para o browser');
-        isClientCreated = true
-      }
-      supabaseClient = createSupabaseClient(supabaseUrl, supabaseAnonKey, {
-        auth: {
-          autoRefreshToken: true,
-          persistSession: true,
-          detectSessionInUrl: true,
-          // Configurações adicionais para evitar múltiplas instâncias
-          storage: typeof window !== 'undefined' ? window.localStorage : undefined,
-          storageKey: 'supabase.auth.token'
-        }
-      })
-    }
-    return supabaseClient
+  // Durante o SSR no Next.js, alguns componentes são renderizados no servidor
+  // Nesse caso, retornamos um cliente mock que será substituído no client-side
+  if (typeof window === 'undefined') {
+    // Retornar um cliente básico para SSR que não faz nada
+    // O cliente real será criado quando o componente for hidratado no browser
+    return createBrowserClient(supabaseUrl, supabaseAnonKey)
   }
   
-  // Se estiver no servidor, usar o singleton do servidor
-  if (!supabaseServerClient) {
-    supabaseServerClient = createSupabaseClient(supabaseUrl, supabaseAnonKey, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false
-      }
-    })
+  // Se estiver no browser, usar o singleton do cliente com suporte a cookies
+  if (!supabaseClient) {
+    if (!isClientCreated) {
+      console.log('🔧 Criando instância única do cliente Supabase para o browser com suporte a cookies');
+      isClientCreated = true
+    }
+    
+    // Usar createBrowserClient do @supabase/ssr para suporte completo a cookies
+    supabaseClient = createBrowserClient(supabaseUrl, supabaseAnonKey)
   }
-  return supabaseServerClient
+  return supabaseClient
 }
-
-// Cliente do Supabase para uso no cliente (browser) - singleton
-// Removido para evitar múltiplas instâncias - usar createClient() diretamente
-
-// Configuração para SSR (Server-Side Rendering) - singleton
-export const supabaseServer = (() => {
-  if (!supabaseServerClient) {
-    supabaseServerClient = createSupabaseClient(supabaseUrl, supabaseAnonKey, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false
-      }
-    })
-  }
-  return supabaseServerClient
-})()
 
 // Tipos TypeScript para as tabelas
 export type Database = {

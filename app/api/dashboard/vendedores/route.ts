@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { parse, format, startOfMonth, subMonths } from 'date-fns';
 import { ptBR } from 'date-fns/locale/pt-BR';
+import { validateSessionForAPI } from "@/app/_utils/auth";
 import { requireVendedoresAccess } from "@/app/_lib/auth-permissions";
 import { BetelTecnologiaService } from '@/app/_services/betelTecnologia';
 import { getCachedData, CachePrefix } from '@/app/_services/cache';
@@ -31,7 +32,7 @@ const CACHE_TTL_VENDEDORES = 15 * 60; // segundos
 
 export async function GET(request: NextRequest) {
   try {
-    // Verificar permissões de acesso
+    // Verificar permissões de acesso usando a mesma lógica da rota de vendas
     const { success, error } = await requireVendedoresAccess(request);
     if (!success) {
       return NextResponse.json(

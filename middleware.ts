@@ -33,6 +33,13 @@ const allowedOrigins = [
 export async function middleware(request: NextRequest) {
   const origin = request.headers.get('origin') || '';
   const isSocketRoute = request.nextUrl.pathname.startsWith('/api/socket');
+  const isDashboardApiRoute = request.nextUrl.pathname.startsWith('/api/dashboard');
+
+  // Para rotas da API do dashboard, apenas passar adiante
+  // A autenticação será verificada dentro de cada rota usando requireVendedoresAccess, requireAdmin, etc.
+  if (isDashboardApiRoute) {
+    return NextResponse.next();
+  }
 
   // Se for rota de socket ou a origem está na lista de permitidos
   if (isSocketRoute || allowedOrigins.includes(origin)) {
@@ -210,7 +217,9 @@ export const config = {
     '/api/user/:path*',
     '/api/socket/:path*',
     '/api/webhooks/:path*',
+    // Incluir rotas da API que precisam de autenticação
+    '/api/dashboard/:path*',
     // Regra geral por último - removidas APIs problemáticas
-    "/((?!api/auth/callback|api/auth|api/dashboard|api/gestao-click|_next/static|_next/image|assets|public|favicon.ico).*)",
+    "/((?!api/auth/callback|api/auth|api/gestao-click|_next/static|_next/image|assets|public|favicon.ico).*)",
   ],
 };

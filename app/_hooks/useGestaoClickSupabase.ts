@@ -164,10 +164,33 @@ export function useGestaoClickSupabase({
 
     } catch (error) {
       console.error('❌ Erro ao sincronizar dados:', error)
+      
+      // Tratar diferentes tipos de erro com mensagens mais específicas
+      let errorMessage = 'Erro desconhecido'
+      if (error instanceof Error) {
+        if (error.message.includes('403') || error.message.includes('autorização')) {
+          errorMessage = 'Erro de autorização: Acesso negado pela API externa. Verifique as credenciais de acesso.'
+        } else if (error.message.includes('401') || error.message.includes('autenticação')) {
+          errorMessage = 'Erro de autenticação: Credenciais inválidas ou expiradas. Verifique as configurações da API.'
+        } else if (error.message.includes('API externa')) {
+          errorMessage = `Erro na API externa: ${error.message}`
+        } else {
+          errorMessage = error.message
+        }
+      }
+      
+      // Em caso de erro da API externa, fornecer dados vazios mas funcionais
       setData(prev => ({
         ...prev,
         loading: false,
-        error: error instanceof Error ? error.message : 'Erro desconhecido'
+        error: errorMessage,
+        // Manter dados existentes se houver, ou fornecer estrutura vazia
+        vendas: prev.vendas || [],
+        vendedores: prev.vendedores || [],
+        produtos: prev.produtos || [],
+        totalVendas: prev.totalVendas || 0,
+        totalValor: prev.totalValor || 0,
+        ticketMedio: prev.ticketMedio || 0
       }))
       
       // Marcar como concluído mesmo em caso de erro
@@ -259,10 +282,33 @@ export function useGestaoClickSupabase({
 
     } catch (error) {
       console.error('Erro na sincronização forçada:', error)
+      
+      // Tratar diferentes tipos de erro com mensagens mais específicas
+      let errorMessage = 'Erro desconhecido'
+      if (error instanceof Error) {
+        if (error.message.includes('403') || error.message.includes('autorização')) {
+          errorMessage = 'Erro de autorização: Acesso negado pela API externa. Verifique as credenciais de acesso.'
+        } else if (error.message.includes('401') || error.message.includes('autenticação')) {
+          errorMessage = 'Erro de autenticação: Credenciais inválidas ou expiradas. Verifique as configurações da API.'
+        } else if (error.message.includes('API externa')) {
+          errorMessage = `Erro na API externa: ${error.message}`
+        } else {
+          errorMessage = error.message
+        }
+      }
+      
+      // Em caso de erro da API externa, fornecer dados vazios mas funcionais
       setData(prev => ({
         ...prev,
         loading: false,
-        error: error instanceof Error ? error.message : 'Erro desconhecido'
+        error: errorMessage,
+        // Manter dados existentes se houver, ou fornecer estrutura vazia
+        vendas: prev.vendas || [],
+        vendedores: prev.vendedores || [],
+        produtos: prev.produtos || [],
+        totalVendas: prev.totalVendas || 0,
+        totalValor: prev.totalValor || 0,
+        ticketMedio: prev.ticketMedio || 0
       }))
     }
   }, [dataInicio, dataFim, userId])
