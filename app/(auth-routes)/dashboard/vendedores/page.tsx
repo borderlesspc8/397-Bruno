@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { VendedoresService } from "@/app/_services/vendedores";
 import { Vendedor } from "@/app/_services/betelTecnologia";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/app/_components/ui/card";
-import { DateRangeSelector } from "../vendas/_components/DateRangeSelector";
+import { DateRangeSelector } from "@/app/_components/dashboard-shared/components";
 import { ListaVendedores } from "./components/ListaVendedores";
 import { UploadFotoModal } from "./components/UploadFotoModal";
 import { AlertCircle } from "lucide-react";

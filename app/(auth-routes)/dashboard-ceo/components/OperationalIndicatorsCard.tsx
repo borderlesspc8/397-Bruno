@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/app/_components/ui/card';
 import { Button } from '@/app/_components/ui/button';
 import { Badge } from '@/app/_components/ui/badge';
 import { 
@@ -268,35 +267,35 @@ export function OperationalIndicatorsCard({
   }
 
   return (
-    <FadeIn duration={400} delay={500}>
-      <Card className="w-full h-full transition-shadow hover:shadow-lg">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-          <div className="flex flex-col space-y-1">
-            <div className="flex items-center space-x-2">
-              <Target className="h-5 w-5 text-purple-600" />
-              <CardTitle className="text-lg">Métricas Operacionais</CardTitle>
-            </div>
-            <p className="text-sm text-muted-foreground">
-              Período: {params.startDate.toLocaleDateString('pt-BR')} até {params.endDate.toLocaleDateString('pt-BR')}
-            </p>
-          </div>
+    <div className="ios26-card p-6 ios26-animate-fade-in">
+      {/* Header */}
+      <div className="flex flex-row items-center justify-between mb-6">
+        <div className="flex flex-col space-y-1">
           <div className="flex items-center space-x-2">
-            <Button
-              onClick={() => {
-                setSelectedCentroCusto('');
-                setProfitabilityData(null);
-                onRefresh?.();
-              }}
-              variant="outline"
-              size="sm"
-              disabled={loading}
-            >
-              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-            </Button>
+            <Target className="h-5 w-5 text-[#faba33]" />
+            <h3 className="text-lg font-semibold">Métricas Operacionais</h3>
           </div>
-        </CardHeader>
+          <p className="text-sm text-muted-foreground">
+            Período: {params.startDate.toLocaleDateString('pt-BR')} até {params.endDate.toLocaleDateString('pt-BR')}
+          </p>
+        </div>
+        <Button
+          onClick={() => {
+            setSelectedCentroCusto('');
+            setProfitabilityData(null);
+            onRefresh?.();
+          }}
+          variant="outline"
+          size="sm"
+          disabled={loading}
+          className="ios26-button"
+        >
+          <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+        </Button>
+      </div>
         
-        <CardContent className="space-y-6">
+      {/* Content */}
+      <div className="space-y-6">
           {/* Métricas Gerais */}
           {operationalData && (
             <div className="grid grid-cols-2 gap-4 mb-6">
@@ -314,16 +313,17 @@ export function OperationalIndicatorsCard({
                 </div>
               </div>
               
-              <div className="bg-gradient-to-r from-green-50 to-teal-50 rounded-lg p-4 border border-green-200">
-                <div className="flex items-center space-x-2 text-green-600 mb-2">
+              <div className="bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg p-4 border border-gray-200 opacity-60">
+                <div className="flex items-center space-x-2 text-gray-500 mb-2">
                   <DollarSign className="h-4 w-4" />
                   <span className="text-sm font-medium">CAC</span>
                 </div>
-                <div className="text-2xl font-bold text-green-900">
-                  {formatCurrency(operationalData.customerAcquisitionCost)}
+                <div className="text-2xl font-bold text-gray-400">
+                  N/A
                 </div>
-                <div className="text-xs text-green-700 mt-1">
-                  Por cliente adquirido
+                <div className="text-xs text-gray-500 mt-1 flex items-center space-x-1">
+                  <AlertTriangle className="h-3 w-3" />
+                  <span>Dados indisponíveis</span>
                 </div>
               </div>
             </div>
@@ -595,9 +595,8 @@ export function OperationalIndicatorsCard({
               )}
         </div>
           )}
-      </CardContent>
-    </Card>
-    </FadeIn>
+      </div>
+    </div>
   );
 }
 

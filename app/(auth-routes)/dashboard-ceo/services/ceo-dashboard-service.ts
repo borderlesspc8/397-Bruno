@@ -76,20 +76,22 @@ export class CEODashboardService {
         riskMetrics: {
           defaultRate: this.calculateDefaultAnalysis(salesData),
           liquidityRatio: financialData.liquidityIndicators || 0,
-          debtToEquity: 0.5, // Estimativa
-          interestCoverage: 2.0, // Estimativa
-          currentRatio: 1.5, // Estimativa
-          quickRatio: 1.2, // Estimativa
-          workingCapital: (salesData.totalFaturamento || 0) * 0.1, // Estimativa
-          cashConversionCycle: 30 // Estimativa
+          // ⚠️ DADOS REMOVIDOS: Métricas abaixo não estão disponíveis sem dados contábeis reais
+          debtToEquity: 0, // Sem dados reais disponíveis
+          interestCoverage: 0, // Sem dados reais disponíveis
+          currentRatio: 0, // Sem dados reais disponíveis
+          quickRatio: 0, // Sem dados reais disponíveis
+          workingCapital: 0, // Sem dados reais disponíveis
+          cashConversionCycle: 0 // Sem dados reais disponíveis
         },
         growthMetrics: {
           monthOverMonthGrowth: this.calculateGrowthMetrics(salesData),
           yearOverYearGrowth: this.calculateGrowthMetrics(salesData) * 12,
           compoundGrowthRate: this.calculateGrowthMetrics(salesData),
-          marketShare: 0.05, // Estimativa
-          customerGrowth: (salesData.totalVendas || 0) * 0.1, // Estimativa
-          revenuePerCustomer: (salesData.totalFaturamento || 0) / (salesData.totalVendas || 1),
+          // ⚠️ DADOS REMOVIDOS: Métricas abaixo são estimativas sem base real
+          marketShare: 0, // Sem dados reais disponíveis
+          customerGrowth: 0, // Sem dados reais disponíveis
+          revenuePerCustomer: (salesData.totalFaturamento || 0) / (salesData.totalVendas || 1), // ✅ Calculável
           averageGrowthRate: this.calculateGrowthMetrics(salesData),
           growthTrend: this.calculateGrowthMetrics(salesData) > 0.1 ? 'accelerating' : 'stable'
         },

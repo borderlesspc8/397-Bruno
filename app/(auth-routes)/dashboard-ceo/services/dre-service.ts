@@ -141,59 +141,9 @@ export class CEODREService {
 
     } catch (error) {
       console.error('Erro ao buscar dados reais de DRE:', error);
-      // Fallback para dados simulados
-      return this.getFallbackDREData(params);
+      // ⚠️ NÃO usar fallback com dados mockados - propagar erro
+      throw error;
     }
-  }
-
-  private static getFallbackDREData(params: CEODashboardParams): DREData {
-    // Dados simulados como fallback
-    const receitas = {
-      vendas: 450000,
-      servicos: 75000,
-      outras: 25000,
-      total: 550000
-    };
-
-    const custos = {
-      produtos: 280000,
-      servicos: 45000,
-      operacionais: 35000,
-      total: 360000
-    };
-
-    const despesas = {
-      administrativas: 65000,
-      vendas: 55000,
-      financeiras: 25000,
-      total: 145000
-    };
-
-    const resultadoBruto = receitas.total - custos.total;
-    const resultadoOperacional = resultadoBruto - despesas.total;
-    const resultadoLiquido = resultadoOperacional * 0.85;
-
-    const resultados = {
-      bruto: resultadoBruto,
-      operacional: resultadoOperacional,
-      antesIR: resultadoOperacional,
-      liquido: Math.round(resultadoLiquido)
-    };
-
-    const margens = {
-      bruta: Math.round((resultadoBruto / receitas.total) * 10000) / 100,
-      operacional: Math.round((resultadoOperacional / receitas.total) * 10000) / 100,
-      liquida: Math.round((resultadoLiquido / receitas.total) * 10000) / 100
-    };
-
-    return {
-      receitas,
-      custos,
-      despesas,
-      resultados,
-      margens,
-      lastUpdated: new Date().toISOString()
-    };
   }
 
   /**

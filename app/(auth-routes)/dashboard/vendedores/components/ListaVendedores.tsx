@@ -8,7 +8,7 @@ import { formatCurrency } from "@/app/_utils/format";
 import { User, Upload } from "lucide-react";
 import { VendedorImagensService } from "@/app/_services/vendedorImagens";
 import DefaultAvatar from "@/app/components/DefaultAvatar";
-import { useVendedoresImagens } from "../hooks/useVendedoresImagens";
+import { useVendedoresImagens } from "@/app/_components/dashboard-shared/hooks";
 
 interface ListaVendedoresProps {
   vendedores: Vendedor[];

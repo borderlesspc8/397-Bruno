@@ -8,7 +8,7 @@ import React, { useState, useCallback, Suspense, useMemo, useEffect } from "reac
 import { PageContainer } from "@/app/_components/page-container";
 import { DashboardSummary } from "./components/DashboardSummary";
 import RankingVendedoresPodium from "../vendedores/components/RankingVendedoresPodium";
-import { DateRangeSelector } from "./_components/DateRangeSelector";
+import { DateRangeSelector } from "@/app/_components/dashboard-shared/components";
 import { SituacaoFilter } from "./components/SituacaoFilter";
 import { format, endOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -28,12 +28,16 @@ const supabase = createClient();
 // Importar tipos centralizados
 import { VendaItem, Meta, RespostaAPI } from './types';
 
-// Importamos os componentes refatorados
+// Componentes compartilhados (consolidados)
+import { 
+  VendaDetalheModal,
+  VendedoresChartImproved 
+} from "@/app/_components/dashboard-shared/components";
+
+// Componentes específicos do dashboard de vendas
 import { VendedorDetalhesModal } from "./components/VendedorDetalhesModal";
-import { VendaDetalheModal } from "./components/VendaDetalheModal";
 import { VendasPorFormaPagamentoChart } from "./components/VendasPorFormaPagamentoChart";
 import { VendasPorDiaCard } from "./components/VendasPorDiaCard";
-import { VendedoresChartImproved } from "./components/VendedoresChartImproved";
 import { MobileRankingVendedores } from "./components/MobileRankingVendedores";
 import { LazyFallback } from "@/app/_components/ui/lazy-fallback";
 import { ComoNosConheceuUnidade } from "./components/ComoNosConheceuUnidade";
@@ -63,10 +67,10 @@ const LazyProdutosMaisVendidos = React.lazy(() =>
   // Função para buscar dados com cache otimizado
 const fetchWithCache = async (endpoint: string, params: Record<string, string>, forceRefresh = false) => {
   const url = `${endpoint}?${new URLSearchParams(params)}`;
-  const cacheOptions = forceRefresh ? { cache: 'no-store' } : { 
+  const cacheOptions: RequestInit = forceRefresh ? { cache: 'no-store' } : { 
     cache: 'default',
     next: { revalidate: 60 } // Cache por 1 minuto para otimizar performance
-  };
+  } as RequestInit;
   const response = await fetch(url, cacheOptions);
   if (!response.ok) throw new Error('Erro ao buscar dados');
   return await response.json();

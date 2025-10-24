@@ -5,7 +5,7 @@ import { VendasPorDia } from './VendasPorDia';
 import { Calendar, BarChart2, List, Download } from 'lucide-react';
 import { Button } from '@/app/_components/ui/button';
 import { ToggleGroup, ToggleGroupItem } from '@/app/_components/ui/toggle-group';
-import { VendaDetalheModal } from './VendaDetalheModal';
+import { VendaDetalheModal } from '@/app/_components/dashboard-shared/components';
 
 interface VendasPorDiaCardProps {
   dataInicio: Date;

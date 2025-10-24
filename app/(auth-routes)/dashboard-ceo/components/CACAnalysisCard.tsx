@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/app/_components/ui/card';
 import { Button } from '@/app/_components/ui/button';
 import { Badge } from '@/app/_components/ui/badge';
 import { 
@@ -17,7 +16,8 @@ import {
   Award,
   Activity,
   BarChart3,
-  Zap
+  Zap,
+  AlertTriangle
 } from 'lucide-react';
 import { CEODashboardParams } from '../types/ceo-dashboard.types';
 import { CardSkeleton, ErrorState, FadeIn } from './loading-states';
@@ -213,55 +213,61 @@ export function CACAnalysisCard({
   // Estado de Sem Dados
   if (!cacData) {
     return (
-      <Card className="w-full h-full">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">
-            Análise de CAC
-          </CardTitle>
-          <Target className="h-4 w-4 text-muted-foreground" />
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="text-center text-gray-500 py-8">
-            <Target className="h-8 w-8 mx-auto mb-2 text-yellow-500" />
-            <p>Dados não disponíveis</p>
-            <p className="text-sm">Nenhum dado encontrado para o período selecionado.</p>
+      <div className="ios26-card p-6 ios26-animate-fade-in border-orange-200 bg-orange-50/50">
+        <div className="flex flex-row items-center justify-between mb-4">
+          <div className="flex items-center space-x-2">
+            <Target className="h-5 w-5 text-[#faba33]" />
+            <h3 className="text-lg font-semibold">Análise de CAC</h3>
           </div>
-        </CardContent>
-      </Card>
+          <Badge className="bg-orange-100 text-orange-700">⚠️ Sem Dados</Badge>
+        </div>
+        <div className="space-y-4">
+          <div className="text-center text-gray-600 py-8">
+            <AlertTriangle className="h-12 w-12 mx-auto mb-3 text-orange-500" />
+            <p className="font-medium mb-2">Dados de CAC Indisponíveis</p>
+            <p className="text-sm">Para calcular o CAC, são necessários dados de:</p>
+            <ul className="text-sm mt-2 space-y-1">
+              <li>• Investimento em Marketing</li>
+              <li>• Novos Clientes Adquiridos</li>
+            </ul>
+            <p className="text-xs text-gray-500 mt-4">Configure o módulo de Marketing para habilitar esta métrica</p>
+          </div>
+        </div>
+      </div>
     );
   }
 
   const cacStatus = getCACStatus(cacData.cacAtual);
 
   return (
-    <FadeIn duration={400} delay={100}>
-      <Card className="w-full h-full transition-shadow hover:shadow-lg">
-        <CardHeader className="pb-4">
-          <div className="flex flex-row items-center justify-between space-y-0 mb-2">
-            <div className="flex items-center space-x-2">
-              <Target className="h-5 w-5 text-green-600" />
-              <CardTitle className="text-lg">Análise de CAC</CardTitle>
-            </div>
-            <div className="flex items-center space-x-2">
-              <Button
-                onClick={() => {
-                  setCacData(null);
-                  onRefresh?.();
-                }}
-                variant="outline"
-                size="sm"
-                disabled={loading}
-              >
-                <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-              </Button>
-            </div>
+    <div className="ios26-card p-6 ios26-animate-fade-in">
+      {/* Header */}
+      <div className="flex flex-row items-center justify-between mb-6">
+        <div className="flex flex-col space-y-1">
+          <div className="flex items-center space-x-2">
+            <Target className="h-5 w-5 text-[#faba33]" />
+            <h3 className="text-lg font-semibold">Análise de CAC</h3>
           </div>
           <p className="text-sm text-muted-foreground">
             Período: {params.startDate.toLocaleDateString('pt-BR')} até {params.endDate.toLocaleDateString('pt-BR')}
           </p>
-        </CardHeader>
+        </div>
+        <Button
+          onClick={() => {
+            setCacData(null);
+            onRefresh?.();
+          }}
+          variant="outline"
+          size="sm"
+          disabled={loading}
+          className="ios26-button"
+        >
+          <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+        </Button>
+      </div>
         
-        <CardContent className="space-y-6">
+      {/* Content */}
+      <div className="space-y-6">
           {/* CAC Principal */}
           <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg p-6 border border-green-200">
             <div className="flex items-center justify-between mb-4">
@@ -504,9 +510,8 @@ export function CACAnalysisCard({
               )}
             </div>
           )}
-        </CardContent>
-      </Card>
-    </FadeIn>
+      </div>
+    </div>
   );
 }
 

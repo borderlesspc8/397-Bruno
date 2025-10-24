@@ -74,7 +74,7 @@ export function useCEODashboard({ startDate, endDate }: UseCEODashboardProps): U
       // Calcular totais
       const totalReceita = vendasValidas.reduce((acc, v) => acc + (v.valor_total || 0), 0);
       
-      // Calcular custos (se disponível)
+      // Calcular custos REAIS (se disponível)
       const totalCustos = vendasValidas.reduce((acc, venda) => {
         const custoVenda = (venda.produtos || []).reduce((sum, prod) => {
           return sum + ((prod.valor_custo || 0) * prod.quantidade);
@@ -82,9 +82,9 @@ export function useCEODashboard({ startDate, endDate }: UseCEODashboardProps): U
         return acc + custoVenda;
       }, 0);
       
-      // Estimar despesas operacionais (20% da receita)
-      const despesasOperacionais = totalReceita * 0.20;
-      const totalCustosCompleto = totalCustos + despesasOperacionais;
+      // ⚠️ AVISO: Não temos dados reais de despesas operacionais
+      // Usando APENAS custos reais dos produtos
+      const totalCustosCompleto = totalCustos;
       
       // Relação Custos/Receita
       const costRevenueRatio = totalReceita > 0 ? totalCustosCompleto / totalReceita : 0;
@@ -92,11 +92,14 @@ export function useCEODashboard({ startDate, endDate }: UseCEODashboardProps): U
       // CAC - Custo de Aquisição de Cliente
       const clientesUnicos = new Set(vendasValidas.map(v => v.cliente_id));
       const novosClientes = clientesUnicos.size;
-      const investimentoMarketing = totalReceita * 0.05; // 5% estimado
-      const customerAcquisitionCost = novosClientes > 0 ? investimentoMarketing / novosClientes : 0;
+      
+      // ⚠️ AVISO: Não temos dados reais de investimento em marketing
+      // CAC não pode ser calculado sem esses dados
+      const investimentoMarketing = 0; // Sem dados reais disponíveis
+      const customerAcquisitionCost = 0; // Sem dados reais disponíveis
       
       // Rentabilidade por vendedor (proxy para centro de custo)
-      const vendasPorVendedor = new Map<string, { nome: string; receita: number; vendas: number }>();
+      const vendasPorVendedor = new Map<string, { nome: string; receita: number; vendas: number; custos: number }>();
       
       vendasValidas.forEach(venda => {
         const vendedorId = venda.vendedor_id || 'sem-vendedor';
@@ -106,18 +109,25 @@ export function useCEODashboard({ startDate, endDate }: UseCEODashboardProps): U
           vendasPorVendedor.set(vendedorId, {
             nome: vendedorNome,
             receita: 0,
-            vendas: 0
+            vendas: 0,
+            custos: 0
           });
         }
         
         const vendedor = vendasPorVendedor.get(vendedorId)!;
         vendedor.receita += venda.valor_total || 0;
         vendedor.vendas += 1;
+        
+        // Calcular custos REAIS dos produtos vendidos
+        const custoVenda = (venda.produtos || []).reduce((sum, prod) => {
+          return sum + ((prod.valor_custo || 0) * prod.quantidade);
+        }, 0);
+        vendedor.custos += custoVenda;
       });
       
       const costCenterProfitability = Array.from(vendasPorVendedor.entries()).map(([id, info]) => {
-        const custos = info.receita * 0.65; // Estimar 65% como custos
-        const lucro = info.receita - custos;
+        // Usar APENAS custos reais dos produtos
+        const lucro = info.receita - info.custos;
         const profitability = info.receita > 0 ? lucro / info.receita : 0;
         const margin = profitability * 100;
         
@@ -125,7 +135,7 @@ export function useCEODashboard({ startDate, endDate }: UseCEODashboardProps): U
           id,
           name: info.nome,
           revenue: Math.round(info.receita),
-          costs: Math.round(custos),
+          costs: Math.round(info.custos),
           profitability: Math.round(profitability * 100) / 100,
           margin: Math.round(margin * 100) / 100
         };
@@ -180,7 +190,7 @@ export function useCEODashboard({ startDate, endDate }: UseCEODashboardProps): U
       setDreData({
         receita: Math.round(totalReceita),
         custos: Math.round(totalCustos),
-        despesas: Math.round(despesasOperacionais),
+        despesas: 0, // Sem dados reais de despesas operacionais disponíveis
         lucroLiquido: Math.round(totalReceita - totalCustosCompleto),
         margemLucro: totalReceita > 0 ? ((totalReceita - totalCustosCompleto) / totalReceita) * 100 : 0,
         source: dados.syncInfo.source

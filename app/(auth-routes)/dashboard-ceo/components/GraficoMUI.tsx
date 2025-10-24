@@ -1,7 +1,7 @@
 import dynamic from 'next/dynamic';
 import 'chart.js/auto';
 import { ProdutoItem, OrdenacaoTipo } from './hooks/useProdutosMaisVendidos';
-import { criarChartData, criarChartOptions } from './utils/chartUtils';
+import { criarChartData, criarChartOptions } from '@/app/_components/dashboard-shared/utils';
 import { Chart as ChartJS, Scale, Tick, ScaleOptionsByType, CartesianScaleTypeRegistry } from 'chart.js';
 
 // Carregar o componente Bar do Chart.js de forma dinâmica para evitar problemas de SSR

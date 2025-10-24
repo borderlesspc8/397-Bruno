@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/app/_components/ui/card';
 import { Button } from '@/app/_components/ui/button';
 import { Badge } from '@/app/_components/ui/badge';
 import { 
@@ -196,35 +195,35 @@ export function CostCenterCard({
   }
 
   return (
-    <FadeIn duration={400} delay={500}>
-      <Card className="w-full h-full transition-shadow hover:shadow-lg">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-          <div className="flex flex-col space-y-1">
-            <div className="flex items-center space-x-2">
-              <Building2 className="h-5 w-5 text-orange-600" />
-              <CardTitle className="text-lg">Análise de Centros de Custo</CardTitle>
-            </div>
-            <p className="text-sm text-muted-foreground">
-              Período: {params.startDate.toLocaleDateString('pt-BR')} até {params.endDate.toLocaleDateString('pt-BR')}
-            </p>
-          </div>
+    <div className="ios26-card p-6 ios26-animate-fade-in">
+      {/* Header */}
+      <div className="flex flex-row items-center justify-between mb-6">
+        <div className="flex flex-col space-y-1">
           <div className="flex items-center space-x-2">
-            <Button
-              onClick={() => {
-                setSelectedCentroCusto('');
-                setAnalysisData(null);
-                onRefresh?.();
-              }}
-              variant="outline"
-              size="sm"
-              disabled={loading}
-            >
-              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-            </Button>
+            <Building2 className="h-5 w-5 text-[#faba33]" />
+            <h3 className="text-lg font-semibold">Análise de Centros de Custo</h3>
           </div>
-        </CardHeader>
+          <p className="text-sm text-muted-foreground">
+            Período: {params.startDate.toLocaleDateString('pt-BR')} até {params.endDate.toLocaleDateString('pt-BR')}
+          </p>
+        </div>
+        <Button
+          onClick={() => {
+            setSelectedCentroCusto('');
+            setAnalysisData(null);
+            onRefresh?.();
+          }}
+          variant="outline"
+          size="sm"
+          disabled={loading}
+          className="ios26-button"
+        >
+          <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+        </Button>
+      </div>
         
-        <CardContent className="space-y-6">
+      {/* Content */}
+      <div className="space-y-6">
           {/* Seletor de Centro de Custo */}
           <div className="space-y-2">
             <label className="text-sm font-medium text-gray-700">
@@ -493,9 +492,8 @@ export function CostCenterCard({
               )}
             </div>
           )}
-        </CardContent>
-      </Card>
-    </FadeIn>
+      </div>
+    </div>
   );
 }
 

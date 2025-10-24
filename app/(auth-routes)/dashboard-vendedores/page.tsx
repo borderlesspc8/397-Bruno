@@ -9,7 +9,7 @@ import React, { useState, useCallback, Suspense, useMemo, useEffect } from "reac
 import { PageContainer } from "@/app/_components/page-container";
 import { DashboardSummary } from "./components/DashboardSummary";
 import RankingVendedoresPodium from "../dashboard/vendedores/components/RankingVendedoresPodium";
-import { DateRangeSelector } from "./_components/DateRangeSelector";
+import { DateRangeSelector } from "@/app/_components/dashboard-shared/components";
 import { SituacaoFilter } from "./components/SituacaoFilter";
 import { format, endOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -29,11 +29,15 @@ const supabase = createClient();
 // Importar tipos centralizados
 import { VendaItem, Meta, RespostaAPI } from './types';
 
-// Importamos os componentes refatorados
+// Componentes compartilhados (consolidados)
+import { 
+  VendaDetalheModal,
+  VendedoresChartImproved 
+} from "@/app/_components/dashboard-shared/components";
+
+// Componentes específicos do dashboard de vendedores
 import { VendedorDetalhesModal } from "./components/VendedorDetalhesModal";
-import { VendaDetalheModal } from "./components/VendaDetalheModal";
 import { VendasPorDiaCard } from "./components/VendasPorDiaCard";
-import { VendedoresChartImproved } from "./components/VendedoresChartImproved";
 import { MobileRankingVendedores } from "./components/MobileRankingVendedores";
 import { ApiErrorAlert } from "./components/ApiErrorAlert";
 

@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/app/_components/ui/card';
 import { Button } from '@/app/_components/ui/button';
 import { Badge } from '@/app/_components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/app/_components/ui/select';
@@ -166,78 +165,74 @@ function SimplifiedDRECard({ params, isLoading = false, onRefresh }: SimplifiedD
   // Estado sem dados
   if (!dreData) {
     return (
-      <Card className="h-full">
-        <CardHeader>
+      <div className="ios26-card p-6 ios26-animate-fade-in">
+        <div className="flex items-center justify-between mb-4">
           <div className="flex items-center space-x-2">
-            <FileText className="h-5 w-5 text-purple-600" />
-            <CardTitle className="text-lg">{getTituloDRE()}</CardTitle>
+            <FileText className="h-5 w-5 text-[#faba33]" />
+            <h3 className="text-lg font-semibold">{getTituloDRE()}</h3>
           </div>
-          <CardDescription>
-            {getDescricaoDRE()}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="text-center py-8 text-gray-500">
-            <p>Nenhum dado disponível para o período selecionado</p>
-            <Button onClick={handleRefresh} variant="outline" size="sm" className="mt-4">
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Tentar novamente
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+        </div>
+        <div className="text-center py-8 text-gray-500">
+          <p>Nenhum dado disponível para o período selecionado</p>
+          <Button onClick={handleRefresh} variant="outline" size="sm" className="mt-4 ios26-button">
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Tentar novamente
+          </Button>
+        </div>
+      </div>
     );
   }
 
   return (
-    <FadeIn duration={400} delay={300}>
-      <Card className="h-full transition-shadow hover:shadow-lg">
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <FileText className="h-5 w-5 text-purple-600" />
-              <CardTitle className="text-lg">{getTituloDRE()}</CardTitle>
-            </div>
-            <div className="flex items-center space-x-2">
-              <Select value={tipoDRE} onValueChange={handleTipoChange}>
-                <SelectTrigger className="w-48">
-                  <SelectValue placeholder="Selecione o tipo de DRE" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="geral">
-                    <div className="flex items-center space-x-2">
-                      <BarChart3 className="h-4 w-4" />
-                      <span>DRE Geral</span>
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="matriz">
-                    <div className="flex items-center space-x-2">
-                      <Building2 className="h-4 w-4" />
-                      <span>DRE Matriz</span>
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="golden">
-                    <div className="flex items-center space-x-2">
-                      <Store className="h-4 w-4" />
-                      <span>DRE Golden</span>
-                    </div>
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-              <Button onClick={() => setExpanded(!expanded)} variant="outline" size="sm">
-                {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-              </Button>
-              <Button onClick={handleRefresh} variant="outline" size="sm" disabled={loading}>
-                <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-              </Button>
-            </div>
+    <div className="ios26-card p-6 ios26-animate-fade-in">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex flex-col space-y-1">
+          <div className="flex items-center space-x-2">
+            <FileText className="h-5 w-5 text-[#faba33]" />
+            <h3 className="text-lg font-semibold">{getTituloDRE()}</h3>
           </div>
-          <CardDescription>
+          <p className="text-sm text-muted-foreground">
             {getDescricaoDRE()} - Período: {params.startDate.toLocaleDateString('pt-BR')} até {params.endDate.toLocaleDateString('pt-BR')}
-          </CardDescription>
-        </CardHeader>
+          </p>
+        </div>
+        <div className="flex items-center space-x-2">
+          <Select value={tipoDRE} onValueChange={handleTipoChange}>
+            <SelectTrigger className="w-48">
+              <SelectValue placeholder="Selecione o tipo de DRE" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="geral">
+                <div className="flex items-center space-x-2">
+                  <BarChart3 className="h-4 w-4" />
+                  <span>DRE Geral</span>
+                </div>
+              </SelectItem>
+              <SelectItem value="matriz">
+                <div className="flex items-center space-x-2">
+                  <Building2 className="h-4 w-4" />
+                  <span>DRE Matriz</span>
+                </div>
+              </SelectItem>
+              <SelectItem value="golden">
+                <div className="flex items-center space-x-2">
+                  <Store className="h-4 w-4" />
+                  <span>DRE Golden</span>
+                </div>
+              </SelectItem>
+            </SelectContent>
+          </Select>
+          <Button onClick={() => setExpanded(!expanded)} variant="outline" size="sm" className="ios26-button">
+            {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+          </Button>
+          <Button onClick={handleRefresh} variant="outline" size="sm" disabled={loading} className="ios26-button">
+            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+          </Button>
+        </div>
+      </div>
         
-        <CardContent className="space-y-6">
+      {/* Content */}
+      <div className="space-y-6">
           {/* Métricas Principais - Valores Absolutos */}
           <div className="space-y-4">
             <h3 className="text-sm font-semibold text-gray-700 flex items-center space-x-2">
@@ -564,9 +559,8 @@ function SimplifiedDRECard({ params, isLoading = false, onRefresh }: SimplifiedD
               </div>
             </div>
           )}
-        </CardContent>
-      </Card>
-    </FadeIn>
+      </div>
+    </div>
   );
 }
 

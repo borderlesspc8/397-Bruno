@@ -3,9 +3,8 @@
 import { useState, useEffect, memo, useMemo } from "react";
 import { Vendedor } from "@/app/_services/betelTecnologia";
 import { formatCurrency } from "@/app/_utils/format";
-import { useVendedoresImagens } from "../hooks/useVendedoresImagens";
-import { useRankingVendedores } from "../hooks/useRankingVendedores";
-import "./podium.css";
+import { useVendedoresImagens, useRankingVendedores } from "@/app/_components/dashboard-shared/hooks";
+import "@/app/_components/dashboard-shared/components/podium.css";
 
 interface PodiumRankingProps {
   vendedores: Vendedor[];

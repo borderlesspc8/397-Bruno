@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { Vendedor } from "@/app/_services/betelTecnologia";
 import { Card, CardHeader, CardContent, CardTitle, CardDescription } from "@/app/_components/ui/card";
-import { useRankingVendedores } from "../hooks/useRankingVendedores";
+import { useRankingVendedores } from "@/app/_components/dashboard-shared/hooks";
 import { TrendingUp, ShoppingCart, CreditCard, Users, Filter, ChevronDown, User, EyeOff, Eye } from "lucide-react";
 import { Button } from "@/app/_components/ui/button";
 import { 
@@ -13,7 +13,7 @@ import {
 } from "@/app/_components/ui/dropdown-menu";
 import { VendedoresTable } from "./VendedoresTable";
 import { MobileRankingVendedores } from "./MobileRankingVendedores";
-import PodiumRanking from "./PodiumRanking";
+import { PodiumRanking } from "@/app/_components/dashboard-shared/components";
 import { formatCurrency } from "@/app/_utils/format";
 import { Switch } from "@/app/_components/ui/switch";
 import { Label } from "@/app/_components/ui/label";

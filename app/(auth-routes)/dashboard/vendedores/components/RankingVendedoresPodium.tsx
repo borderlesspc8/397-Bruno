@@ -15,8 +15,8 @@ import {
 } from "@/app/_components/ui/dropdown-menu";
 import { Button } from "@/app/_components/ui/button";
 import { Filter, CreditCard, BadgePercent, BarChart, AlertCircle } from "lucide-react";
-import PodiumRanking from "../../vendas/components/PodiumRanking";
-import { useRankingVendedores } from "../../vendas/hooks/useRankingVendedores";
+import { PodiumRanking } from "@/app/_components/dashboard-shared/components";
+import { useRankingVendedores } from "@/app/_components/dashboard-shared/hooks";
 
 interface RankingVendedoresPodiumProps {
   vendedores: Vendedor[];

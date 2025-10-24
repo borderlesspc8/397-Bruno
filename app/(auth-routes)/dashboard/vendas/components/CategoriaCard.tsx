@@ -1,7 +1,7 @@
 import { ReactNode, useEffect, useState } from 'react';
 import { ProdutoItem, OrdenacaoTipo, VisualizacaoTipo } from './hooks/useProdutosMaisVendidos';
 import { GraficoMUI } from './GraficoMUI';
-import { TabelaMUI } from './TabelaMUI';
+import { TabelaMUI } from '@/app/_components/dashboard-shared/components';
 import { ChevronDown } from 'lucide-react';
 import { MobileRanking } from './MobileRanking';
 

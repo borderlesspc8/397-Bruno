@@ -7,8 +7,7 @@ import {
   CardTitle,
   CardDescription
 } from "@/app/_components/ui/card";
-import { ProdutoDetalhesModal } from "./ProdutoDetalhesModal";
-import { VendaDetalheModal } from "./VendaDetalheModal";
+import { ProdutoDetalhesModal, VendaDetalheModal } from "@/app/_components/dashboard-shared/components";
 
 // Importações dos componentes refatorados
 import { useProdutosMaisVendidos, ProdutoItem, OrdenacaoTipo, VisualizacaoTipo } from "./hooks/useProdutosMaisVendidos";
