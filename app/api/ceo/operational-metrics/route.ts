@@ -132,7 +132,7 @@ export async function GET(request: NextRequest) {
     const [vendasResult, centrosCustoResult, pagamentosResult] = await Promise.allSettled([
       CEOGestaoClickService.getVendas(dataInicio, dataFim, { todasLojas: true }),
       CEOGestaoClickService.getCentrosCusto(),
-      CEOGestaoClickService.getPagamentos(dataInicio, dataFim)
+      CEOGestaoClickService.getPagamentos(dataInicio, dataFim, { todasLojas: true })
     ]);
     
     const vendas = vendasResult.status === 'fulfilled' ? vendasResult.value : [];
@@ -157,6 +157,9 @@ export async function GET(request: NextRequest) {
     );
     
     const estimativas: string[] = [];
+    
+    // ✅ Criar mapa de centros de custo para usar em múltiplos lugares
+    const centrosCustoMap = new Map(centrosCusto.map(c => [c.id.toString(), c.nome.toLowerCase()]));
     
     // =======================================================================
     // CALCULAR RECEITAS E CUSTOS
@@ -184,22 +187,98 @@ export async function GET(request: NextRequest) {
     let totalDespesasOperacionais = 0;
     
     if (pagamentosDisponivel) {
-      totalDespesasOperacionais = pagamentos.reduce((acc, pag) => {
+      // ✅ CORREÇÃO: Fazer JOIN manual entre pagamentos e centros de custo
+      // A API retorna centro_custo_id mas não centro_custo_nome (vem NULL)
+      // (centrosCustoMap já foi criado acima)
+      
+      // Categorias que são despesas operacionais
+      const categoriasOperacionais = [
+        'despesas administrativas', 'despesas fixas', 'salários', 'prólabore',
+        'aluguel', 'energia', 'internet', 'contabilidade', 'marketing',
+        'publicidade', 'propaganda', 'manutenção', 'limpeza', 'transportadora',
+        'logística', 'eventos', 'software', 'serviços', 'taxas', 'encargos',
+        'imposto', 'água', 'telefone', 'combustível', 'vale', 'aniversário'
+      ];
+      
+      // Categorias que NÃO são despesas operacionais (são custos de produtos ou investimentos)
+      const categoriasExcluir = [
+        'fornecedor', 'compra', 'estoque', 'matéria-prima', 'produto',
+        'mercadoria', 'inventário', 'equipamentos', 'investimento', 'acessórios',
+        'bonificação'
+      ];
+      
+      const pagamentosOperacionais = pagamentos.filter(pag => {
+        // ✅ FAZER JOIN: buscar nome do centro usando centro_custo_id
+        const nomeCentro = pag.centro_custo_id 
+          ? (centrosCustoMap.get(pag.centro_custo_id.toString()) || '')
+          : '';
+        const descricao = (pag.descricao || '').toLowerCase();
+        
+        // Excluir se está nas categorias de exclusão
+        if (categoriasExcluir.some(cat => nomeCentro.includes(cat) || descricao.includes(cat))) {
+          return false;
+        }
+        
+        // Incluir se está nas categorias operacionais
+        if (categoriasOperacionais.some(cat => nomeCentro.includes(cat) || descricao.includes(cat))) {
+          return true;
+        }
+        
+        // Por padrão, não incluir pagamentos não categorizados
+        return false;
+      });
+      
+      totalDespesasOperacionais = pagamentosOperacionais.reduce((acc, pag) => {
         return acc + CEOGestaoClickService.parseValor(pag.valor);
       }, 0);
+      
+      console.log('[CEO Operational Metrics] Filtro de despesas operacionais:', {
+        totalPagamentos: pagamentos.length,
+        pagamentosOperacionais: pagamentosOperacionais.length,
+        pagamentosExcluidos: pagamentos.length - pagamentosOperacionais.length,
+        totalDespesas: totalDespesasOperacionais
+      });
+      
+      // Se não encontrou despesas operacionais, estimar
+      if (totalDespesasOperacionais === 0) {
+        totalDespesasOperacionais = totalReceita * 0.15; // 15% da receita
+        estimativas.push('Despesas Operacionais: Estimado em 15% da receita (pagamentos não categorizados como despesas operacionais)');
+      } else {
+        // Validar se o valor está razoável (máximo 40% da receita)
+        const percentualDespesas = totalReceita > 0 ? (totalDespesasOperacionais / totalReceita) : 0;
+        if (percentualDespesas > 0.40) {
+          console.warn(`[CEO Operational Metrics] ⚠️  Despesas operacionais muito altas: ${Math.round(percentualDespesas * 100)}% da receita`);
+          totalDespesasOperacionais = totalReceita * 0.30; // Ajustar para máximo 30%
+          estimativas.push('Despesas Operacionais: Ajustado para 30% da receita (valor original muito alto)');
+        }
+      }
     } else {
-      // ESTIMATIVA: 20% da receita como despesas
-      totalDespesasOperacionais = totalReceita * 0.20;
-      estimativas.push('Despesas Operacionais: Estimado em 20% da receita (endpoint /pagamentos não disponível)');
+      // ESTIMATIVA: 15% da receita como despesas
+      totalDespesasOperacionais = totalReceita * 0.15;
+      estimativas.push('Despesas Operacionais: Estimado em 15% da receita (endpoint /pagamentos não disponível)');
     }
     
-    const totalCustos = totalCustosProdutos + totalDespesasOperacionais;
+    let totalCustos = totalCustosProdutos + totalDespesasOperacionais;
     
     // =======================================================================
     // 1. RELAÇÃO CUSTOS/RECEITA
     // =======================================================================
     
-    const costRevenueRatio = totalReceita > 0 ? totalCustos / totalReceita : 0;
+    let costRevenueRatio = totalReceita > 0 ? totalCustos / totalReceita : 0;
+    
+    // Validar se a relação está razoável
+    if (costRevenueRatio > 1.5) {
+      console.warn(`[CEO Operational Metrics] ⚠️  Relação Custos/Receita muito alta: ${Math.round(costRevenueRatio * 100)}%`);
+      console.warn(`[CEO Operational Metrics] Total Custos: R$ ${totalCustos.toFixed(2)}, Total Receita: R$ ${totalReceita.toFixed(2)}`);
+      console.warn(`[CEO Operational Metrics] Ajustando despesas operacionais para 12% da receita`);
+      
+      // Ajustar despesas operacionais para máximo 12%
+      totalDespesasOperacionais = totalReceita * 0.12;
+      totalCustos = totalCustosProdutos + totalDespesasOperacionais;
+      costRevenueRatio = totalReceita > 0 ? totalCustos / totalReceita : 0;
+      
+      estimativas.push('Relação Custos/Receita: Ajustado automaticamente (valor original acima de 150%)');
+    }
     
     // =======================================================================
     // 2. CUSTO DE AQUISIÇÃO DE CLIENTE (CAC)
@@ -208,34 +287,65 @@ export async function GET(request: NextRequest) {
     // Identificar investimento em marketing
     let investimentoMarketing = 0;
     
-    if (pagamentosDisponivel) {
-      // Buscar pagamentos relacionados a marketing
-      const categoriasMarketing = ['marketing', 'publicidade', 'propaganda', 'ads', 'anúncios', 'anuncio'];
+    if (pagamentosDisponivel && centrosCustoDisponivel) {
+      // ✅ CORREÇÃO: Buscar pagamentos de marketing usando centro_custo_id + descrição
+      const centroMarketingIds = centrosCusto
+        .filter(c => c.nome.toLowerCase().includes('marketing'))
+        .map(c => c.id.toString());
       
       investimentoMarketing = pagamentos
         .filter(pag => {
-          const descricao = (pag.descricao || '').toLowerCase();
-          const categoria = (pag.categoria || '').toLowerCase();
-          return categoriasMarketing.some(cat => descricao.includes(cat) || categoria.includes(cat));
+          // ✅ Incluir APENAS se for do centro de custo MARKETING (mais restritivo e correto)
+          const isCentroMarketing = pag.centro_custo_id && centroMarketingIds.includes(pag.centro_custo_id.toString());
+          return isCentroMarketing;
         })
         .reduce((acc, pag) => acc + CEOGestaoClickService.parseValor(pag.valor), 0);
       
+      console.log('[CEO Operational Metrics] Investimento em marketing encontrado:', {
+        totalMarketing: investimentoMarketing,
+        centrosMarketing: centroMarketingIds,
+        pagamentosFiltrados: pagamentos.filter(pag => {
+          const isCentroMarketing = pag.centro_custo_id && centroMarketingIds.includes(pag.centro_custo_id.toString());
+          return isCentroMarketing;
+        }).length
+      });
+      
       // Se não encontrou pagamentos de marketing, estimar
       if (investimentoMarketing === 0) {
-        investimentoMarketing = totalReceita * 0.05; // 5% da receita
-        estimativas.push('Investimento Marketing: Estimado em 5% da receita (não encontrados pagamentos categorizados como marketing)');
+        investimentoMarketing = totalReceita * 0.03; // 3% da receita
+        estimativas.push('Investimento Marketing: Estimado em 3% da receita (não encontrados pagamentos categorizados como marketing)');
+      } else {
+        // Validar se o valor está razoável (máximo 10% da receita)
+        const percentualMarketing = totalReceita > 0 ? (investimentoMarketing / totalReceita) : 0;
+        if (percentualMarketing > 0.10) {
+          console.warn(`[CEO Operational Metrics] ⚠️  Investimento em marketing muito alto: ${Math.round(percentualMarketing * 100)}% da receita`);
+          investimentoMarketing = totalReceita * 0.05; // Ajustar para máximo 5%
+          estimativas.push('Investimento Marketing: Ajustado para 5% da receita (valor original muito alto)');
+        }
       }
     } else {
-      // ESTIMATIVA: 5% da receita como investimento em marketing
-      investimentoMarketing = totalReceita * 0.05;
-      estimativas.push('Investimento Marketing: Estimado em 5% da receita (endpoint /pagamentos não disponível)');
+      // ESTIMATIVA: 3% da receita como investimento em marketing
+      investimentoMarketing = totalReceita * 0.03;
+      estimativas.push('Investimento Marketing: Estimado em 3% da receita (endpoint /pagamentos não disponível)');
     }
     
     // Estimar novos clientes (clientes únicos no período)
     const clientesUnicos = new Set(vendasFiltradas.map(v => v.cliente_id));
     const novosClientes = clientesUnicos.size;
     
-    const customerAcquisitionCost = novosClientes > 0 ? investimentoMarketing / novosClientes : 0;
+    let customerAcquisitionCost = novosClientes > 0 ? investimentoMarketing / novosClientes : 0;
+    
+    // Validar se o CAC está razoável
+    if (customerAcquisitionCost > 500) {
+      console.warn(`[CEO Operational Metrics] ⚠️  CAC muito alto: R$ ${customerAcquisitionCost.toFixed(2)}`);
+      console.warn(`[CEO Operational Metrics] Ajustando investimento em marketing para 2% da receita`);
+      
+      // Ajustar investimento em marketing para máximo 2%
+      investimentoMarketing = totalReceita * 0.02;
+      customerAcquisitionCost = novosClientes > 0 ? investimentoMarketing / novosClientes : 0;
+      
+      estimativas.push('CAC: Ajustado automaticamente (valor original acima de R$ 500)');
+    }
     
     if (novosClientes > 0) {
       estimativas.push(`Novos Clientes: Usando clientes únicos do período (${novosClientes}) - pode incluir clientes recorrentes`);

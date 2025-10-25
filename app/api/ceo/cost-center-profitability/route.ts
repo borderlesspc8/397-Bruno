@@ -104,7 +104,7 @@ export async function GET(request: NextRequest) {
     const [vendasResult, centrosCustoResult, pagamentosResult] = await Promise.allSettled([
       CEOGestaoClickService.getVendas(dataInicio, dataFim, { todasLojas: true }),
       CEOGestaoClickService.getCentrosCusto(),
-      CEOGestaoClickService.getPagamentos(dataInicio, dataFim)
+      CEOGestaoClickService.getPagamentos(dataInicio, dataFim, { todasLojas: true })
     ]);
     
     const vendas = vendasResult.status === 'fulfilled' ? vendasResult.value : [];

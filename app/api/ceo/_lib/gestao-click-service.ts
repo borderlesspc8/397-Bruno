@@ -128,6 +128,7 @@ export interface GestaoClickPagamento {
   status?: string;
   plano_conta_id?: number;
   conta_bancaria_id?: number;
+  loja_id?: string; // ID da loja a que pertence o pagamento
 }
 
 /**
@@ -282,11 +283,11 @@ class SimpleCache {
   
   clearExpired(): void {
     const now = Date.now();
-    for (const [key, entry] of this.cache.entries()) {
+    this.cache.forEach((entry, key) => {
       if (now - entry.timestamp > entry.ttl) {
         this.cache.delete(key);
       }
-    }
+    });
   }
 }
 
@@ -586,9 +587,17 @@ export class CEOGestaoClickService {
   static async getPagamentos(
     dataInicio: string,
     dataFim: string,
-    useCache: boolean = true
+    opcoes: {
+      todasLojas?: boolean;
+      useCache?: boolean;
+    } = {}
   ): Promise<GestaoClickPagamento[]> {
-    const cacheKey = `pagamentos:${dataInicio}:${dataFim}`;
+    const {
+      todasLojas = false,
+      useCache = true
+    } = opcoes;
+    
+    const cacheKey = `pagamentos:${dataInicio}:${dataFim}:${todasLojas}`;
     
     if (useCache) {
       const cached = this.cache.get<GestaoClickPagamento[]>(cacheKey);
@@ -599,11 +608,57 @@ export class CEOGestaoClickService {
     }
     
     try {
-      const pagamentos = await this.fetchWithRetry<GestaoClickPagamento[]>(
-        `/pagamentos?data_inicio=${dataInicio}&data_fim=${dataFim}`
-      );
+      let todosPagamentos: GestaoClickPagamento[] = [];
       
-      const pagamentosArray = Array.isArray(pagamentos) ? pagamentos : [];
+      if (todasLojas) {
+        // ✅ CORREÇÃO: Buscar loja por loja como o BetelTecnologiaService faz
+        console.log('[CEOGestaoClick] 🏢 Buscando pagamentos de TODAS as lojas...');
+        
+        // 1. Buscar lista de lojas
+        const lojas = await this.getLojas(useCache);
+        console.log(`[CEOGestaoClick] Encontradas ${lojas.length} lojas:`, lojas.map(l => l.nome));
+        
+        // 2. Buscar pagamentos de cada loja
+        for (const loja of lojas) {
+          try {
+            console.log(`[CEOGestaoClick] Buscando pagamentos da loja: ${loja.nome} (ID: ${loja.id})`);
+            
+            const params = new URLSearchParams({
+              data_inicio: dataInicio,
+              data_fim: dataFim,
+              loja_id: String(loja.id)
+            });
+            
+            const pagamentosLoja = await this.fetchWithRetry<GestaoClickPagamento[]>(
+              `/pagamentos?${params.toString()}`
+            );
+            
+            const pagamentosArray = Array.isArray(pagamentosLoja) ? pagamentosLoja : [];
+            console.log(`[CEOGestaoClick] ✅ Loja ${loja.nome}: ${pagamentosArray.length} pagamentos`);
+            
+            todosPagamentos = [...todosPagamentos, ...pagamentosArray];
+          } catch (error) {
+            console.warn(`[CEOGestaoClick] ⚠️  Erro ao buscar pagamentos da loja ${loja.nome}:`, error);
+            // Continuar com as outras lojas
+          }
+        }
+        
+        console.log(`[CEOGestaoClick] ✅ Total de pagamentos de todas as lojas: ${todosPagamentos.length}`);
+      } else {
+        // Buscar pagamentos da loja padrão
+        const params = new URLSearchParams({
+          data_inicio: dataInicio,
+          data_fim: dataFim,
+        });
+        
+        const pagamentos = await this.fetchWithRetry<GestaoClickPagamento[]>(
+          `/pagamentos?${params.toString()}`
+        );
+        
+        todosPagamentos = Array.isArray(pagamentos) ? pagamentos : [];
+      }
+      
+      const pagamentosArray = todosPagamentos;
       
       if (useCache) {
         this.cache.set(cacheKey, pagamentosArray, this.TTL.PAGAMENTOS);

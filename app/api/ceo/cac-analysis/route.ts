@@ -6,7 +6,6 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { format } from 'date-fns';
 import { CEOGestaoClickService } from '../_lib/gestao-click-service';
 
 export const dynamic = "force-dynamic";
@@ -102,9 +101,10 @@ export async function GET(request: NextRequest) {
       );
     }
     
-    // Formatar datas
-    const dataInicio = format(new Date(startDate), 'yyyy-MM-dd');
-    const dataFim = format(new Date(endDate), 'yyyy-MM-dd');
+    // ✅ Formatar datas garantindo UTC-3 (Brasília)
+    // Extrair apenas YYYY-MM-DD ignorando timezone para evitar problemas de conversão
+    const dataInicio = startDate.split('T')[0];
+    const dataFim = endDate.split('T')[0];
     
     console.log(`[CEO CAC Analysis] Buscando análise: ${dataInicio} a ${dataFim}`);
     
@@ -114,7 +114,7 @@ export async function GET(request: NextRequest) {
     
     const [vendasResult, pagamentosResult, recebimentosResult, clientesResult, centrosCustoResult, formasPagamentoResult] = await Promise.allSettled([
       CEOGestaoClickService.getVendas(dataInicio, dataFim, { todasLojas: true }),
-      CEOGestaoClickService.getPagamentos(dataInicio, dataFim),
+      CEOGestaoClickService.getPagamentos(dataInicio, dataFim, { todasLojas: true }),
       CEOGestaoClickService.getRecebimentos(dataInicio, dataFim),
       CEOGestaoClickService.getClientes(),
       CEOGestaoClickService.getCentrosCusto(),
@@ -152,67 +152,79 @@ export async function GET(request: NextRequest) {
     // CALCULAR CAC ATUAL COM DADOS REAIS
     // =======================================================================
     
+    // ✅ Criar mapa de centros de custo para JOIN manual
+    const centrosCustoMap = new Map(centrosCusto.map(c => [c.id.toString(), c.nome.toLowerCase()]));
+    
     // Identificar investimento em marketing REAL dos pagamentos
     let investimentoMarketing = 0;
     
-    if (pagamentos.length > 0) {
-      // Buscar pagamentos relacionados a marketing usando centros de custo e descrições
+    if (pagamentos.length > 0 && centrosCusto.length > 0) {
+      // ✅ MESMA LÓGICA do operational-metrics (CORRETA)
+      const centroMarketingIds = centrosCusto
+        .filter(c => c.nome.toLowerCase().includes('marketing'))
+        .map(c => c.id.toString());
+      
       const categoriasMarketing = [
-        'marketing', 'publicidade', 'propaganda', 'ads', 'anúncios', 'anuncio',
+        'marketing', 'publicidade', 'propaganda', 'ads', 'anúncios', 'anuncio', 
+        'trafego', 'outdoor', 'branding', 'portal inflável',
         'facebook', 'google', 'instagram', 'youtube', 'linkedin', 'tiktok',
         'email marketing', 'mailing', 'campanha', 'promocao', 'promoção'
       ];
       
-      // Filtrar por centros de custo de marketing
-      const centrosMarketing = centrosCusto.filter(cc => 
-        categoriasMarketing.some(cat => 
-          cc.nome.toLowerCase().includes(cat)
-        )
-      );
-      
-      console.log(`[CEO CAC Analysis] Centros de custo de marketing encontrados:`, 
-        centrosMarketing.map(cc => cc.nome)
-      );
-      
-      // Calcular investimento baseado em centros de custo de marketing
       investimentoMarketing = pagamentos
         .filter(pag => {
-          const centroCusto = (pag.nome_centro_custo || '').toLowerCase();
-          const descricao = (pag.descricao || '').toLowerCase();
+          // ✅ Verificar se é do centro de custo MARKETING
+          const isCentroMarketing = pag.centro_custo_id && centroMarketingIds.includes(pag.centro_custo_id.toString());
           
-          // Verificar se está em centro de custo de marketing
-          const centroMarketing = centrosMarketing.some(cc => 
-            centroCusto.includes(cc.nome.toLowerCase())
-          );
+          // ✅ FAZER JOIN para pegar nome do centro usando centro_custo_id
+          const nomeCentro = pag.centro_custo_id 
+            ? (centrosCustoMap.get(pag.centro_custo_id.toString()) || '')
+            : '';
           
-          // Verificar se descrição contém palavras-chave de marketing
-          const descricaoMarketing = categoriasMarketing.some(cat => 
-            descricao.includes(cat)
-          );
-          
-          return centroMarketing || descricaoMarketing;
+          // ✅ Incluir APENAS se for do centro de custo MARKETING (mais restritivo e correto)
+          return isCentroMarketing;
         })
         .reduce((acc, pag) => acc + CEOGestaoClickService.parseValor(pag.valor), 0);
       
+      const pagamentosFiltrados = pagamentos.filter(pag => {
+        const isCentroMarketing = pag.centro_custo_id && centroMarketingIds.includes(pag.centro_custo_id.toString());
+        return isCentroMarketing;
+      });
+
+      console.log(`[CEO CAC Analysis] Investimento em marketing calculado:`, {
+        total: investimentoMarketing,
+        centrosMarketing: centroMarketingIds,
+        totalPagamentos: pagamentosFiltrados.length,
+        detalhesPagamentos: pagamentosFiltrados.map(p => ({
+          descricao: p.descricao,
+          valor: p.valor,
+          centro_id: p.centro_custo_id,
+          loja_id: p.loja_id
+        }))
+      });
+      
       console.log(`[CEO CAC Analysis] Investimento em marketing calculado: R$ ${investimentoMarketing.toFixed(2)}`);
       
-      // Se não encontrou pagamentos específicos de marketing, usar uma estimativa mais realista
+      // Se não encontrou pagamentos específicos de marketing, usar estimativa
       if (investimentoMarketing === 0) {
-        // Calcular total de pagamentos para estimar proporção
         const totalPagamentos = pagamentos.reduce((acc, pag) => 
           acc + CEOGestaoClickService.parseValor(pag.valor), 0
         );
         
-        // Estimar 3% dos pagamentos como marketing (mais conservador)
         investimentoMarketing = totalPagamentos * 0.03;
-        
         console.log(`[CEO CAC Analysis] Investimento estimado (3% dos pagamentos): R$ ${investimentoMarketing.toFixed(2)}`);
       }
+    } else {
+      // Fallback se não tiver dados
+      investimentoMarketing = 0;
     }
     
-    // Calcular novos clientes REAIS (clientes cadastrados no período)
-    const dataInicioObj = new Date(dataInicio);
-    const dataFimObj = new Date(dataFim);
+    // ✅ Criar objetos Date no timezone local (UTC-3 Brasília)
+    // Usar formato YYYY-MM-DD às 00:00:00 local
+    const [anoInicio, mesInicio, diaInicio] = dataInicio.split('-').map(Number);
+    const [anoFim, mesFim, diaFim] = dataFim.split('-').map(Number);
+    const dataInicioObj = new Date(anoInicio, mesInicio - 1, diaInicio, 0, 0, 0);
+    const dataFimObj = new Date(anoFim, mesFim - 1, diaFim, 23, 59, 59);
     
     const novosClientesReais = clientes.filter(cliente => {
       const dataCadastro = CEOGestaoClickService.parseData(cliente.data_cadastro);
@@ -243,9 +255,14 @@ export async function GET(request: NextRequest) {
       dataInicioMes.setMonth(dataInicioMes.getMonth() - i);
       dataInicioMes.setDate(1);
       
-      const dataFimMes = new Date(dataInicioMes);
+      let dataFimMes = new Date(dataInicioMes);
       dataFimMes.setMonth(dataFimMes.getMonth() + 1);
-      dataFimMes.setDate(0);
+      dataFimMes.setDate(0); // Último dia do mês
+      
+      // ✅ Se o mês é o mês atual (parcial), usar a data fim do período selecionado
+      if (dataFimMes > dataFimObj) {
+        dataFimMes = new Date(dataFimObj);
+      }
       
       const dataInicioMesStr = CEOGestaoClickService.formatarData(dataInicioMes);
       const dataFimMesStr = CEOGestaoClickService.formatarData(dataFimMes);
@@ -254,7 +271,7 @@ export async function GET(request: NextRequest) {
         // Buscar dados do mês específico
         const [vendasMesResult, pagamentosMesResult, clientesMesResult] = await Promise.allSettled([
           CEOGestaoClickService.getVendas(dataInicioMesStr, dataFimMesStr, { todasLojas: true }),
-          CEOGestaoClickService.getPagamentos(dataInicioMesStr, dataFimMesStr),
+          CEOGestaoClickService.getPagamentos(dataInicioMesStr, dataFimMesStr, { todasLojas: true }),
           CEOGestaoClickService.getClientes()
         ]);
         
@@ -271,35 +288,20 @@ export async function GET(request: NextRequest) {
           return statusValido && unidadeValida;
         });
         
-        // Calcular investimento do mês
+        // ✅ Calcular investimento do mês usando MESMA LÓGICA do CAC atual (apenas centro MARKETING)
         let investimentoMes = 0;
         if (pagamentosMes.length > 0) {
-          const centrosMarketing = centrosCusto.filter(cc => 
-            categoriasMarketing.some(cat => 
-              cc.nome.toLowerCase().includes(cat)
-            )
-          );
+          const centroMarketingIds = centrosCusto
+            .filter(c => c.nome.toLowerCase().includes('marketing'))
+            .map(c => c.id.toString());
           
           investimentoMes = pagamentosMes
             .filter(pag => {
-              const centroCusto = (pag.nome_centro_custo || '').toLowerCase();
-              const descricao = (pag.descricao || '').toLowerCase();
-              const centroMarketing = centrosMarketing.some(cc => 
-                centroCusto.includes(cc.nome.toLowerCase())
-              );
-              const descricaoMarketing = categoriasMarketing.some(cat => 
-                descricao.includes(cat)
-              );
-              return centroMarketing || descricaoMarketing;
+              // ✅ Incluir APENAS se for do centro de custo MARKETING
+              const isCentroMarketing = pag.centro_custo_id && centroMarketingIds.includes(pag.centro_custo_id.toString());
+              return isCentroMarketing;
             })
             .reduce((acc, pag) => acc + CEOGestaoClickService.parseValor(pag.valor), 0);
-          
-          if (investimentoMes === 0) {
-            const totalPagamentosMes = pagamentosMes.reduce((acc, pag) => 
-              acc + CEOGestaoClickService.parseValor(pag.valor), 0
-            );
-            investimentoMes = totalPagamentosMes * 0.03;
-          }
         }
         
         // Calcular novos clientes do mês
@@ -336,22 +338,14 @@ export async function GET(request: NextRequest) {
     // COMPARAÇÃO COM PERÍODO ANTERIOR (DADOS REAIS)
     // =======================================================================
     
-    // Calcular período anterior (mesmo período do ano passado ou mês anterior)
+    // ✅ Calcular período anterior: mesmo intervalo de dias do mês anterior
+    // Exemplo: 01/10 a 24/10 → 01/09 a 24/09
     const dataInicioAnterior = new Date(dataInicioObj);
     const dataFimAnterior = new Date(dataFimObj);
     
-    // Usar mês anterior se período atual é menor que 30 dias, senão usar mesmo período do ano passado
-    const diasPeriodo = Math.ceil((dataFimObj.getTime() - dataInicioObj.getTime()) / (1000 * 60 * 60 * 24));
-    
-    if (diasPeriodo <= 30) {
-      // Mês anterior
-      dataInicioAnterior.setMonth(dataInicioAnterior.getMonth() - 1);
-      dataFimAnterior.setMonth(dataFimAnterior.getMonth() - 1);
-    } else {
-      // Mesmo período do ano passado
-      dataInicioAnterior.setFullYear(dataInicioAnterior.getFullYear() - 1);
-      dataFimAnterior.setFullYear(dataFimAnterior.getFullYear() - 1);
-    }
+    // Subtrair 1 mês de ambas as datas
+    dataInicioAnterior.setMonth(dataInicioAnterior.getMonth() - 1);
+    dataFimAnterior.setMonth(dataFimAnterior.getMonth() - 1);
     
     const dataInicioAnteriorStr = CEOGestaoClickService.formatarData(dataInicioAnterior);
     const dataFimAnteriorStr = CEOGestaoClickService.formatarData(dataFimAnterior);
@@ -364,7 +358,7 @@ export async function GET(request: NextRequest) {
       // Buscar dados do período anterior
       const [vendasAnteriorResult, pagamentosAnteriorResult, clientesAnteriorResult] = await Promise.allSettled([
         CEOGestaoClickService.getVendas(dataInicioAnteriorStr, dataFimAnteriorStr, { todasLojas: true }),
-        CEOGestaoClickService.getPagamentos(dataInicioAnteriorStr, dataFimAnteriorStr),
+        CEOGestaoClickService.getPagamentos(dataInicioAnteriorStr, dataFimAnteriorStr, { todasLojas: true }),
         CEOGestaoClickService.getClientes()
       ]);
       
@@ -381,34 +375,19 @@ export async function GET(request: NextRequest) {
         return statusValido && unidadeValida;
       });
       
-      // Calcular investimento do período anterior
+      // ✅ Calcular investimento do período anterior (apenas centro MARKETING)
       if (pagamentosAnterior.length > 0) {
-        const centrosMarketing = centrosCusto.filter(cc => 
-          categoriasMarketing.some(cat => 
-            cc.nome.toLowerCase().includes(cat)
-          )
-        );
+        const centroMarketingIds = centrosCusto
+          .filter(c => c.nome.toLowerCase().includes('marketing'))
+          .map(c => c.id.toString());
         
         investimentoAnterior = pagamentosAnterior
           .filter(pag => {
-            const centroCusto = (pag.nome_centro_custo || '').toLowerCase();
-            const descricao = (pag.descricao || '').toLowerCase();
-            const centroMarketing = centrosMarketing.some(cc => 
-              centroCusto.includes(cc.nome.toLowerCase())
-            );
-            const descricaoMarketing = categoriasMarketing.some(cat => 
-              descricao.includes(cat)
-            );
-            return centroMarketing || descricaoMarketing;
+            // ✅ Incluir APENAS se for do centro de custo MARKETING
+            const isCentroMarketing = pag.centro_custo_id && centroMarketingIds.includes(pag.centro_custo_id.toString());
+            return isCentroMarketing;
           })
           .reduce((acc, pag) => acc + CEOGestaoClickService.parseValor(pag.valor), 0);
-        
-        if (investimentoAnterior === 0) {
-          const totalPagamentosAnterior = pagamentosAnterior.reduce((acc, pag) => 
-            acc + CEOGestaoClickService.parseValor(pag.valor), 0
-          );
-          investimentoAnterior = totalPagamentosAnterior * 0.03;
-        }
       }
       
       // Calcular novos clientes do período anterior
@@ -473,14 +452,14 @@ export async function GET(request: NextRequest) {
     };
     
     // Agrupar investimento por canal baseado nas formas de pagamento
-    const investimentoPorCanal = {
+    const investimentoPorCanal: Record<string, number> = {
       'Google Ads': 0,
       'Facebook Ads': 0,
       'Email Marketing': 0,
       'Outros': 0
     };
     
-    const clientesPorCanal = {
+    const clientesPorCanal: Record<string, number> = {
       'Google Ads': 0,
       'Facebook Ads': 0,
       'Email Marketing': 0,
@@ -490,23 +469,22 @@ export async function GET(request: NextRequest) {
     // Analisar pagamentos por forma de pagamento
     if (pagamentos.length > 0) {
       pagamentos.forEach(pag => {
-        const formaPagamento = (pag.nome_forma_pagamento || '').toLowerCase();
         const descricao = (pag.descricao || '').toLowerCase();
         const valor = CEOGestaoClickService.parseValor(pag.valor);
         
-        // Determinar canal baseado na forma de pagamento e descrição
+        // Determinar canal baseado na descrição (forma_pagamento não está disponível na interface)
         let canal = 'Outros';
         
         if (canaisMap.google.some(keyword => 
-          formaPagamento.includes(keyword) || descricao.includes(keyword)
+          descricao.includes(keyword)
         )) {
           canal = 'Google Ads';
         } else if (canaisMap.facebook.some(keyword => 
-          formaPagamento.includes(keyword) || descricao.includes(keyword)
+          descricao.includes(keyword)
         )) {
           canal = 'Facebook Ads';
         } else if (canaisMap.email.some(keyword => 
-          formaPagamento.includes(keyword) || descricao.includes(keyword)
+          descricao.includes(keyword)
         )) {
           canal = 'Email Marketing';
         }
