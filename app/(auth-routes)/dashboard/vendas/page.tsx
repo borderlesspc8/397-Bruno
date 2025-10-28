@@ -509,6 +509,9 @@ export default function DashboardVendas() {
             <VendedoresChartImproved 
               vendedores={vendedoresMapeados}
               onVendedorClick={handleOpenVendedorDetails}
+              totalVendas={totalVendas}
+              totalValor={totalValor}
+              ticketMedio={ticketMedio}
             />
           </div>
           
@@ -564,6 +567,9 @@ export default function DashboardVendas() {
                   <RankingVendedoresPodium 
                     vendedores={vendedoresMapeados}
                     onVendedorClick={handleOpenVendedorDetails}
+                    totalVendas={totalVendas}
+                    totalValor={totalValor}
+                    ticketMedio={ticketMedio}
                   />
                   
                   {dateRange && (

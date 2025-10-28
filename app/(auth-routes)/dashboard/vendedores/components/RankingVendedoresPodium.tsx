@@ -24,7 +24,7 @@ interface RankingVendedoresPodiumProps {
   onVendedorClick?: (vendedor: Vendedor) => void;
   erro?: string | null;
   isRankingComponent?: boolean;
-  // Adicionar props para receber dados da mesma fonte
+  // Adicionar props para receber dados da mesma fonte (mesma do DashboardSummary)
   vendas?: any[];
   totalVendas?: number;
   totalValor?: number;
@@ -152,9 +152,9 @@ export default function RankingVendedoresPodium({
   erro = null,
   isRankingComponent = true, // Por padrão, consideramos como componente de ranking
   vendas = [],
-  totalVendas = 0,
-  totalValor = 0,
-  ticketMedio = 0
+  totalVendas,
+  totalValor,
+  ticketMedio
 }: RankingVendedoresPodiumProps) {
   const [ordenacao, setOrdenacao] = useState<"faturamento" | "vendas" | "ticket">("faturamento");
   
@@ -235,7 +235,13 @@ export default function RankingVendedoresPodium({
         
         <CardFooter_Memo 
           quantidade={vendedores.length} // Total de todos os vendedores
-          valorTotal={totalValor} // Usar o valor da mesma fonte do DashboardSummary
+          valorTotal={
+            ordenacao === "faturamento" 
+              ? (totalValor !== undefined && totalValor !== null ? totalValor : totalOrdenacao) // Usar totalValor se fornecido, senão calcular do hook
+              : ordenacao === "vendas"
+              ? (totalVendas !== undefined && totalVendas !== null ? totalVendas : totalOrdenacao)
+              : (ticketMedio !== undefined && ticketMedio !== null ? ticketMedio : totalOrdenacao)
+          }
           ordenacao={ordenacao}
         />
       </CardContent>

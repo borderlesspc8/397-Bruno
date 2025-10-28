@@ -299,13 +299,25 @@ export function VendedoresChartImproved({
   }, [vendedoresFiltrados, metaAtual?.metasVendedores, metaAtual?.metaCoordenador]);
 
   // Calcular totais usando os dados recebidos como props (mesma fonte do DashboardSummary)
+  // Se não fornecidos ou zerados, calcular a partir dos vendedores filtrados
   const totais = useMemo(() => {
-    // Usar os dados recebidos como props em vez de calcular localmente
+    // Se as props foram fornecidas e não são zero, usar elas
+    if (totalValor !== undefined && totalValor > 0 && totalVendas !== undefined && totalVendas > 0) {
+      return {
+        valorTotal: totalValor,
+        vendasTotal: totalVendas
+      };
+    }
+    
+    // Caso contrário, calcular a partir dos vendedores filtrados
+    const valorTotalCalculado = vendedoresFiltrados.reduce((acc, v) => acc + (v.faturamento || 0), 0);
+    const vendasTotalCalculado = vendedoresFiltrados.reduce((acc, v) => acc + (v.vendas || 0), 0);
+    
     return {
-      valorTotal: totalValor,
-      vendasTotal: totalVendas
+      valorTotal: valorTotalCalculado,
+      vendasTotal: vendasTotalCalculado
     };
-  }, [totalValor, totalVendas]);
+  }, [totalValor, totalVendas, vendedoresFiltrados]);
 
   if (!isClient) {
     return null; // Evita renderização no servidor
