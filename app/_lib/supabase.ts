@@ -23,7 +23,6 @@ export function createClient() {
   // Se estiver no browser, usar o singleton do cliente com suporte a cookies
   if (!supabaseClient) {
     if (!isClientCreated) {
-      console.log('🔧 Criando instância única do cliente Supabase para o browser com suporte a cookies');
       isClientCreated = true
     }
     

@@ -1,8 +1,10 @@
 import { NextRequest } from 'next/server';
 import { createClient as createServerClient } from './supabase-server';
-
-// Email do administrador
-const ADMIN_EMAIL = 'lojapersonalprime@gmail.com';
+import { 
+  getUserRBACInfo, 
+  hasPermission
+} from '@/app/_services/permissions';
+import { SystemRoles, SystemPermissions } from '@/app/_types/rbac';
 
 export interface UserPermissions {
   isAdmin: boolean;
@@ -14,20 +16,37 @@ export interface UserPermissions {
 }
 
 /**
- * Verifica as permissões do usuário baseado no email
+ * Verifica as permissões do usuário baseado no banco de dados RBAC
+ * Mantém fallback para email durante transição
  */
-export function checkUserPermissions(userEmail: string): UserPermissions {
-  const isAdmin = userEmail === ADMIN_EMAIL;
-  const isVendor = userEmail !== ADMIN_EMAIL;
-
-  return {
-    isAdmin,
-    isVendor,
-    canAccessVendas: isAdmin,
-    canAccessVendedores: true, // Todos os usuários autenticados podem acessar
-    canAccessMetas: isAdmin,
-    canAccessDashboardCEO: isAdmin,
-  };
+export async function checkUserPermissions(userId: string, userEmail?: string): Promise<UserPermissions> {
+  try {
+    // Buscar informações RBAC do banco
+    const rbacInfo = await getUserRBACInfo(userId);
+    
+    // Mapear permissões do RBAC para a interface legada
+    return {
+      isAdmin: rbacInfo.isAdmin,
+      isVendor: rbacInfo.isVendor,
+      canAccessVendas: await hasPermission(userId, SystemPermissions.VENDAS_VIEW),
+      canAccessVendedores: await hasPermission(userId, SystemPermissions.VENDEDORES_DASHBOARD) || rbacInfo.isVendor,
+      canAccessMetas: await hasPermission(userId, SystemPermissions.METAS_VIEW) || rbacInfo.isAdmin, // Apenas admin tem acesso a metas
+      canAccessDashboardCEO: await hasPermission(userId, SystemPermissions.CEO_DASHBOARD),
+    };
+  } catch (error) {
+    console.error('Erro ao verificar permissões RBAC:', error);
+    
+    // Em caso de erro, retornar permissões negadas (mais seguro)
+    // Não usar fallback baseado em email - forçar uso do sistema RBAC
+    return {
+      isAdmin: false,
+      isVendor: false,
+      canAccessVendas: false,
+      canAccessVendedores: false,
+      canAccessMetas: false,
+      canAccessDashboardCEO: false,
+    };
+  }
 }
 
 /**
@@ -59,7 +78,8 @@ export async function getUserPermissions(request: NextRequest): Promise<{
       };
     }
 
-    const permissions = checkUserPermissions(user.email!);
+    // Buscar permissões do banco de dados RBAC
+    const permissions = await checkUserPermissions(user.id, user.email!);
 
     return {
       user,

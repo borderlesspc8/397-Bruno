@@ -79,10 +79,6 @@ export function useAuthOptimized() {
       async (event, session) => {
         if (!mounted) return
 
-        // Evitar logs desnecessários para INITIAL_SESSION
-        if (event !== 'INITIAL_SESSION') {
-          console.log('Auth state change:', event, session?.user?.id)
-        }
         
         updateUser(session)
       }

@@ -60,8 +60,6 @@ export function useAuth() {
       async (event, session) => {
         if (!mounted) return;
 
-        console.log('Auth state change:', event, session?.user?.id);
-        
         if (event === 'SIGNED_IN' && session?.user) {
           setUser({
             id: session.user.id,
