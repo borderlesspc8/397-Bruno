@@ -40,17 +40,11 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    console.log(`Buscando vendas diárias no período de ${resultadoDatas.dataInicio!.toISOString()} até ${resultadoDatas.dataFim!.toISOString()}`);
-
     // Buscar todas as vendas no período
     const vendasResult = await BetelTecnologiaService.buscarVendas({
       dataInicio: resultadoDatas.dataInicio!,
       dataFim: resultadoDatas.dataFim!
     });
-
-    if (debug) {
-      console.log(`Total de vendas recebidas: ${vendasResult.vendas.length}`);
-    }
 
     // Agrupar vendas por dia
     const vendasAgrupadas = new Map<string, { totalVendas: number; totalValor: number }>();
@@ -151,8 +145,6 @@ export async function GET(request: NextRequest) {
     
     // Ordenar por data
     vendasPorDia.sort((a, b) => a.data.localeCompare(b.data));
-    
-    console.log(`Processadas ${vendasProcessadas} vendas para ${vendasPorDia.length} datas diferentes. Vendas sem data: ${vendasSemData}`);
 
     // Retornar resultados com informações de diagnóstico
     return NextResponse.json({

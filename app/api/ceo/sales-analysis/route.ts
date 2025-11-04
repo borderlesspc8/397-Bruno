@@ -1,10 +1,10 @@
 /**
- * API: Análise de Vendas CEO - DADOS REAIS DO GESTÃO CLICK
+ * API: Análise de Vendas CEO - USANDO BetelTecnologiaService COMO FONTE ÚNICA
  * 
  * CORREÇÃO COMPLETA:
- * - ✅ Usa CEOGestaoClickService centralizado
- * - ✅ Remove CEOBetelService duplicado
- * - ✅ Remove fallback com dados fake
+ * - ✅ Usa BetelTecnologiaService como fonte única de dados (mesma do Dashboard de Vendas)
+ * - ✅ Mantém consistência de valores entre Dashboard de Vendas e Dashboard CEO
+ * - ✅ Remove dependência de CEOGestaoClickService
  * - ✅ Usa apenas campos reais da API
  * - ✅ Cálculos baseados em dados reais
  * - ✅ Tratamento robusto de erros
@@ -12,7 +12,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { format } from 'date-fns';
-import { CEOGestaoClickService } from '../_lib/gestao-click-service';
+import { BetelTecnologiaService } from '@/app/_services/betelTecnologia';
 
 // Configuração para forçar comportamento dinâmico
 export const dynamic = "force-dynamic";
@@ -116,34 +116,29 @@ export async function GET(request: NextRequest) {
       );
     }
     
-    // Formatar datas para padrão da API
-    const dataInicio = format(new Date(startDate), 'yyyy-MM-dd');
-    const dataFim = format(new Date(endDate), 'yyyy-MM-dd');
+    // Converter datas para objetos Date
+    const dataInicio = new Date(startDate);
+    const dataFim = new Date(endDate);
     
-    console.log(`[CEO Sales Analysis] Buscando vendas: ${dataInicio} a ${dataFim}`);
+    console.log(`[CEO Sales Analysis] 🔄 Buscando vendas via BetelTecnologiaService: ${format(dataInicio, 'yyyy-MM-dd')} a ${format(dataFim, 'yyyy-MM-dd')}`);
     
     // =======================================================================
-    // BUSCAR VENDAS REAIS DA API GESTÃO CLICK
+    // BUSCAR VENDAS USANDO BetelTecnologiaService (MESMA FONTE DO DASHBOARD DE VENDAS)
     // =======================================================================
     
-    const vendas = await CEOGestaoClickService.getVendas(dataInicio, dataFim, {
-      todasLojas: true,
-      useCache: true
+    const vendasResult = await BetelTecnologiaService.buscarVendas({
+      dataInicio,
+      dataFim
     });
     
-    console.log(`[CEO Sales Analysis] ${vendas.length} vendas encontradas`);
+    if (vendasResult.erro) {
+      throw new Error(`Erro ao buscar vendas: ${vendasResult.erro}`);
+    }
     
-    // =======================================================================
-    // FILTRAR APENAS VENDAS COM STATUS VÁLIDOS
-    // =======================================================================
+    // As vendas já vêm filtradas por status "Concretizada" e "Em andamento" do BetelTecnologiaService
+    const vendasFiltradas = vendasResult.vendas || [];
     
-    const STATUS_VALIDOS = ["Concretizada", "Em andamento"];
-    
-    const vendasFiltradas = vendas.filter(venda => 
-      venda.nome_situacao && STATUS_VALIDOS.includes(venda.nome_situacao)
-    );
-    
-    console.log(`[CEO Sales Analysis] ${vendasFiltradas.length} vendas após filtro de status`);
+    console.log(`[CEO Sales Analysis] ${vendasFiltradas.length} vendas encontradas (já filtradas por status válido)`);
     
     // Se não houver vendas, retornar estrutura vazia
     if (vendasFiltradas.length === 0) {
@@ -161,10 +156,10 @@ export async function GET(request: NextRequest) {
         lastUpdated: new Date().toISOString(),
         _metadata: {
           dataSource: 'api' as const,
-          totalVendasRaw: vendas.length,
+          totalVendasRaw: 0,
           totalVendasFiltradas: 0,
-          statusFiltrados: STATUS_VALIDOS,
-          periodo: { inicio: dataInicio, fim: dataFim },
+          statusFiltrados: ["Concretizada", "Em andamento"],
+          periodo: { inicio: format(dataInicio, 'yyyy-MM-dd'), fim: format(dataFim, 'yyyy-MM-dd') },
           timestamp: new Date().toISOString()
         }
       } as SalesAnalysis);
@@ -176,8 +171,11 @@ export async function GET(request: NextRequest) {
     
     const totalVendas = vendasFiltradas.length;
     
-    const totalFaturamento = vendasFiltradas.reduce((acc, venda) => {
-      return acc + CEOGestaoClickService.parseValor(venda.valor_total);
+    // Usar totalValor já calculado pelo BetelTecnologiaService (consistente com Dashboard de Vendas)
+    const totalFaturamento = vendasResult.totalValor || vendasFiltradas.reduce((acc, venda) => {
+      // valor_total vem como string do BetelVenda
+      const valor = parseFloat(String(venda.valor_total || '0'));
+      return acc + (isNaN(valor) ? 0 : valor);
     }, 0);
     
     const ticketMedio = totalVendas > 0 ? totalFaturamento / totalVendas : 0;
@@ -192,7 +190,9 @@ export async function GET(request: NextRequest) {
       const vendedorId = venda.vendedor_id || 0;
       const vendedorNome = venda.vendedor_nome || venda.nome_vendedor || 'Vendedor Não Identificado';
       const lojaNome = venda.nome_loja || 'Loja Principal';
-      const valor = CEOGestaoClickService.parseValor(venda.valor_total);
+      // valor_total vem como string do BetelVenda
+      const valor = parseFloat(String(venda.valor_total || '0'));
+      const valorNum = isNaN(valor) ? 0 : valor;
       
       if (!vendasPorVendedorMap.has(vendedorId)) {
         vendasPorVendedorMap.set(vendedorId, {
@@ -207,7 +207,7 @@ export async function GET(request: NextRequest) {
       
       const vendedor = vendasPorVendedorMap.get(vendedorId)!;
       vendedor.vendas += 1;
-      vendedor.faturamento += valor;
+      vendedor.faturamento += valorNum;
       vendedor.ticketMedio = vendedor.faturamento / vendedor.vendas;
     });
     
@@ -218,13 +218,16 @@ export async function GET(request: NextRequest) {
     const vendasPorProdutoMap = new Map<number, any>();
     
     vendasFiltradas.forEach(venda => {
-      venda.itens.forEach(item => {
-        const produtoId = item.produto_id;
-        const produtoNome = item.produto || item.descricao || 'Produto Sem Nome';
+      // BetelVenda tem campo 'itens' que é array de BetelItem
+      const itens = venda.itens || [];
+      itens.forEach(item => {
+        const produtoId = item.produto_id || item.id || 0;
+        const produtoNome = item.produto || item.descricao || item.nome || 'Produto Sem Nome';
         const categoria = item.categoria || 'Não Categorizado';
-        const quantidade = CEOGestaoClickService.parseValor(item.quantidade);
-        const valorTotal = CEOGestaoClickService.parseValor(item.valor_total);
-        const valorCusto = CEOGestaoClickService.parseValor(item.valor_custo);
+        // Campos podem vir como string ou number no BetelItem
+        const quantidade = typeof item.quantidade === 'number' ? item.quantidade : parseFloat(String(item.quantidade || '0')) || 0;
+        const valorTotal = typeof item.valor_total === 'number' ? item.valor_total : parseFloat(String(item.valor_total || '0')) || 0;
+        const valorCusto = typeof item.valor_custo === 'number' ? item.valor_custo : parseFloat(String(item.valor_custo || '0')) || 0;
         
         if (!vendasPorProdutoMap.has(produtoId)) {
           vendasPorProdutoMap.set(produtoId, {
@@ -269,10 +272,12 @@ export async function GET(request: NextRequest) {
     const vendasPorClienteMap = new Map<number, any>();
     
     vendasFiltradas.forEach(venda => {
-      const clienteId = venda.cliente_id;
+      const clienteId = venda.cliente_id || 0;
       const clienteNome = venda.cliente || 'Cliente Não Identificado';
-      const valor = CEOGestaoClickService.parseValor(venda.valor_total);
-      const dataVenda = venda.data || venda.data_venda || dataFim;
+      // valor_total vem como string do BetelVenda
+      const valor = parseFloat(String(venda.valor_total || '0'));
+      const valorNum = isNaN(valor) ? 0 : valor;
+      const dataVenda = venda.data || venda.data_venda || format(dataFim, 'yyyy-MM-dd');
       
       if (!vendasPorClienteMap.has(clienteId)) {
         vendasPorClienteMap.set(clienteId, {
@@ -287,7 +292,7 @@ export async function GET(request: NextRequest) {
       
       const cliente = vendasPorClienteMap.get(clienteId)!;
       cliente.vendas += 1;
-      cliente.faturamento += valor;
+      cliente.faturamento += valorNum;
       cliente.ticketMedio = cliente.faturamento / cliente.vendas;
       
       // Atualizar última compra se for mais recente
@@ -305,7 +310,9 @@ export async function GET(request: NextRequest) {
     vendasFiltradas.forEach(venda => {
       const lojaId = venda.loja_id?.toString() || 'principal';
       const lojaNome = venda.nome_loja || 'Loja Principal';
-      const valor = CEOGestaoClickService.parseValor(venda.valor_total);
+      // valor_total vem como string do BetelVenda
+      const valor = parseFloat(String(venda.valor_total || '0'));
+      const valorNum = isNaN(valor) ? 0 : valor;
       
       if (!vendasPorLojaMap.has(lojaId)) {
         vendasPorLojaMap.set(lojaId, {
@@ -319,7 +326,7 @@ export async function GET(request: NextRequest) {
       
       const loja = vendasPorLojaMap.get(lojaId)!;
       loja.vendas += 1;
-      loja.faturamento += valor;
+      loja.faturamento += valorNum;
       loja.ticketMedio = loja.faturamento / loja.vendas;
     });
     
@@ -377,12 +384,12 @@ export async function GET(request: NextRequest) {
       lastUpdated: new Date().toISOString(),
       _metadata: {
         dataSource: 'api',
-        totalVendasRaw: vendas.length,
+        totalVendasRaw: vendasFiltradas.length, // Todas as vendas retornadas já são filtradas
         totalVendasFiltradas: vendasFiltradas.length,
-        statusFiltrados: STATUS_VALIDOS,
+        statusFiltrados: ["Concretizada", "Em andamento"],
         periodo: {
-          inicio: dataInicio,
-          fim: dataFim
+          inicio: format(dataInicio, 'yyyy-MM-dd'),
+          fim: format(dataFim, 'yyyy-MM-dd')
         },
         timestamp: new Date().toISOString()
       }

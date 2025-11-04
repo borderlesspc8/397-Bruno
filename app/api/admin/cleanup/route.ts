@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { validateSessionForAPI } from "@/app/_utils/auth";
 import { PrismaClient } from "@prisma/client";
+import { hasRole } from "@/app/_services/permissions";
+import { SystemRoles } from "@/app/_types/rbac";
 
 // Configuração para forçar o comportamento dinâmico
 export const dynamic = "force-dynamic";
@@ -9,24 +11,15 @@ export const dynamic = "force-dynamic";
 const prisma = new PrismaClient();
 
 /**
- * Verifica se o usuário é um administrador
+ * Verifica se o usuário é um administrador usando RBAC
  */
 async function isAdmin(userId: string): Promise<boolean> {
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { email: true }
-  });
-
-  if (!user) return false;
-
-  // Lista de emails de administradores (deve ser movida para variáveis de ambiente em produção)
-  const adminEmails = [
-    "marcos.vbcursos@gmail.com",
-    "andrerodrigues.dev@gmail.com",
-    "admin@acceleracrm.com.br"
-  ];
-
-  return adminEmails.includes(user.email?.toLowerCase() || "");
+  try {
+    return await hasRole(userId, SystemRoles.ADMIN);
+  } catch (error) {
+    console.error('Erro ao verificar role de admin:', error);
+    return false;
+  }
 }
 
 /**

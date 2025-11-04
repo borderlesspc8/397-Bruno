@@ -90,10 +90,18 @@ export async function GET(request: NextRequest) {
         return NextResponse.json(resultado);
       } catch (error) {
         console.error('Erro ao buscar todos os vendedores:', error);
+        
+        // Verificar se é um erro de timeout
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        const isTimeout = errorMessage.includes('Timeout') || errorMessage.includes('timeout');
+        
         return NextResponse.json({ 
-          erro: 'Erro ao buscar dados dos vendedores',
-          vendedores: []
-        }, { status: 500 });
+          erro: isTimeout 
+            ? 'A busca de vendedores está demorando mais que o esperado. Por favor, tente novamente em alguns instantes.'
+            : 'Erro ao buscar dados dos vendedores',
+          vendedores: [],
+          timeout: isTimeout
+        }, { status: isTimeout ? 504 : 500 }); // 504 Gateway Timeout para timeouts
       }
     }
 

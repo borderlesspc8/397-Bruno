@@ -3,22 +3,17 @@ import { BetelTecnologiaService } from "@/app/_services/betelTecnologia";
 
 export async function POST(request: NextRequest) {
   try {
-    console.log('=== API GESTAO-CLICK SYNC - DEBUG ===');
-    console.log('Headers:', Object.fromEntries(request.headers.entries()));
     
     const { dataInicio, dataFim, userId } = await request.json();
     
     // Validar dados obrigatórios
     if (!userId || userId.trim() === '') {
-      console.log('UserId não fornecido ou vazio, retornando 400');
-      console.log('Dados recebidos:', { dataInicio, dataFim, userId });
       return NextResponse.json({ 
         error: "UserId é obrigatório e não pode estar vazio",
         details: "Verifique se o usuário está autenticado corretamente"
       }, { status: 400 });
     }
     
-    console.log('UserId recebido:', userId);
     
     // Nota: A validação de autenticação é feita no cliente
     // Esta API confia no userId enviado pelo cliente autenticado

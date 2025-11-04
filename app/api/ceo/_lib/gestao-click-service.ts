@@ -6,7 +6,8 @@
  * 
  * Características:
  * - Retry com backoff exponencial
- * - Cache de dados auxiliares (formas pagamento, centros custo, etc)
+ * - Dados em TEMPO REAL: vendas, pagamentos, recebimentos e clientes sempre buscam dados frescos (sem cache)
+ * - Cache apenas para dados auxiliares que mudam pouco (formas pagamento, centros custo, lojas, produtos)
  * - Validação de credenciais
  * - Tratamento robusto de erros
  * - Log estruturado
@@ -298,14 +299,11 @@ class SimpleCache {
 export class CEOGestaoClickService {
   private static cache = new SimpleCache();
   
-  // TTLs para diferentes tipos de dados
+  // TTLs apenas para dados auxiliares (não críticos)
+  // NOTA: Vendas, pagamentos, recebimentos e clientes SEMPRE buscam dados em tempo real (sem cache)
   private static readonly TTL = {
-    VENDAS: 5 * 60 * 1000, // 5 minutos
-    RECEBIMENTOS: 5 * 60 * 1000, // 5 minutos
-    PAGAMENTOS: 5 * 60 * 1000, // 5 minutos
-    CLIENTES: 30 * 60 * 1000, // 30 minutos (muda menos)
     PRODUTOS: 30 * 60 * 1000, // 30 minutos
-    AUXILIARES: 60 * 60 * 1000, // 1 hora (centros custo, formas pagamento, etc)
+    AUXILIARES: 60 * 60 * 1000, // 1 hora (centros custo, formas pagamento, lojas, funcionários)
   };
   
   // Configurações da API
@@ -479,27 +477,14 @@ export class CEOGestaoClickService {
       todasLojas?: boolean;
       lojaId?: string | number;
       situacao?: string;
-      useCache?: boolean;
+      useCache?: boolean; // Mantido para compatibilidade, mas ignorado - sempre busca dados em tempo real
     } = {}
   ): Promise<GestaoClickVenda[]> {
     const {
       todasLojas = true,
       lojaId,
-      situacao,
-      useCache = true
+      situacao
     } = opcoes;
-    
-    // Chave de cache
-    const cacheKey = `vendas:${dataInicio}:${dataFim}:${todasLojas}:${lojaId || 'all'}:${situacao || 'all'}`;
-    
-    // Verificar cache
-    if (useCache) {
-      const cached = this.cache.get<GestaoClickVenda[]>(cacheKey);
-      if (cached) {
-        console.log(`[CEOGestaoClick] ♻️  Cache hit: ${cacheKey}`);
-        return cached;
-      }
-    }
     
     // Construir query params
     const params = new URLSearchParams({
@@ -519,18 +504,14 @@ export class CEOGestaoClickService {
       params.append('situacao', situacao);
     }
     
-    // Fazer requisição
+    // Fazer requisição - SEM CACHE para garantir dados em tempo real
+    console.log(`[CEOGestaoClick] 🔄 Buscando vendas em tempo real: ${dataInicio} a ${dataFim}`);
     const vendas = await this.fetchWithRetry<GestaoClickVenda[]>(
       `/vendas?${params.toString()}`
     );
     
     // Garantir que é array
     const vendasArray = Array.isArray(vendas) ? vendas : [];
-    
-    // Armazenar em cache
-    if (useCache) {
-      this.cache.set(cacheKey, vendasArray, this.TTL.VENDAS);
-    }
     
     return vendasArray;
   }
@@ -546,28 +527,16 @@ export class CEOGestaoClickService {
   static async getRecebimentos(
     dataInicio: string,
     dataFim: string,
-    useCache: boolean = true
+    useCache: boolean = true // Mantido para compatibilidade, mas ignorado - sempre busca dados em tempo real
   ): Promise<GestaoClickRecebimento[]> {
-    const cacheKey = `recebimentos:${dataInicio}:${dataFim}`;
-    
-    if (useCache) {
-      const cached = this.cache.get<GestaoClickRecebimento[]>(cacheKey);
-      if (cached) {
-        console.log(`[CEOGestaoClick] ♻️  Cache hit: ${cacheKey}`);
-        return cached;
-      }
-    }
-    
     try {
+      // Buscar dados em tempo real - SEM CACHE
+      console.log(`[CEOGestaoClick] 🔄 Buscando recebimentos em tempo real: ${dataInicio} a ${dataFim}`);
       const recebimentos = await this.fetchWithRetry<GestaoClickRecebimento[]>(
         `/recebimentos?data_inicio=${dataInicio}&data_fim=${dataFim}`
       );
       
       const recebimentosArray = Array.isArray(recebimentos) ? recebimentos : [];
-      
-      if (useCache) {
-        this.cache.set(cacheKey, recebimentosArray, this.TTL.RECEBIMENTOS);
-      }
       
       return recebimentosArray;
     } catch (error) {
@@ -589,39 +558,28 @@ export class CEOGestaoClickService {
     dataFim: string,
     opcoes: {
       todasLojas?: boolean;
-      useCache?: boolean;
+      useCache?: boolean; // Mantido para compatibilidade, mas ignorado - sempre busca dados em tempo real
     } = {}
   ): Promise<GestaoClickPagamento[]> {
     const {
-      todasLojas = false,
-      useCache = true
+      todasLojas = false
     } = opcoes;
-    
-    const cacheKey = `pagamentos:${dataInicio}:${dataFim}:${todasLojas}`;
-    
-    if (useCache) {
-      const cached = this.cache.get<GestaoClickPagamento[]>(cacheKey);
-      if (cached) {
-        console.log(`[CEOGestaoClick] ♻️  Cache hit: ${cacheKey}`);
-        return cached;
-      }
-    }
     
     try {
       let todosPagamentos: GestaoClickPagamento[] = [];
       
       if (todasLojas) {
         // ✅ CORREÇÃO: Buscar loja por loja como o BetelTecnologiaService faz
-        console.log('[CEOGestaoClick] 🏢 Buscando pagamentos de TODAS as lojas...');
+        console.log('[CEOGestaoClick] 🏢 Buscando pagamentos de TODAS as lojas em tempo real...');
         
-        // 1. Buscar lista de lojas
-        const lojas = await this.getLojas(useCache);
+        // 1. Buscar lista de lojas (dados auxiliares podem usar cache)
+        const lojas = await this.getLojas(true);
         console.log(`[CEOGestaoClick] Encontradas ${lojas.length} lojas:`, lojas.map(l => l.nome));
         
-        // 2. Buscar pagamentos de cada loja
+        // 2. Buscar pagamentos de cada loja - SEM CACHE para garantir dados em tempo real
         for (const loja of lojas) {
           try {
-            console.log(`[CEOGestaoClick] Buscando pagamentos da loja: ${loja.nome} (ID: ${loja.id})`);
+            console.log(`[CEOGestaoClick] 🔄 Buscando pagamentos da loja: ${loja.nome} (ID: ${loja.id})`);
             
             const params = new URLSearchParams({
               data_inicio: dataInicio,
@@ -645,7 +603,8 @@ export class CEOGestaoClickService {
         
         console.log(`[CEOGestaoClick] ✅ Total de pagamentos de todas as lojas: ${todosPagamentos.length}`);
       } else {
-        // Buscar pagamentos da loja padrão
+        // Buscar pagamentos da loja padrão - SEM CACHE
+        console.log(`[CEOGestaoClick] 🔄 Buscando pagamentos em tempo real: ${dataInicio} a ${dataFim}`);
         const params = new URLSearchParams({
           data_inicio: dataInicio,
           data_fim: dataFim,
@@ -658,13 +617,7 @@ export class CEOGestaoClickService {
         todosPagamentos = Array.isArray(pagamentos) ? pagamentos : [];
       }
       
-      const pagamentosArray = todosPagamentos;
-      
-      if (useCache) {
-        this.cache.set(cacheKey, pagamentosArray, this.TTL.PAGAMENTOS);
-      }
-      
-      return pagamentosArray;
+      return todosPagamentos;
     } catch (error) {
       console.warn('[CEOGestaoClick] ⚠️  Endpoint de pagamentos não disponível:', error);
       return [];
@@ -680,24 +633,13 @@ export class CEOGestaoClickService {
    * ⚠️ ENDPOINT ASSUMIDO - PRECISA VALIDAR
    */
   static async getClientes(useCache: boolean = true): Promise<GestaoClickCliente[]> {
-    const cacheKey = 'clientes:all';
-    
-    if (useCache) {
-      const cached = this.cache.get<GestaoClickCliente[]>(cacheKey);
-      if (cached) {
-        console.log(`[CEOGestaoClick] ♻️  Cache hit: ${cacheKey}`);
-        return cached;
-      }
-    }
-    
+    // Mantido para compatibilidade, mas ignorado - sempre busca dados em tempo real
     try {
+      // Buscar dados em tempo real - SEM CACHE
+      console.log('[CEOGestaoClick] 🔄 Buscando clientes em tempo real');
       const clientes = await this.fetchWithRetry<GestaoClickCliente[]>('/clientes?todos=true');
       
       const clientesArray = Array.isArray(clientes) ? clientes : [];
-      
-      if (useCache) {
-        this.cache.set(cacheKey, clientesArray, this.TTL.CLIENTES);
-      }
       
       return clientesArray;
     } catch (error) {
