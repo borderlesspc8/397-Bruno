@@ -5,7 +5,6 @@ import { useAuth } from "@/app/_hooks/useAuth";
 import { Button } from "@/app/_components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/app/_components/ui/avatar";
 import { LogOut, User, Settings } from "lucide-react";
-import Link from "next/link";
 
 export function WorkingUserButton() {
   const { user, signOut } = useAuth();
@@ -20,7 +19,12 @@ export function WorkingUserButton() {
   
   const handleLogout = async () => {
     try {
-      await signOut();
+      const result = await signOut();
+      if (result?.success !== false) {
+        // Redirecionar para a tela de login após logout bem-sucedido
+        // Usar window.location.href para forçar reload completo e limpar todo o estado
+        window.location.href = '/auth';
+      }
     } catch (error) {
       console.error('Erro no logout:', error);
     }

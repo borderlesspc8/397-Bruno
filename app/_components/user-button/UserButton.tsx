@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useAuth } from "@/app/_hooks/useAuth";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { 
   Settings, 
   LogOut, 
@@ -44,7 +43,6 @@ import { AvatarCustomizer } from "./components/AvatarCustomizer";
 export function UserButton() {
   const { user, signOut } = useAuth();
   const { theme, setTheme } = useTheme();
-  const router = useRouter();
   const { userData, isLoading, updateAvatar } = useUserData();
   const [selectedAvatarUrl, setSelectedAvatarUrl] = useState<string | null>(null);
   
@@ -74,7 +72,12 @@ export function UserButton() {
   
   const handleLogout = async () => {
     try {
-      await signOut();
+      const result = await signOut();
+      if (result?.success !== false) {
+        // Redirecionar para a tela de login após logout bem-sucedido
+        // Usar window.location.href para forçar reload completo e limpar todo o estado
+        window.location.href = '/auth';
+      }
     } catch (error) {
       console.error('Erro ao fazer logout:', error);
     }
