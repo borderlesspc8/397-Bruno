@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/app/_components/ui/card';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale/pt-BR';
@@ -17,6 +17,7 @@ import {
 import html2canvas from 'html2canvas';
 import ExcelJS from 'exceljs';
 import { Vendedor } from '@/app/_services/betelTecnologia';
+import { useProcessarFormasPagamento, FormaPagamentoItem } from '@/app/_hooks/useProcessarFormasPagamento';
 
 // Importações para Chart.js
 import dynamic from 'next/dynamic';
@@ -55,14 +56,7 @@ interface VendasPorFormaPagamentoChartProps {
   dataInicio: Date;
   dataFim: Date;
   vendedores: Vendedor[];
-  vendas?: any[]; // Receber vendas diretamente do componente pai
-}
-
-interface FormaPagamentoItem {
-  formaPagamento: string;
-  totalVendas: number;
-  totalValor: number;
-  percentual: number;
+  vendas?: any[]; // Receber vendas diretamente do componente pai (mesma fonte que DashboardSummary)
 }
 
 // Cores iOS26 para categorias específicas de formas de pagamento (apenas formas ativas)
@@ -120,220 +114,15 @@ const CORES_BORDA = [
 ];
 
 export function VendasPorFormaPagamentoChart({ dataInicio, dataFim, vendedores, vendas }: VendasPorFormaPagamentoChartProps) {
-  const [formasPagamento, setFormasPagamento] = useState<FormaPagamentoItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [erro, setErro] = useState<string | null>(null);
+  // Usar o hook useProcessarFormasPagamento para processar dados da mesma fonte que DashboardSummary
+  // O hook processa os dados usando useMemo, então é otimizado e reutilizável
+  // Isso garante que os dados sejam processados da mesma forma que no DashboardSummary
+  const formasPagamento = useProcessarFormasPagamento(vendas || []);
 
-  // Processar dados das vendas para formas de pagamento - usando mesma fonte que DashboardSummary
-  useEffect(() => {
-        const processarFormasPagamento = () => {
-      setLoading(true);
-      setErro(null);
-
-      try {
-            if (!vendas || !Array.isArray(vendas)) {
-              console.log('Vendas não recebidas ou não é array:', vendas);
-              setFormasPagamento([]);
-              setLoading(false);
-              return;
-            }
-            
-            console.log('Vendas recebidas:', vendas.length, 'vendas');
-
-        // Mapeamento para categorias específicas de forma de pagamento (mesmo da API)
-        const CATEGORIAS_PAGAMENTO: Record<string, string> = {
-          'PIX - C6': 'PIX - C6',
-          'PIX C6': 'PIX - C6',
-          'PIX - BB': 'PIX - BB',
-          'PIX - STONE': 'PIX - STONE',
-          'PIX': 'PIX',
-          'ELO CRÉDITO STONE': 'CRÉDITO - STONE',
-          'MASTERCARD CRÉDITO STONE': 'CRÉDITO - STONE',
-          'MASTER CRÉDITO': 'CRÉDITO - STONE',
-          'VISA CRÉDITO STONE': 'CRÉDITO - STONE',
-          'Cartão de Crédito Stone': 'CRÉDITO - STONE',
-          'CRÉDITO - Stone': 'CRÉDITO - STONE',
-          'CRÉDITO - STONE': 'CRÉDITO - STONE',
-          'CRÉDITO - Itaú': 'CRÉDITO - STONE',
-          'CRÉDITO - ITAÚ': 'CRÉDITO - STONE',
-          'CRÉDITO - Slipay': 'CRÉDITO - STONE',
-          'CRÉDITO - SLIPAY': 'CRÉDITO - STONE',
-          'Cartão de Crédito': 'CRÉDITO - STONE',
-          'Crédito': 'CRÉDITO - STONE',
-          'DÉBITO - Slipay': 'DÉBITO - STONE',
-          'DÉBITO - SLIPAY': 'DÉBITO - STONE',
-          'DEBITO - Slipay': 'DÉBITO - STONE',
-          'DEBITO - SLIPAY': 'DÉBITO - STONE',
-          'DÉBITO - Stone': 'DÉBITO - STONE',
-          'DÉBITO - STONE': 'DÉBITO - STONE',
-          'DÉBITO - Itaú': 'DÉBITO - STONE',
-          'DÉBITO - ITAÚ': 'DÉBITO - STONE',
-          'DÉBITO - C6': 'DÉBITO - STONE',
-          'Cartão de Débito': 'DÉBITO - STONE',
-          'Débito': 'DÉBITO - STONE',
-          'Dinheiro à Vista': 'ESPÉCIE - BB',
-          'Dinheiro': 'ESPÉCIE - BB',
-          'Especie': 'ESPÉCIE - BB',
-          'ESPÉCIE - BB': 'ESPÉCIE - BB',
-          'Moeda': 'ESPÉCIE - BB',
-          'BOLETO': 'BOLETO - BB',
-          'Boleto Bancário': 'BOLETO - BB',
-          'Boleto': 'BOLETO - BB',
-          'BOLETO - BB': 'BOLETO - BB',
-          'A COMBINAR': 'A COMBINAR',
-          'A Combinar': 'A COMBINAR',
-          'A combinar': 'A COMBINAR'
-        };
-
-        // Função para normalizar a forma de pagamento
-        const normalizarFormaPagamento = (forma: string): string => {
-          if (!forma) {
-            console.log('Forma de pagamento vazia, retornando A COMBINAR');
-            return 'A COMBINAR';
-          }
-          
-          console.log(`Normalizando forma de pagamento: "${forma}"`);
-          
-          if (CATEGORIAS_PAGAMENTO[forma]) {
-            console.log(`Encontrado no mapeamento direto: "${forma}" -> "${CATEGORIAS_PAGAMENTO[forma]}"`);
-            return CATEGORIAS_PAGAMENTO[forma];
-          }
-          
-          const formaNormalizada = forma.trim();
-          console.log(`Forma normalizada: "${formaNormalizada}"`);
-          
-          if (formaNormalizada.includes('PIX')) {
-            if (formaNormalizada.includes('C6')) {
-              console.log('Detectado PIX - C6');
-              return 'PIX - C6';
-            } else if (formaNormalizada.includes('BB')) {
-              console.log('Detectado PIX - BB');
-              return 'PIX - BB';
-            } else if (formaNormalizada.includes('STONE')) {
-              console.log('Detectado PIX - STONE');
-              return 'PIX - STONE';
-            } else {
-              console.log('Detectado PIX genérico');
-              return 'PIX';
-            }
-          }
-          if (formaNormalizada.includes('BOLETO') || formaNormalizada.includes('Boleto')) return 'BOLETO - BB';
-          if (formaNormalizada.toLowerCase().includes('dinheiro') || formaNormalizada.toLowerCase().includes('à vista') || 
-              formaNormalizada.toLowerCase().includes('especie') || formaNormalizada.toLowerCase().includes('moeda')) return 'ESPÉCIE - BB';
-          
-          if (formaNormalizada.includes('CRÉDIT') || formaNormalizada.includes('Crédit') || 
-              formaNormalizada.includes('CREDIT') || formaNormalizada.includes('Credit')) {
-            console.log('Detectado CRÉDITO');
-            return 'CRÉDITO - STONE';
-          }
-          
-          if (formaNormalizada.includes('DÉBIT') || formaNormalizada.includes('Débit') ||
-              formaNormalizada.includes('DEBIT') || formaNormalizada.includes('Debit')) {
-            console.log('Detectado DÉBITO');
-            return 'DÉBITO - STONE';
-          }
-          
-          console.log(`Forma não reconhecida: "${formaNormalizada}", retornando A COMBINAR`);
-          return 'A COMBINAR';
-        };
-
-        // Agrupar vendas por forma de pagamento
-        const formasPagamentoMap = new Map<string, { totalVendas: number; totalValor: number }>();
-        let valorTotal = 0;
-        
-        vendas.forEach((venda: any, index: number) => {
-          const valorVenda = typeof venda.valor_total === 'string' 
-            ? parseFloat(venda.valor_total) 
-            : Number(venda.valor_total) || 0;
-          
-          valorTotal += valorVenda;
-          
-          // Determinar a forma de pagamento da venda
-          let formaPagamento = 'A COMBINAR';
-          
-          // Debug: log da venda para entender a estrutura
-          if (index < 3) { // Log apenas das primeiras 3 vendas para debug
-            console.log(`Venda ${index + 1} (ID: ${venda.id}):`, {
-              forma_pagamento: venda.forma_pagamento,
-              metodo_pagamento: venda.metodo_pagamento,
-              pagamentos: venda.pagamentos?.map(p => ({
-                nome_forma_pagamento: p.pagamento?.nome_forma_pagamento
-              }))
-            });
-          }
-          
-          // Primeiro, tentar usar a forma de pagamento principal da venda
-          if (venda.forma_pagamento || venda.metodo_pagamento) {
-            const formaOriginal = venda.forma_pagamento || venda.metodo_pagamento || 'A COMBINAR';
-            formaPagamento = normalizarFormaPagamento(formaOriginal);
-          } else if (venda.pagamentos && Array.isArray(venda.pagamentos) && venda.pagamentos.length > 0) {
-            // Se não há forma principal, usar a do primeiro pagamento
-            const primeiroPagamento = venda.pagamentos[0]?.pagamento;
-            if (primeiroPagamento?.nome_forma_pagamento) {
-              const formaOriginal = primeiroPagamento.nome_forma_pagamento;
-              formaPagamento = normalizarFormaPagamento(formaOriginal);
-              if (index < 3) {
-                console.log(`Venda ${index + 1}: forma original = "${formaOriginal}", normalizada = "${formaPagamento}"`);
-              }
-            }
-          }
-          
-          // Adicionar à contagem
-          if (formasPagamentoMap.has(formaPagamento)) {
-            const dadosExistentes = formasPagamentoMap.get(formaPagamento)!;
-            formasPagamentoMap.set(formaPagamento, {
-              totalVendas: dadosExistentes.totalVendas + 1,
-              totalValor: dadosExistentes.totalValor + valorVenda
-            });
-          } else {
-            formasPagamentoMap.set(formaPagamento, {
-              totalVendas: 1,
-              totalValor: valorVenda
-            });
-          }
-        });
-        
-        // Converter o Map para um array e calcular percentuais
-        const formasPagamentoProcessadas = Array.from(formasPagamentoMap.entries()).map(([formaPagamento, dados]) => ({
-          formaPagamento,
-          totalVendas: dados.totalVendas,
-          totalValor: dados.totalValor,
-          percentual: valorTotal > 0 ? (dados.totalValor / valorTotal) * 100 : 0
-        }));
-        
-        // Ordenar por valor total (decrescente)
-        formasPagamentoProcessadas.sort((a, b) => b.totalValor - a.totalValor);
-        
-        console.log('Dados processados localmente para formas de pagamento:', {
-          totalVendas: vendas.length,
-          formasPagamento: formasPagamentoProcessadas.length,
-            valorTotal: valorTotal,
-          formas: formasPagamentoProcessadas.map(f => ({ forma: f.formaPagamento, valor: f.totalValor, vendas: f.totalVendas }))
-        });
-        
-        // Log detalhado para debug
-        console.log('Formas de pagamento encontradas:', formasPagamentoProcessadas.map(f => f.formaPagamento));
-        
-        // Log das primeiras vendas para debug
-        console.log('Primeiras 3 vendas recebidas:', vendas.slice(0, 3).map(v => ({
-          id: v.id,
-          forma_pagamento: v.forma_pagamento,
-          metodo_pagamento: v.metodo_pagamento,
-          pagamentos: v.pagamentos?.map(p => p.pagamento?.nome_forma_pagamento)
-        })));
-        
-        setFormasPagamento(formasPagamentoProcessadas);
-      } catch (error) {
-        console.error('Erro ao processar formas de pagamento:', error);
-        setErro(error instanceof Error ? error.message : 'Erro desconhecido ao processar dados');
-        setFormasPagamento([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    processarFormasPagamento();
-  }, [vendas]);
+  // Estados para loading e erro
+  // Loading: se vendas é undefined, ainda está carregando; se é array vazio, já carregou mas não há dados
+  const loading = vendas === undefined;
+  const erro = null; // O hook processa os dados sem erros, mas podemos adicionar validação se necessário
 
   // Preparar dados para o gráfico
   const dadosGrafico = useMemo(() => {
@@ -446,18 +235,13 @@ export function VendasPorFormaPagamentoChart({ dataInicio, dataFim, vendedores, 
     }
   }), []);
 
-  // Função para recarregar os dados (agora apenas reprocessa os dados locais)
+  // Função para recarregar os dados (agora apenas força re-render se necessário)
+  // Como usamos o hook useProcessarFormasPagamento, ele já processa automaticamente
+  // quando as vendas mudam, então esta função serve apenas para compatibilidade
   const recarregarDados = () => {
-    if (vendas && Array.isArray(vendas)) {
-      // Força reprocessamento dos dados locais
-    setLoading(true);
-    setErro(null);
-    
-      // Simular um pequeno delay para mostrar o loading
-      setTimeout(() => {
-        setLoading(false);
-      }, 500);
-    }
+    // O hook já processa automaticamente quando vendas muda
+    // Esta função mantém compatibilidade com a UI
+    console.log('Recarregando dados - o hook processará automaticamente');
   };
 
   // Função para exportar dados para Excel (XLSX)

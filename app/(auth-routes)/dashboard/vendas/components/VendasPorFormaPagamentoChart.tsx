@@ -61,26 +61,30 @@ interface VendasPorFormaPagamentoChartProps {
 
 // Interface FormaPagamentoItem agora importada do hook
 
-// Cores iOS26 para categorias específicas de formas de pagamento (apenas formas ativas)
+// Cores iOS26 para categorias específicas de formas de pagamento (mantém nomes originais do Gestão Click)
 const CORES_CATEGORIAS = {
   'PIX - C6': 'hsl(25 95% 53% / 0.8)',             // Laranja primário iOS26
+  'PIX C6 IMPORTS': 'hsl(25 95% 55% / 0.8)',       // Laranja primário iOS26 (mantém nome original Gestão Click)
   'PIX - BB': 'hsl(25 95% 60% / 0.8)',             // Laranja claro iOS26
   'PIX - STONE': 'hsl(25 95% 45% / 0.8)',          // Laranja médio iOS26
   'PIX': 'hsl(25 95% 70% / 0.8)',                  // Laranja claro iOS26 para PIX genérico
   'CRÉDITO - STONE': 'hsl(45 100% 50% / 0.8)',     // Amarelo primário iOS26
+  'LINK DE PAGAMENTO - STONE': 'hsl(45 100% 55% / 0.8)', // Amarelo claro iOS26 (mantém nome original Gestão Click)
   'DÉBITO - STONE': 'hsl(142 69% 45% / 0.8)',      // Verde sucesso iOS26
   'ESPÉCIE - BB': 'hsl(25 95% 35% / 0.8)',         // Laranja escuro iOS26
   'BOLETO - BB': 'hsl(25 95% 60% / 0.8)',          // Laranja claro iOS26
   'A COMBINAR': 'hsl(0 0% 65% / 0.8)',             // Cinza claro iOS26
 };
 
-// Cores de borda correspondentes iOS26 (apenas formas ativas)
+// Cores de borda correspondentes iOS26 (mantém nomes originais do Gestão Click)
 const CORES_BORDA_CATEGORIAS = {
   'PIX - C6': 'hsl(25 95% 53%)',
+  'PIX C6 IMPORTS': 'hsl(25 95% 55%)',             // Mantém nome original Gestão Click
   'PIX - BB': 'hsl(25 95% 60%)',
   'PIX - STONE': 'hsl(25 95% 45%)',
   'PIX': 'hsl(25 95% 70%)',
   'CRÉDITO - STONE': 'hsl(45 100% 50%)',
+  'LINK DE PAGAMENTO - STONE': 'hsl(45 100% 55%)', // Mantém nome original Gestão Click
   'DÉBITO - STONE': 'hsl(142 69% 45%)',
   'ESPÉCIE - BB': 'hsl(25 95% 35%)',
   'BOLETO - BB': 'hsl(25 95% 60%)',
@@ -119,79 +123,58 @@ export function VendasPorFormaPagamentoChart({ dataInicio, dataFim, vendedores, 
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
 
-  // Filtrar vendas pelo período selecionado
-  const vendasFiltradas = useMemo(() => {
+  // As vendas já vêm filtradas pelo hook useGestaoClickSupabase (período e status)
+  // Não precisamos filtrar novamente, apenas usar as vendas recebidas
+  const vendasParaProcessar = useMemo(() => {
     if (!vendas || !Array.isArray(vendas)) {
       console.log('Vendas não recebidas ou não é array:', vendas);
       return [];
     }
     
-    console.log('=== FILTRO DE PERÍODO ===');
-    console.log('Período selecionado:', {
-      dataInicio: dataInicio.toISOString().split('T')[0],
-      dataFim: dataFim.toISOString().split('T')[0]
-    });
+    console.log(`📦 Vendas recebidas para processamento: ${vendas.length} vendas`);
     
-    const vendasFiltradas = vendas.filter((venda: any, index: number) => {
-      // Log das primeiras 5 vendas para debug
-      if (index < 5) {
-        console.log(`Venda ${index + 1} (ID: ${venda.id}):`, {
-          data_venda: venda.data_venda,
-          data_criacao: venda.data_criacao,
-          data_atualizacao: venda.data_atualizacao,
-          valor_total: venda.valor_total,
-          forma_pagamento: venda.forma_pagamento
-        });
-      }
-      
-      // Tentar diferentes campos de data
-      let dataVenda: Date | null = null;
-      let campoDataUsado = '';
-      
-      if (venda.data_venda) {
-        dataVenda = new Date(venda.data_venda);
-        campoDataUsado = 'data_venda';
-      } else if (venda.data_criacao) {
-        dataVenda = new Date(venda.data_criacao);
-        campoDataUsado = 'data_criacao';
-      } else if (venda.data_atualizacao) {
-        dataVenda = new Date(venda.data_atualizacao);
-        campoDataUsado = 'data_atualizacao';
-      }
-      
-      if (!dataVenda || isNaN(dataVenda.getTime())) {
-        console.log(`❌ Venda ${venda.id} sem data válida`);
-        return false;
-      }
-      
-      const dentroDoPeriodo = dataVenda >= dataInicio && dataVenda <= dataFim;
-      
-      if (index < 5) {
-        console.log(`Venda ${index + 1} (${campoDataUsado}):`, {
-          dataVenda: dataVenda.toISOString().split('T')[0],
-          dentroDoPeriodo,
-          valor: venda.valor_total
-        });
-      }
-      
-      if (!dentroDoPeriodo && index < 10) { // Log apenas das primeiras 10 fora do período
-        console.log(`❌ Venda ${venda.id} fora do período:`, {
-          campoUsado: campoDataUsado,
-          dataVenda: dataVenda.toISOString().split('T')[0],
-          dataInicio: dataInicio.toISOString().split('T')[0],
-          dataFim: dataFim.toISOString().split('T')[0]
-        });
-      }
-      
-      return dentroDoPeriodo;
-    });
+    // Calcular valor total das vendas recebidas para debug
+    const valorTotal = vendas.reduce((sum, venda) => {
+      const valor = typeof venda.valor_total === 'string' 
+        ? parseFloat(venda.valor_total) 
+        : Number(venda.valor_total) || 0;
+      return sum + valor;
+    }, 0);
     
-    console.log(`Vendas filtradas pelo período: ${vendasFiltradas.length} de ${vendas.length} vendas`);
-    return vendasFiltradas;
-  }, [vendas, dataInicio, dataFim]);
+    console.log(`💰 Valor total das vendas recebidas: R$ ${valorTotal.toFixed(2)}`);
+    
+    // Log das primeiras 3 vendas para debug
+    console.log('🔍 Primeiras 3 vendas:', vendas.slice(0, 3).map(v => ({
+      id: v.id,
+      valor_total: v.valor_total,
+      data_venda: v.data_venda,
+      status: v.status,
+      forma_pagamento: v.forma_pagamento || v.pagamentos?.[0]?.pagamento?.nome_forma_pagamento
+    })));
+    
+    return vendas;
+  }, [vendas]);
 
   // Usar o hook centralizado para processar formas de pagamento
-  const formasPagamento = useProcessarFormasPagamento(vendasFiltradas);
+  // O hook processa todas as vendas recebidas (já filtradas pelo hook useGestaoClickSupabase)
+  const formasPagamento = useProcessarFormasPagamento(vendasParaProcessar);
+  
+  // Log adicional para debug
+  useEffect(() => {
+    if (formasPagamento.length > 0) {
+      const valorTotalFormas = formasPagamento.reduce((sum, forma) => sum + forma.totalValor, 0);
+      console.log('📊 DEBUG Formas de Pagamento:', {
+        totalFormas: formasPagamento.length,
+        valorTotal: valorTotalFormas,
+        formas: formasPagamento.map(f => ({
+          forma: f.formaPagamento,
+          valor: f.totalValor,
+          vendas: f.totalVendas,
+          percentual: f.percentual.toFixed(2) + '%'
+        }))
+      });
+    }
+  }, [formasPagamento]);
 
   // Gerenciar estados de loading e erro
   useEffect(() => {
@@ -205,7 +188,7 @@ export function VendasPorFormaPagamentoChart({ dataInicio, dataFim, vendedores, 
       setLoading(false);
       setErro(null);
     }
-  }, [vendas, vendasFiltradas]);
+  }, [vendas, vendasParaProcessar]);
 
   // Preparar dados para o gráfico
   const dadosGrafico = useMemo(() => {

@@ -84,6 +84,16 @@ const getInitials = (name: string): string => {
     .toUpperCase();
 };
 
+// Função auxiliar para remover identificação de unidade do nome (apenas para exibição)
+const removerUnidadeDoNome = (nome: string): string => {
+  return nome
+    .replace(/\s*\(Unidade Matriz\)/gi, '')
+    .replace(/\s*\(Filial Golden\)/gi, '')
+    .replace(/\s*Unidade Matriz/gi, '')
+    .replace(/\s*Filial Golden/gi, '')
+    .trim();
+};
+
 const getTrendIcon = (variacao?: number) => {
   if (variacao === undefined) return null;
   return variacao >= 0 ? (
@@ -240,7 +250,7 @@ export default function RankingVendedores({
         </div>
           </div>
                   <h3 className="mt-3 font-semibold text-center line-clamp-1 max-w-[120px]">
-                    {vendedor.nome}
+                    {removerUnidadeDoNome(vendedor.nome)}
                   </h3>
                   <div className="text-sm font-medium text-primary">
                     {empty ? "-" : formatCurrency(vendedor.faturamento)}
@@ -296,7 +306,7 @@ export default function RankingVendedores({
                         </AvatarFallback>
                       )}
                       </Avatar>
-                    <div className="font-medium text-sm">{vendedor.nome}</div>
+                    <div className="font-medium text-sm">{removerUnidadeDoNome(vendedor.nome)}</div>
                           </div>
                   <div className="text-right">
                     <div className="font-medium">{formatCurrency(vendedor.faturamento)}</div>
@@ -348,7 +358,7 @@ export default function RankingVendedores({
                           </Avatar>
               <div>
                 <div className="font-medium flex items-center gap-1.5">
-                          {vendedor.nome}
+                          {removerUnidadeDoNome(vendedor.nome)}
                   {index < 3 && (
                     <Medal className={cn("h-3.5 w-3.5", getRankColor(index))} />
                   )}
@@ -399,7 +409,7 @@ export default function RankingVendedores({
                   )}
                 </Avatar>
                 <div>
-                  <div className="font-medium">{vendedor.nome}</div>
+                  <div className="font-medium">{removerUnidadeDoNome(vendedor.nome)}</div>
                   <div className="text-xs text-muted-foreground">
                     {vendedor.vendas} vendas ({vendedor.percentual}%)
                   </div>

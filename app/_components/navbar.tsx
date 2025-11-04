@@ -13,7 +13,8 @@ import {
   Users,
   Target,
   Menu,
-  X
+  X,
+  Shield
 } from "lucide-react";
 import { Button } from "@/app/_components/ui/button";
 import { usePathname } from "next/navigation";
@@ -77,6 +78,7 @@ export function Navbar() {
   const isMetasActive = pathname?.includes('/dashboard/metas');
   const isDashboardVendedoresActive = pathname?.includes('/dashboard-vendedores');
   const isDashboardCeoActive = pathname?.includes('/dashboard-ceo');
+  const isRBACActive = pathname?.includes('/dashboard/admin/rbac');
   
   const MenuLinks = () => (
     <>
@@ -177,6 +179,26 @@ export function Navbar() {
             <Star className="h-4 w-4 text-red-600 dark:text-red-400" />
           </div>
           <span>Dashboard CEO</span>
+        </Link>
+      )}
+      
+      {/* Gerenciamento de Permissões - apenas para admin */}
+      {permissions.isAdmin && (
+        <Link 
+          href="/dashboard/admin/rbac" 
+          className={cn(
+            "flex items-center gap-2 px-3 py-2 text-sm rounded-xl hover:bg-accent hover:text-accent-foreground transition-all duration-200 ios26-link",
+            isRBACActive && "bg-secondary/50 font-medium"
+          )}
+          onClick={() => {
+            setMenuOpen(false);
+            setMobileMenuOpen(false);
+          }}
+        >
+          <div className="p-1.5 bg-gradient-to-br from-indigo-100 to-blue-100 dark:from-indigo-900/20 dark:to-blue-900/20 rounded-lg">
+            <Shield className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+          </div>
+          <span>Permissões</span>
         </Link>
       )}
     </>

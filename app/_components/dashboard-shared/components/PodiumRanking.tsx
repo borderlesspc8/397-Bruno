@@ -12,6 +12,16 @@ interface PodiumRankingProps {
   onVendedorClick?: (vendedor: Vendedor) => void;
 }
 
+// Função auxiliar para remover identificação de unidade do nome (apenas para exibição)
+const removerUnidadeDoNome = (nome: string): string => {
+  return nome
+    .replace(/\s*\(Unidade Matriz\)/gi, '')
+    .replace(/\s*\(Filial Golden\)/gi, '')
+    .replace(/\s*Unidade Matriz/gi, '')
+    .replace(/\s*Filial Golden/gi, '')
+    .trim();
+};
+
 // Separamos o VendedorCard em um componente memoizado para evitar renderizações desnecessárias
 const VendedorCard = memo(({ 
   vendedor, 
@@ -55,7 +65,8 @@ const VendedorCard = memo(({
   
   // Dividir o nome para exibir primeiro nome e sobrenome separados
   const [primeiroNome, sobrenome] = useMemo(() => {
-    const partesNome = vendedor?.nome?.split(' ') || [''];
+    const nomeSemUnidade = removerUnidadeDoNome(vendedor?.nome || '');
+    const partesNome = nomeSemUnidade.split(' ');
     return [
       partesNome[0],
       partesNome.slice(1).join(' ')

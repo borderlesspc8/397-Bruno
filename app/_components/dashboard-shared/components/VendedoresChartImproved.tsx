@@ -14,6 +14,8 @@ interface VendedoresChartImprovedProps {
   totalVendas?: number;
   totalValor?: number;
   ticketMedio?: number;
+  // Data do mês selecionado no filtro (opcional, usa mês atual se não fornecido)
+  mesSelecionado?: Date;
 }
 
 
@@ -42,6 +44,44 @@ const METAS_VENDEDORES_MAPEAMENTO = {
   "administrativo": "ADMINISTRATIVO"
 };
 
+// Função auxiliar para remover identificação de unidade do nome (apenas para exibição)
+const removerUnidadeDoNome = (nome: string): string => {
+  return nome
+    .replace(/\s*\(Unidade Matriz\)/gi, '')
+    .replace(/\s*\(Filial Golden\)/gi, '')
+    .replace(/\s*Unidade Matriz/gi, '')
+    .replace(/\s*Filial Golden/gi, '')
+    .trim();
+};
+
+// Função auxiliar para verificar se um vendedor já existe na lista
+const vendedorJaExiste = (nome: string, listaVendedores: VendedorBetel[]): boolean => {
+  const nomeNormalizado = nome.toUpperCase();
+  return listaVendedores.some(v => {
+    const nomeVendedor = v.nome.toUpperCase();
+    // Verificar se o nome contém as palavras-chave do vendedor
+    const palavrasNome = nomeNormalizado.split(' ').filter(p => p.length > 2);
+    return palavrasNome.every(palavra => nomeVendedor.includes(palavra));
+  });
+};
+
+// Função para criar um vendedor vazio baseado no mapeamento
+const criarVendedorVazio = (nome: string, id: string): VendedorBetel => {
+  const nomeNormalizado = id.toLowerCase().replace(/[()-]/g, '');
+  const lojaNome = nomeNormalizado.includes('golden') ? 'Filial Golden' : 'Unidade Matriz';
+  const lojaId = nomeNormalizado.includes('golden') ? 'golden' : 'matriz';
+  
+  return {
+    id: id,
+    nome: `${nome} (${lojaNome})`,
+    vendas: 0,
+    faturamento: 0,
+    ticketMedio: 0,
+    lojaId: lojaId,
+    lojaNome: lojaNome
+  };
+};
+
 // Cores no estilo Material Design
 const COLORS = [
   '#FFC107', // Amber 500
@@ -62,7 +102,8 @@ export function VendedoresChartImproved({
   vendas = [], 
   totalVendas = 0, 
   totalValor = 0, 
-  ticketMedio = 0 
+  ticketMedio = 0,
+  mesSelecionado
 }: VendedoresChartImprovedProps) {
   const [isClient, setIsClient] = useState(false);
   const { metas, loading: isLoadingMetas } = useMetas();
@@ -73,83 +114,70 @@ export function VendedoresChartImproved({
     setIsClient(true);
   }, []);
 
-  // Encontrar a meta atual (mês atual ou mais recente)
+
+  // Encontrar a meta do mês selecionado (ou mês atual se não fornecido)
   useEffect(() => {
     if (metas.length === 0) return;
     
-    console.log('🔍 Metas disponíveis:', metas.map(m => ({
-      id: m.id,
-      mes: m.mesReferencia,
-      vendedores: m.metasVendedores?.length || 0
-    })));
+    // Usar o mês selecionado no filtro ou o mês atual
+    const mesParaBuscar = mesSelecionado 
+      ? new Date(mesSelecionado.getFullYear(), mesSelecionado.getMonth(), 1)
+      : new Date(new Date().getFullYear(), new Date().getMonth(), 1);
     
-    const hoje = new Date();
-    const mesAtual = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
-    
-    console.log('📅 Mês atual:', mesAtual);
-    
-    // Tenta encontrar a meta para o mês atual
-    let metaDoMesAtual = metas.find((meta) => {
+    // Tenta encontrar a meta para o mês selecionado
+    let metaDoMesSelecionado = metas.find((meta) => {
       const mesRef = new Date(meta.mesReferencia);
-      const match = mesRef.getMonth() === mesAtual.getMonth() && 
-             mesRef.getFullYear() === mesAtual.getFullYear();
-      console.log(`🔍 Verificando meta ${meta.id}:`, {
-        mesRef,
-        mesAtual,
-        match
-      });
+      const match = mesRef.getMonth() === mesParaBuscar.getMonth() && 
+             mesRef.getFullYear() === mesParaBuscar.getFullYear();
       return match;
     });
     
-    // Se não encontrar meta para o mês atual, pega a meta mais recente
-    if (!metaDoMesAtual && metas.length > 0) {
-      console.log('⚠️ Meta do mês atual não encontrada, usando meta mais recente');
-      metaDoMesAtual = metas.sort((a, b) => 
+    // Se não encontrar meta para o mês selecionado, pega a meta mais recente
+    if (!metaDoMesSelecionado && metas.length > 0) {
+      metaDoMesSelecionado = metas.sort((a, b) => 
         new Date(b.mesReferencia).getTime() - new Date(a.mesReferencia).getTime()
       )[0];
     }
     
-    console.log('✅ Meta selecionada:', metaDoMesAtual ? {
-      id: metaDoMesAtual.id,
-      mes: metaDoMesAtual.mesReferencia,
-      vendedores: metaDoMesAtual.metasVendedores?.length || 0,
-      metasVendedores: metaDoMesAtual.metasVendedores
-    } : 'Nenhuma');
-    
-    setMetaAtual(metaDoMesAtual || null);
-  }, [metas]);
+    setMetaAtual(metaDoMesSelecionado || null);
+  }, [metas, mesSelecionado]);
 
-  // Usar todos os vendedores sem filtro e incluir vendedores com metas mesmo sem vendas
+  // Usar todos os vendedores do mapeamento, mesclando com os que têm vendas
   const vendedoresFiltrados = useMemo(() => {
-    if (!vendedores || vendedores.length === 0) return [];
+    // Criar mapa de vendedores existentes (com vendas) para facilitar busca
+    const vendedoresExistentes = new Map<string, VendedorBetel>();
+    if (vendedores && vendedores.length > 0) {
+      vendedores.forEach(v => {
+        const nomeChave = v.nome.toUpperCase();
+        vendedoresExistentes.set(nomeChave, v);
+      });
+    }
     
-    // Log para debug
-    console.log('🔍 [VendedoresChartImproved] Vendedores recebidos:', {
-      totalVendedores: vendedores.length,
-      vendedores: vendedores.map(v => ({
-        id: v.id,
-        nome: v.nome,
-        vendas: v.vendas,
-        faturamento: v.faturamento
-      }))
+    // Lista final de vendedores
+    const vendedoresCompletos: VendedorBetel[] = [];
+    
+    // Primeiro, adicionar todos os vendedores do mapeamento
+    Object.entries(VENDEDORES_MAPEAMENTO).forEach(([nome, id]) => {
+      // Verificar se já existe um vendedor com esse nome (com vendas)
+      const vendedorExistente = Array.from(vendedoresExistentes.values()).find(v => {
+        const nomeVendedor = v.nome.toUpperCase();
+        const palavrasNome = nome.toUpperCase().split(' ').filter(p => p.length > 2);
+        return palavrasNome.every(palavra => nomeVendedor.includes(palavra));
+      });
+      
+      if (vendedorExistente) {
+        // Se existe, usar o vendedor com vendas
+        vendedoresCompletos.push(vendedorExistente);
+      } else {
+        // Se não existe, criar um vendedor vazio
+        vendedoresCompletos.push(criarVendedorVazio(nome, id));
+      }
     });
     
-    // Se temos metas, verificar se há vendedores com metas que não apareceram nas vendas
+    // Se temos metas, verificar se há vendedores com metas que não estão no mapeamento
     if (metaAtual?.metasVendedores) {
-      // Adicionar vendedores que têm metas mas não apareceram nas vendas
-      const vendedoresAdicionais: VendedorBetel[] = [];
-      
-      // Mapear vendedores existentes para facilitar verificação
-      const vendedoresExistentes = new Map(
-        vendedores.map(v => [v.nome.toUpperCase(), v])
-      );
-      
-      // Verificar cada vendedor com meta
-      console.log('🔍 Verificando vendedores com metas:', metaAtual.metasVendedores);
-      
       metaAtual.metasVendedores.forEach((metaVendedor: any) => {
         const nomeNormalizado = metaVendedor.vendedorId.toLowerCase().replace(/[()-]/g, '');
-        console.log(`🔍 Processando vendedor: ${metaVendedor.vendedorId} -> ${nomeNormalizado}`);
         
         // Mapear IDs de vendedores para nomes e lojas
         const vendedorInfo = (METAS_VENDEDORES_MAPEAMENTO as any)[metaVendedor.vendedorId] || 
@@ -157,16 +185,10 @@ export function VendedoresChartImproved({
             id.toLowerCase().replace(/[()-]/g, '') === nomeNormalizado
           )?.[0];
         
-        console.log(`🔍 Vendedor info encontrada:`, vendedorInfo);
-        
         if (vendedorInfo) {
           const nomeVendedor = vendedorInfo;
-          const jaExiste = Array.from(vendedoresExistentes.keys()).some(nome => 
-            nome.includes(nomeVendedor.split(' ')[0]) && 
-            nome.includes(nomeVendedor.split(' ')[1])
-          );
-          
-          console.log(`🔍 Vendedor ${nomeVendedor} já existe nas vendas:`, jaExiste);
+          // Verificar se já existe na lista
+          const jaExiste = vendedorJaExiste(nomeVendedor, vendedoresCompletos);
           
           if (!jaExiste) {
             // Determinar loja baseada no ID
@@ -175,9 +197,7 @@ export function VendedoresChartImproved({
               lojaNome = 'Filial Golden';
             }
             
-            console.log(`➕ Adicionando vendedor ${nomeVendedor} (${lojaNome})`);
-            
-            vendedoresAdicionais.push({
+            vendedoresCompletos.push({
               id: metaVendedor.vendedorId,
               nome: `${nomeVendedor} (${lojaNome})`,
               vendas: 0,
@@ -187,24 +207,11 @@ export function VendedoresChartImproved({
               lojaNome: lojaNome
             });
           }
-        } else {
-          console.log(`⚠️ Vendedor ${metaVendedor.vendedorId} não encontrado no mapeamento`);
         }
       });
-      
-      // Adicionar vendedores adicionais à lista
-      const resultado = [...vendedores, ...vendedoresAdicionais];
-      
-      console.log('✅ [VendedoresChartImproved] Vendedores finais:', {
-        totalVendedores: resultado.length,
-        vendedoresComVendas: resultado.filter(v => v.vendas > 0).length,
-        vendedoresSemVendas: resultado.filter(v => v.vendas === 0).length
-      });
-      
-      return resultado;
     }
     
-    return vendedores;
+    return vendedoresCompletos;
   }, [vendedores, metaAtual?.metasVendedores]);
 
   // Preparar dados para o componente, incluindo metas
@@ -231,35 +238,48 @@ export function VendedoresChartImproved({
         const nomeNormalizado = vendedor.nome.toUpperCase();
         let vendedorId = "";
         
-        console.log(`🔍 Buscando meta para vendedor: ${vendedor.nome} (${nomeNormalizado})`);
-        
         // Caso especial para o Fernando (usa a meta de Coordenador)
         if (nomeNormalizado.includes("FERNANDO")) {
           metaVendedor = metaAtual.metaCoordenador;
-          console.log(`✅ Fernando - Meta coordenador: ${metaVendedor}`);
         } else {
           // Buscar o ID exato do vendedor
           for (const [nome, id] of Object.entries(VENDEDORES_MAPEAMENTO)) {
             if (nomeNormalizado.includes(nome)) {
               vendedorId = id;
-              console.log(`✅ Encontrado ID para ${vendedor.nome}: ${vendedorId}`);
               break; // Sai do loop assim que encontrar o primeiro match
             }
           }
 
           if (vendedorId) {
-            // Buscar meta do vendedor pelo ID exato
-            const vendedorMeta = metaAtual.metasVendedores.find((mv: any) => {
+            // Função auxiliar para extrair apenas o nome do vendedor do ID (removendo unidade)
+            const extrairNomeDoId = (id: string): string => {
+              return id
+                .toLowerCase()
+                .replace(/[()-]/g, '')
+                .replace(/unidadematriz/g, '')
+                .replace(/filialgolden/g, '')
+                .trim();
+            };
+
+            // Buscar meta do vendedor - primeiro tentar match exato
+            let vendedorMeta = metaAtual.metasVendedores.find((mv: any) => {
               const idNormalizado = mv.vendedorId.toLowerCase().replace(/[()-]/g, '');
               const vendedorIdNormalizado = vendedorId.toLowerCase().replace(/[()-]/g, '');
-              const match = idNormalizado === vendedorIdNormalizado;
-              console.log(`🔍 Comparando: ${idNormalizado} === ${vendedorIdNormalizado} = ${match}`);
+              return idNormalizado === vendedorIdNormalizado;
+            });
+
+            // Se não encontrou, tentar por nome (ignorando unidade)
+            if (!vendedorMeta) {
+              const nomeVendedorId = extrairNomeDoId(vendedorId);
+              vendedorMeta = metaAtual.metasVendedores.find((mv: any) => {
+                const nomeMetaId = extrairNomeDoId(mv.vendedorId);
+                const match = nomeMetaId === nomeVendedorId && nomeMetaId.length > 0;
               return match;
             });
+            }
 
             if (vendedorMeta) {
               metaVendedor = vendedorMeta.meta;
-              console.log(`✅ Meta encontrada para ${vendedor.nome}: ${metaVendedor}`);
             } else {
               // Tentar buscar por nome direto no mapeamento de metas
               const metaPorNome = metaAtual.metasVendedores.find((mv: any) => {
@@ -269,13 +289,8 @@ export function VendedoresChartImproved({
               
               if (metaPorNome) {
                 metaVendedor = metaPorNome.meta;
-                console.log(`✅ Meta encontrada por nome para ${vendedor.nome}: ${metaVendedor}`);
-              } else {
-                console.log(`⚠️ Meta não encontrada para ${vendedor.nome} (ID: ${vendedorId})`);
               }
             }
-          } else {
-            console.log(`⚠️ Não foi possível determinar o ID para ${vendedor.nome}`);
           }
         }
         
@@ -283,8 +298,6 @@ export function VendedoresChartImproved({
         if (metaVendedor > 0) {
           percentualMeta = (vendedor.faturamento / metaVendedor) * 100;
         }
-      } else {
-        console.log(`⚠️ Nenhuma meta disponível para ${vendedor.nome}`);
       }
       
       return {
@@ -325,21 +338,23 @@ export function VendedoresChartImproved({
 
   return (
     <div className="ios26-chart-container ios26-animate-fade-in">
-      <div className="flex justify-between items-center mb-6">
+      {/* Header - Responsivo */}
+      <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4 mb-4 lg:mb-6">
         <div>
-          <h3 className="flex items-center gap-3 text-xl font-bold text-foreground">
-            <div className="p-2 bg-gradient-to-br from-orange-100 to-yellow-100 dark:from-orange-900/20 dark:to-yellow-900/20 rounded-2xl">
-              <TrendingUp className="h-6 w-6 text-orange-600 dark:text-orange-400" />
+          <h3 className="flex items-center gap-2 lg:gap-3 text-lg lg:text-xl font-bold text-foreground">
+            <div className="p-1.5 lg:p-2 bg-gradient-to-br from-orange-100 to-yellow-100 dark:from-orange-900/20 dark:to-yellow-900/20 rounded-xl lg:rounded-2xl">
+              <TrendingUp className="h-5 w-5 lg:h-6 lg:w-6 text-orange-600 dark:text-orange-400" />
             </div>
-            Evolução Vendas vs Metas
+            <span className="hidden lg:inline">Evolução Vendas vs Metas</span>
+            <span className="lg:hidden">Vendedores</span>
           </h3>
-          <p className="text-muted-foreground text-sm mt-1">
+          <p className="text-muted-foreground text-xs lg:text-sm mt-1 hidden lg:block">
             Acompanhamento de vendedores em relação às metas
           </p>
         </div>
         
-        {/* Resumo de totais */}
-        <div className="text-right">
+        {/* Resumo de totais - Oculto no mobile */}
+        <div className="text-right hidden lg:block">
           <div className="text-sm text-muted-foreground">
             Total: <span className="ios26-currency-small text-orange-600 dark:text-orange-400">{formatCurrency(totais.valorTotal)}</span>
           </div>
@@ -353,44 +368,43 @@ export function VendedoresChartImproved({
         </div>
       ) : vendedoresFiltrados.length === 0 ? (
         <div className="flex items-center justify-center h-[300px]">
-          <p className="text-muted-foreground">Nenhum vendedor encontrado no período selecionado</p>
+          <p className="text-muted-foreground">Carregando vendedores...</p>
         </div>
       ) : (
-        <div className="space-y-4 max-h-screen overflow-y-auto pr-1 custom-scrollbar">
+        <div className="space-y-3 lg:space-y-4 max-h-screen overflow-y-auto pr-1 custom-scrollbar">
           {dadosFormatados.map((vendedor, index) => (
             <div 
               key={vendedor.id} 
-              className="group relative cursor-pointer ios26-card p-4 transition-all duration-300 hover:shadow-lg"
+              className="group relative cursor-pointer bg-white dark:bg-gray-800 rounded-lg lg:ios26-card p-3 lg:p-4 shadow-sm lg:shadow-md transition-all duration-300 hover:shadow-lg"
               onClick={() => onVendedorClick && onVendedorClick(vendedor, index)}
               style={{ transform: 'translateZ(0)' }}
             >
-              <div className="flex items-center gap-4">
-                {/* Posição/Rank */}
+              <div className="flex items-center gap-2 lg:gap-4">
+                {/* Posição/Rank - Menor no mobile */}
                 <div className={cn(
-                  "flex-shrink-0 w-10 h-10 rounded-2xl flex items-center justify-center text-sm font-bold shadow-sm transition-transform group-hover:scale-110",
-                  index === 0 ? "bg-gradient-to-br from-yellow-400 to-orange-500 text-white" : 
-                  index === 1 ? "bg-gradient-to-br from-blue-400 to-blue-600 text-white" : 
-                  index === 2 ? "bg-gradient-to-br from-orange-400 to-red-500 text-white" : 
-                  "bg-gradient-to-br from-gray-200 to-gray-300 text-gray-700 dark:from-gray-700 dark:to-gray-600 dark:text-gray-300"
+                  "flex-shrink-0 w-8 h-8 lg:w-10 lg:h-10 rounded-full lg:rounded-2xl flex items-center justify-center text-xs lg:text-sm font-bold shadow-sm transition-transform group-hover:scale-110",
+                  index === 0 ? "bg-amber-500 lg:bg-gradient-to-br lg:from-yellow-400 lg:to-orange-500 text-white" : 
+                  index === 1 ? "bg-blue-500 lg:bg-gradient-to-br lg:from-blue-400 lg:to-blue-600 text-white" : 
+                  index === 2 ? "bg-orange-500 lg:bg-gradient-to-br lg:from-orange-400 lg:to-red-500 text-white" : 
+                  "bg-gray-200 lg:bg-gradient-to-br lg:from-gray-200 lg:to-gray-300 text-gray-700 dark:bg-gray-700 lg:dark:from-gray-700 lg:dark:to-gray-600 dark:text-gray-300"
                 )}>
                   {index + 1}
                 </div>
                 
                 {/* Informações do vendedor */}
-                <div className="flex-1">
-                  <div className="font-semibold text-foreground flex items-center gap-2">
-                    {vendedor.nome}
-                    {index < 3 && <BadgeCheck className="h-4 w-4 text-orange-500" />}
+                <div className="flex-1 min-w-0">
+                  <div className="font-medium lg:font-semibold text-foreground flex items-center gap-1.5 lg:gap-2">
+                    <span className="truncate">{removerUnidadeDoNome(vendedor.nome)}</span>
+                    {index < 3 && <BadgeCheck className="h-3.5 w-3.5 lg:h-4 lg:w-4 text-orange-500 flex-shrink-0" />}
                   </div>
-                  <div className="text-sm text-muted-foreground mt-1">
+                  <div className="text-xs lg:text-sm text-muted-foreground mt-0.5 lg:mt-1">
                     {vendedor.vendas} {vendedor.vendas === 1 ? 'venda' : 'vendas'}
-                    {vendedor.lojaNome && ` • ${vendedor.lojaNome}`}
                   </div>
                     
-                  {/* Barra de progresso de vendas totais - agora baseada na meta */}
-                  <div className="mt-3 ios26-progress">
+                  {/* Barra de progresso - Estilo simplificado no mobile */}
+                  <div className="mt-2 lg:mt-3 ios26-progress">
                     <div 
-                      className="ios26-progress-bar transition-all duration-500 group-hover:opacity-90"
+                      className="ios26-progress-bar lg:ios26-progress-bar transition-all duration-500 group-hover:opacity-90 h-1.5 lg:h-2"
                       style={{ 
                         width: `${vendedor.meta > 0 ? Math.min(Math.max(vendedor.percentualMeta, 3), 100) : Math.max(vendedor.percentual, 3)}%`, 
                         backgroundColor: vendedor.meta > 0 
@@ -407,12 +421,14 @@ export function VendedoresChartImproved({
                   
                   {/* Informações da meta */}
                   {vendedor.meta > 0 && (
-                    <div className="mt-2 flex items-center justify-between text-xs">
+                    <div className="mt-1.5 lg:mt-2 flex items-center justify-between text-xs">
                       <span className="flex items-center text-muted-foreground font-medium">
-                        <Target className="h-3 w-3 mr-1" /> Meta: {formatCurrency(vendedor.meta)}
+                        <Target className="h-3 w-3 mr-1 flex-shrink-0" />
+                        <span className="hidden lg:inline">Meta: </span>
+                        <span className="truncate">{formatCurrency(vendedor.meta)}</span>
                       </span>
                       <span className={cn(
-                        "font-semibold",
+                        "font-semibold flex-shrink-0 ml-2",
                         vendedor.percentualMeta >= 100 
                           ? "text-green-600 dark:text-green-400" 
                           : vendedor.percentualMeta >= 70 
@@ -425,12 +441,12 @@ export function VendedoresChartImproved({
                   )}
                 </div>
                 
-                {/* Valor e percentual */}
-                <div className="text-right">
-                  <div className="ios26-currency-medium text-orange-600 dark:text-orange-400">
+                {/* Valor e percentual - Layout simplificado no mobile */}
+                <div className="text-right flex-shrink-0">
+                  <div className="text-sm lg:ios26-currency-medium font-bold lg:font-normal text-orange-600 dark:text-orange-400">
                     {formatCurrency(vendedor.valor)}
                   </div>
-                  <div className="text-xs text-muted-foreground">
+                  <div className="text-xs text-muted-foreground hidden lg:block">
                     {vendedor.meta > 0 
                       ? `${vendedor.percentualMeta.toFixed(1)}% da meta`
                       : `${vendedor.percentual.toFixed(1)}% do total`

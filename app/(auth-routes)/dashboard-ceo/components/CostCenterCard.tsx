@@ -159,6 +159,13 @@ export function CostCenterCard({
         
         // Processar despesas por centro de custo
         if (data.costCenterProfitability) {
+          // Calcular total de despesas operacionais (soma de todos os custos dos centros)
+          // Isso será usado para calcular percentuais corretos
+          const totalDespesasOperacionais = data.costCenterProfitability.reduce(
+            (sum, center) => sum + (center.costs || 0), 
+            0
+          );
+          
           const expenses = data.costCenterProfitability.map((center) => {
             const nome = center.name.toLowerCase();
             let categoria: 'operacional' | 'produto' | 'investimento' = 'operacional';
@@ -169,11 +176,16 @@ export function CostCenterCard({
               categoria = 'investimento';
             }
             
+            // Calcular percentual baseado no total de despesas operacionais (não no total de custos)
+            const percentualTotal = totalDespesasOperacionais > 0 
+              ? (center.costs / totalDespesasOperacionais) * 100 
+              : 0;
+            
             return {
               id: center.id,
               nome: center.name,
               totalGasto: center.costs,
-              percentualTotal: data.details ? (center.costs / data.details.totalCustos) * 100 : 0,
+              percentualTotal,
               categoria
             };
           }).sort((a, b) => b.totalGasto - a.totalGasto);
@@ -277,10 +289,10 @@ export function CostCenterCard({
 
   const getCategoryColor = (categoria: string) => {
     switch (categoria) {
-      case 'operacional': return 'bg-blue-100 text-blue-700';
-      case 'produto': return 'bg-purple-100 text-purple-700';
-      case 'investimento': return 'bg-green-100 text-green-700';
-      default: return 'bg-gray-100 text-gray-700';
+      case 'operacional': return 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800';
+      case 'produto': return 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800';
+      case 'investimento': return 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 border border-green-200 dark:border-green-800';
+      default: return 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700';
     }
   };
 
@@ -395,42 +407,42 @@ export function CostCenterCard({
           /* VISÃO GERAL DE TODOS OS CENTROS */
           <>
             {/* Distribuição por Categoria */}
-            <div className="bg-white rounded-xl border-2 border-gray-200 p-6">
+            <div className="bg-white dark:bg-gray-800 rounded-xl border-2 border-gray-200 dark:border-gray-700 p-6">
               <div className="flex items-center gap-2 mb-4">
-                <PieChart className="h-5 w-5 text-purple-600" />
-                <h4 className="text-md font-semibold text-gray-900">Distribuição de Custos por Categoria</h4>
+                <PieChart className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                <h4 className="text-md font-semibold text-gray-900 dark:text-gray-100">Distribuição de Custos por Categoria</h4>
               </div>
               
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+                <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 border border-blue-200 dark:border-blue-800">
                   <div className="flex items-center gap-2 mb-2">
-                    <Wallet className="h-4 w-4 text-blue-600" />
-                    <p className="text-xs font-medium text-blue-700">Despesas Operacionais</p>
+                    <Wallet className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                    <p className="text-xs font-medium text-blue-700 dark:text-blue-300">Despesas Operacionais</p>
                   </div>
-                  <p className="text-2xl font-bold text-blue-900">{formatCurrency(totalOperacional)}</p>
-                  <p className="text-xs text-blue-600 mt-1">
+                  <p className="text-2xl font-bold text-blue-900 dark:text-blue-100">{formatCurrency(totalOperacional)}</p>
+                  <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
                     {costCenterExpenses.filter(c => c.categoria === 'operacional').length} centros
                   </p>
                 </div>
                 
-                <div className="bg-purple-50 rounded-lg p-4 border border-purple-200">
+                <div className="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-4 border border-purple-200 dark:border-purple-800">
                   <div className="flex items-center gap-2 mb-2">
-                    <ShoppingCart className="h-4 w-4 text-purple-600" />
-                    <p className="text-xs font-medium text-purple-700">Custos de Produtos</p>
+                    <ShoppingCart className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+                    <p className="text-xs font-medium text-purple-700 dark:text-purple-300">Custos de Produtos</p>
                   </div>
-                  <p className="text-2xl font-bold text-purple-900">{formatCurrency(totalProdutos)}</p>
-                  <p className="text-xs text-purple-600 mt-1">
+                  <p className="text-2xl font-bold text-purple-900 dark:text-purple-100">{formatCurrency(totalProdutos)}</p>
+                  <p className="text-xs text-purple-600 dark:text-purple-400 mt-1">
                     {costCenterExpenses.filter(c => c.categoria === 'produto').length} centros
                   </p>
                 </div>
                 
-                <div className="bg-green-50 rounded-lg p-4 border border-green-200">
+                <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-4 border border-green-200 dark:border-green-800">
                   <div className="flex items-center gap-2 mb-2">
-                    <TrendingUp className="h-4 w-4 text-green-600" />
-                    <p className="text-xs font-medium text-green-700">Investimentos</p>
+                    <TrendingUp className="h-4 w-4 text-green-600 dark:text-green-400" />
+                    <p className="text-xs font-medium text-green-700 dark:text-green-300">Investimentos</p>
                   </div>
-                  <p className="text-2xl font-bold text-green-900">{formatCurrency(totalInvestimentos)}</p>
-                  <p className="text-xs text-green-600 mt-1">
+                  <p className="text-2xl font-bold text-green-900 dark:text-green-100">{formatCurrency(totalInvestimentos)}</p>
+                  <p className="text-xs text-green-600 dark:text-green-400 mt-1">
                     {costCenterExpenses.filter(c => c.categoria === 'investimento').length} centros
                   </p>
                 </div>
@@ -439,10 +451,10 @@ export function CostCenterCard({
 
             {/* Top 5 Maiores Gastadores */}
             {topSpenders.length > 0 && (
-              <div className="bg-gradient-to-br from-orange-50 to-red-50 rounded-xl p-6 border-2 border-orange-200">
+              <div className="bg-gradient-to-br from-orange-50 to-red-50 dark:from-orange-900/20 dark:to-red-900/20 rounded-xl p-6 border-2 border-orange-200 dark:border-orange-800">
                 <div className="flex items-center gap-2 mb-4">
-                  <AlertTriangle className="h-5 w-5 text-orange-600" />
-                  <h4 className="text-md font-semibold text-gray-900">Top 5 Centros com Maiores Gastos</h4>
+                  <AlertTriangle className="h-5 w-5 text-orange-600 dark:text-orange-400" />
+                  <h4 className="text-md font-semibold text-gray-900 dark:text-gray-100">Top 5 Centros com Maiores Gastos</h4>
                 </div>
                 
                 <div className="space-y-3">
@@ -450,29 +462,29 @@ export function CostCenterCard({
                     <button
                       key={center.id}
                       onClick={() => setSelectedCentroCusto(center.id)}
-                      className="w-full flex items-center justify-between bg-white/70 backdrop-blur-sm rounded-lg p-4 border border-orange-200 hover:bg-white hover:border-orange-400 transition-all cursor-pointer"
+                      className="w-full flex items-center justify-between bg-white/70 dark:bg-gray-800/70 backdrop-blur-sm rounded-lg p-4 border border-orange-200 dark:border-orange-800 hover:bg-white dark:hover:bg-gray-800 hover:border-orange-400 dark:hover:border-orange-600 transition-all cursor-pointer"
                     >
                       <div className="flex items-center gap-4">
                         <div className={`flex items-center justify-center w-8 h-8 rounded-full font-bold text-sm ${
-                          index === 0 ? 'bg-orange-500 text-white' :
-                          index === 1 ? 'bg-orange-400 text-white' :
-                          index === 2 ? 'bg-orange-300 text-orange-900' :
-                          'bg-orange-200 text-orange-800'
+                          index === 0 ? 'bg-orange-500 dark:bg-orange-600 text-white' :
+                          index === 1 ? 'bg-orange-400 dark:bg-orange-500 text-white' :
+                          index === 2 ? 'bg-orange-300 dark:bg-orange-700 text-orange-900 dark:text-orange-100' :
+                          'bg-orange-200 dark:bg-orange-800 text-orange-800 dark:text-orange-200'
                         }`}>
                           {index + 1}
                         </div>
                         <div className="text-left">
-                          <p className="text-sm font-semibold text-gray-900">{center.nome}</p>
+                          <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{center.nome}</p>
                           <Badge className={`${getCategoryColor(center.categoria)} text-xs mt-1`}>
                             {getCategoryLabel(center.categoria)}
                           </Badge>
                         </div>
                       </div>
                       <div className="text-right">
-                        <p className="text-lg font-bold text-gray-900">
+                        <p className="text-lg font-bold text-gray-900 dark:text-gray-100">
                           {formatCurrency(center.totalGasto)}
                         </p>
-                        <p className="text-xs text-orange-600 font-medium">
+                        <p className="text-xs text-orange-600 dark:text-orange-400 font-medium">
                           {formatPercentage(center.percentualTotal)} do total
                         </p>
                       </div>
@@ -483,13 +495,13 @@ export function CostCenterCard({
             )}
 
             {/* Lista Completa de Centros */}
-            <div className="bg-white rounded-xl border-2 border-gray-200 p-6">
+            <div className="bg-white dark:bg-gray-800 rounded-xl border-2 border-gray-200 dark:border-gray-700 p-6">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
-                  <BarChart3 className="h-5 w-5 text-purple-600" />
-                  <h4 className="text-md font-semibold text-gray-900">Todos os Centros de Custo</h4>
+                  <BarChart3 className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                  <h4 className="text-md font-semibold text-gray-900 dark:text-gray-100">Todos os Centros de Custo</h4>
                 </div>
-                <Badge className="bg-gray-100 text-gray-700">
+                <Badge className="bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600">
                   {filteredExpenses.length} centros
                 </Badge>
               </div>
@@ -497,20 +509,20 @@ export function CostCenterCard({
               {/* Filtros e Busca */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
                 <div className="relative md:col-span-2">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
                   <Input
                     type="text"
                     placeholder="Buscar centro de custo..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10"
+                    className="pl-10 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
                   />
                 </div>
 
                 <select
                   value={selectedCategory}
                   onChange={(e) => setSelectedCategory(e.target.value as any)}
-                  className="px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  className="px-3 py-2 border-2 border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 dark:focus:ring-purple-400 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                 >
                   <option value="all">Todas as categorias</option>
                   <option value="operacional">Despesas Operacionais</option>
@@ -526,31 +538,31 @@ export function CostCenterCard({
                     <button
                       key={center.id}
                       onClick={() => setSelectedCentroCusto(center.id)}
-                      className="w-full flex items-center justify-between p-4 bg-gray-50 hover:bg-purple-50 rounded-lg transition-colors border border-gray-200 hover:border-purple-300 cursor-pointer"
+                      className="w-full flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/50 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-lg transition-colors border border-gray-200 dark:border-gray-600 hover:border-purple-300 dark:hover:border-purple-700 cursor-pointer"
                     >
                       <div className="flex items-center gap-4 flex-1">
-                        <div className="text-sm font-medium text-gray-500 min-w-[30px]">
+                        <div className="text-sm font-medium text-gray-500 dark:text-gray-400 min-w-[30px]">
                           #{index + 1}
                         </div>
                         <div className="flex-1 text-left">
-                          <p className="text-sm font-semibold text-gray-900">{center.nome}</p>
+                          <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{center.nome}</p>
                           <Badge className={`${getCategoryColor(center.categoria)} text-xs mt-1`}>
                             {getCategoryLabel(center.categoria)}
                           </Badge>
                         </div>
                       </div>
                       <div className="text-right">
-                        <p className="text-lg font-bold text-gray-900">
+                        <p className="text-lg font-bold text-gray-900 dark:text-gray-100">
                           {formatCurrency(center.totalGasto)}
                         </p>
                         <div className="flex items-center gap-2 mt-1">
-                          <div className="w-20 bg-gray-200 rounded-full h-1.5">
+                          <div className="w-20 bg-gray-200 dark:bg-gray-600 rounded-full h-1.5">
                             <div
-                              className="h-full bg-purple-600 rounded-full transition-all duration-500"
+                              className="h-full bg-purple-600 dark:bg-purple-500 rounded-full transition-all duration-500"
                               style={{ width: `${Math.min(center.percentualTotal * 5, 100)}%` }}
                             />
                           </div>
-                          <span className="text-xs text-purple-600 font-semibold min-w-[45px]">
+                          <span className="text-xs text-purple-600 dark:text-purple-400 font-semibold min-w-[45px]">
                             {formatPercentage(center.percentualTotal)}
                           </span>
                         </div>
@@ -558,8 +570,8 @@ export function CostCenterCard({
                     </button>
                   ))
                 ) : (
-                  <div className="text-center py-12 text-gray-500">
-                    <Search className="h-12 w-12 mx-auto mb-3 text-gray-300" />
+                  <div className="text-center py-12 text-gray-500 dark:text-gray-400">
+                    <Search className="h-12 w-12 mx-auto mb-3 text-gray-300 dark:text-gray-600" />
                     <p className="text-sm">Nenhum centro de custo encontrado</p>
                   </div>
                 )}
@@ -572,54 +584,54 @@ export function CostCenterCard({
             {loading && (
               <div className="flex items-center justify-center py-12">
                 <div className="text-center space-y-3">
-                  <RefreshCw className="h-8 w-8 mx-auto text-orange-600 animate-spin" />
-                  <p className="text-sm text-gray-600">Carregando análise...</p>
+                  <RefreshCw className="h-8 w-8 mx-auto text-orange-600 dark:text-orange-400 animate-spin" />
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Carregando análise...</p>
                 </div>
               </div>
             )}
 
             {analysisError && (
-              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                <div className="flex items-center space-x-2 text-red-800">
+              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
+                <div className="flex items-center space-x-2 text-red-800 dark:text-red-300">
                   <TrendingDown className="h-5 w-5" />
                   <p className="font-medium">Erro ao carregar análise</p>
                 </div>
-                <p className="text-sm text-red-600 mt-1">{analysisError}</p>
+                <p className="text-sm text-red-600 dark:text-red-400 mt-1">{analysisError}</p>
               </div>
             )}
 
             {analysisData && !loading && (
               <div className="space-y-6">
                 {/* Resumo do Centro */}
-                <div className="bg-gradient-to-r from-orange-50 to-yellow-50 rounded-xl p-6 border-2 border-orange-200">
-                  <h3 className="text-lg font-semibold text-orange-900 mb-4">
+                <div className="bg-gradient-to-r from-orange-50 to-yellow-50 dark:from-orange-900/20 dark:to-yellow-900/20 rounded-xl p-6 border-2 border-orange-200 dark:border-orange-800">
+                  <h3 className="text-lg font-semibold text-orange-900 dark:text-orange-100 mb-4">
                     {analysisData.centroCustoNome}
                   </h3>
                   <div className="grid grid-cols-3 gap-4">
                     <div>
-                      <div className="flex items-center space-x-1 text-orange-600 mb-1">
+                      <div className="flex items-center space-x-1 text-orange-600 dark:text-orange-400 mb-1">
                         <DollarSign className="h-4 w-4" />
                         <span className="text-xs font-medium">Total Pago</span>
                       </div>
-                      <div className="text-2xl font-bold text-orange-900">
+                      <div className="text-2xl font-bold text-orange-900 dark:text-orange-100">
                         {formatCurrency(analysisData.totalPagamentos)}
                       </div>
                     </div>
                     <div>
-                      <div className="flex items-center space-x-1 text-orange-600 mb-1">
+                      <div className="flex items-center space-x-1 text-orange-600 dark:text-orange-400 mb-1">
                         <Receipt className="h-4 w-4" />
                         <span className="text-xs font-medium">Pagamentos</span>
                       </div>
-                      <div className="text-2xl font-bold text-orange-900">
+                      <div className="text-2xl font-bold text-orange-900 dark:text-orange-100">
                         {analysisData.quantidadePagamentos}
                       </div>
                     </div>
                     <div>
-                      <div className="flex items-center space-x-1 text-orange-600 mb-1">
+                      <div className="flex items-center space-x-1 text-orange-600 dark:text-orange-400 mb-1">
                         <TrendingUp className="h-4 w-4" />
                         <span className="text-xs font-medium">Ticket Médio</span>
                       </div>
-                      <div className="text-2xl font-bold text-orange-900">
+                      <div className="text-2xl font-bold text-orange-900 dark:text-orange-100">
                         {formatCurrency(analysisData.ticketMedio)}
                       </div>
                     </div>
@@ -627,8 +639,8 @@ export function CostCenterCard({
                 </div>
 
                 {/* Toggle Detalhes */}
-                <div className="flex items-center justify-between bg-gray-50 rounded-lg p-4">
-                  <h4 className="text-sm font-semibold text-gray-900">Análises Detalhadas</h4>
+                <div className="flex items-center justify-between bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4 border border-gray-200 dark:border-gray-600">
+                  <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Análises Detalhadas</h4>
                   <Button
                     onClick={() => setShowDetails(!showDetails)}
                     variant="outline"
@@ -642,18 +654,18 @@ export function CostCenterCard({
                   <div className="space-y-6">
                     {/* Evolução Mensal */}
                     {analysisData.evolucaoMensal.length > 0 && (
-                      <div className="bg-white rounded-xl border-2 border-gray-200 p-5">
-                        <h4 className="text-sm font-semibold text-gray-900 flex items-center gap-2 mb-4">
-                          <TrendingUp className="h-4 w-4 text-orange-600" />
+                      <div className="bg-white dark:bg-gray-800 rounded-xl border-2 border-gray-200 dark:border-gray-700 p-5">
+                        <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2 mb-4">
+                          <TrendingUp className="h-4 w-4 text-orange-600 dark:text-orange-400" />
                           Evolução Mensal
                         </h4>
                         <div className="space-y-2">
                           {analysisData.evolucaoMensal.map((mes, index) => (
-                            <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                              <span className="text-sm font-medium text-gray-700">{mes.mes}</span>
+                            <div key={index} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors border border-gray-200 dark:border-gray-600">
+                              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{mes.mes}</span>
                               <div className="flex items-center space-x-3">
-                                <span className="text-xs text-gray-600">{mes.quantidade} pag.</span>
-                                <span className="text-sm font-bold text-orange-600">
+                                <span className="text-xs text-gray-600 dark:text-gray-400">{mes.quantidade} pag.</span>
+                                <span className="text-sm font-bold text-orange-600 dark:text-orange-400">
                                   {formatCurrency(mes.total)}
                                 </span>
                               </div>
@@ -665,28 +677,28 @@ export function CostCenterCard({
 
                     {/* Formas de Pagamento */}
                     {analysisData.formasPagamento.length > 0 && (
-                      <div className="bg-white rounded-xl border-2 border-gray-200 p-5">
-                        <h4 className="text-sm font-semibold text-gray-900 flex items-center gap-2 mb-4">
-                          <Percent className="h-4 w-4 text-green-600" />
+                      <div className="bg-white dark:bg-gray-800 rounded-xl border-2 border-gray-200 dark:border-gray-700 p-5">
+                        <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2 mb-4">
+                          <Percent className="h-4 w-4 text-green-600 dark:text-green-400" />
                           Formas de Pagamento
                         </h4>
                         <div className="space-y-3">
                           {analysisData.formasPagamento.map((forma, index) => (
                             <div key={index} className="space-y-2">
                               <div className="flex items-center justify-between">
-                                <span className="text-sm font-medium text-gray-900">{forma.forma}</span>
+                                <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{forma.forma}</span>
                                 <div className="flex items-center gap-3">
-                                  <Badge className="bg-green-100 text-green-900 font-semibold">
+                                  <Badge className="bg-green-100 dark:bg-green-900/30 text-green-900 dark:text-green-300 font-semibold border border-green-200 dark:border-green-800">
                                     {forma.percentual.toFixed(1)}%
                                   </Badge>
-                                  <span className="text-sm font-bold text-gray-900 min-w-[100px] text-right">
+                                  <span className="text-sm font-bold text-gray-900 dark:text-gray-100 min-w-[100px] text-right">
                                     {formatCurrency(forma.valor)}
                                   </span>
                                 </div>
                               </div>
-                              <div className="w-full bg-gray-200 rounded-full h-2">
+                              <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-2">
                                 <div
-                                  className="h-full bg-gradient-to-r from-green-400 to-green-600 rounded-full"
+                                  className="h-full bg-gradient-to-r from-green-400 to-green-600 dark:from-green-500 dark:to-green-700 rounded-full"
                                   style={{ width: `${forma.percentual}%` }}
                                 />
                               </div>
@@ -698,15 +710,15 @@ export function CostCenterCard({
 
                     {/* Top Fornecedores */}
                     {analysisData.fornecedores.length > 0 && (
-                      <div className="bg-white rounded-xl border-2 border-gray-200 p-5">
-                        <h4 className="text-sm font-semibold text-gray-900 mb-4">Top Fornecedores</h4>
+                      <div className="bg-white dark:bg-gray-800 rounded-xl border-2 border-gray-200 dark:border-gray-700 p-5">
+                        <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-4">Top Fornecedores</h4>
                         <div className="space-y-2 max-h-60 overflow-y-auto">
                           {analysisData.fornecedores.map((fornecedor, index) => (
-                            <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                              <span className="text-sm text-gray-900 truncate flex-1">{fornecedor.nome}</span>
+                            <div key={index} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600">
+                              <span className="text-sm text-gray-900 dark:text-gray-100 truncate flex-1">{fornecedor.nome}</span>
                               <div className="flex items-center gap-3 ml-4">
-                                <span className="text-xs text-gray-600">{fornecedor.percentual.toFixed(1)}%</span>
-                                <span className="text-sm font-bold text-gray-900 min-w-[100px] text-right">
+                                <span className="text-xs text-gray-600 dark:text-gray-400">{fornecedor.percentual.toFixed(1)}%</span>
+                                <span className="text-sm font-bold text-gray-900 dark:text-gray-100 min-w-[100px] text-right">
                                   {formatCurrency(fornecedor.valor)}
                                 </span>
                               </div>
@@ -718,15 +730,15 @@ export function CostCenterCard({
 
                     {/* Planos de Contas */}
                     {analysisData.planosContas.length > 0 && (
-                      <div className="bg-white rounded-xl border-2 border-gray-200 p-5">
-                        <h4 className="text-sm font-semibold text-gray-900 mb-4">Planos de Contas</h4>
+                      <div className="bg-white dark:bg-gray-800 rounded-xl border-2 border-gray-200 dark:border-gray-700 p-5">
+                        <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-4">Planos de Contas</h4>
                         <div className="space-y-2 max-h-60 overflow-y-auto">
                           {analysisData.planosContas.map((plano, index) => (
-                            <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                              <span className="text-sm text-gray-900 truncate flex-1">{plano.nome}</span>
+                            <div key={index} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600">
+                              <span className="text-sm text-gray-900 dark:text-gray-100 truncate flex-1">{plano.nome}</span>
                               <div className="flex items-center gap-3 ml-4">
-                                <span className="text-xs text-gray-600">{plano.percentual.toFixed(1)}%</span>
-                                <span className="text-sm font-bold text-gray-900 min-w-[100px] text-right">
+                                <span className="text-xs text-gray-600 dark:text-gray-400">{plano.percentual.toFixed(1)}%</span>
+                                <span className="text-sm font-bold text-gray-900 dark:text-gray-100 min-w-[100px] text-right">
                                   {formatCurrency(plano.valor)}
                                 </span>
                               </div>
@@ -738,22 +750,22 @@ export function CostCenterCard({
 
                     {/* Últimos Pagamentos */}
                     {analysisData.pagamentos.length > 0 && (
-                      <div className="bg-white rounded-xl border-2 border-gray-200 p-5">
-                        <h4 className="text-sm font-semibold text-gray-900 mb-4">
+                      <div className="bg-white dark:bg-gray-800 rounded-xl border-2 border-gray-200 dark:border-gray-700 p-5">
+                        <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-4">
                           Últimos Pagamentos ({analysisData.pagamentos.length})
                         </h4>
                         <div className="space-y-2 max-h-96 overflow-y-auto">
                           {analysisData.pagamentos.slice(0, 20).map((pagamento) => (
-                            <div key={pagamento.id} className="p-3 bg-gray-50 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors">
+                            <div key={pagamento.id} className="p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
                               <div className="flex items-center justify-between mb-2">
-                                <span className="font-medium text-gray-900 text-sm truncate flex-1">
+                                <span className="font-medium text-gray-900 dark:text-gray-100 text-sm truncate flex-1">
                                   {pagamento.descricao}
                                 </span>
-                                <span className="font-bold text-orange-600 ml-3 text-sm">
+                                <span className="font-bold text-orange-600 dark:text-orange-400 ml-3 text-sm">
                                   {formatCurrency(pagamento.valor)}
                                 </span>
                               </div>
-                              <div className="flex items-center justify-between text-xs text-gray-600">
+                              <div className="flex items-center justify-between text-xs text-gray-600 dark:text-gray-400">
                                 <span>{formatDate(pagamento.data)}</span>
                                 <span>{pagamento.formaPagamento}</span>
                               </div>

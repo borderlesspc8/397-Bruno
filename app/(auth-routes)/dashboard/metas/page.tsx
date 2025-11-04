@@ -252,6 +252,30 @@ export default function MetasPage() {
     return vendedoresUnicos;
   };
 
+  // Função auxiliar para gerar ID normalizado (removendo unidade) - compartilhada
+  const gerarIdNormalizado = (nome: string): string => {
+    return nome
+      .toLowerCase()
+      .replace(/\s+/g, '-')
+      .replace(/\(unidade-matriz\)/g, '')
+      .replace(/\(filial-golden\)/g, '')
+      .replace(/unidade-matriz/g, '')
+      .replace(/filial-golden/g, '')
+      .replace(/[()-]/g, '')
+      .replace(/\s+/g, '-')
+      .trim();
+  };
+
+  // Função auxiliar para remover identificação de unidade do nome (apenas para exibição)
+  const removerUnidadeDoNome = (nome: string): string => {
+    return nome
+      .replace(/\s*\(Unidade Matriz\)/gi, '')
+      .replace(/\s*\(Filial Golden\)/gi, '')
+      .replace(/\s*Unidade Matriz/gi, '')
+      .replace(/\s*Filial Golden/gi, '')
+      .trim();
+  };
+
   // Carregar todos os vendedores (últimos 12 meses) para metas
   useEffect(() => {
     const carregarVendedores = async () => {
@@ -274,7 +298,7 @@ export default function MetasPage() {
             // Mapear vendedores para o formato esperado pelo modal de metas
             const vendedoresMapeados = vendedoresUnicos
               .map((vendedor: any) => ({
-                id: vendedor.nome.toLowerCase().replace(/\s+/g, '-'), // Gerar ID baseado no nome
+                id: gerarIdNormalizado(vendedor.nome), // Gerar ID normalizado (sem unidade)
                 nome: vendedor.nome.trim()
               }))
               .sort((a: any, b: any) => a.nome.localeCompare(b.nome)); // Ordenar alfabeticamente
@@ -284,9 +308,19 @@ export default function MetasPage() {
             setVendedores([]);
           }
         } else {
+          const errorData = await response.json().catch(() => ({}));
+          console.error('Erro ao buscar vendedores:', errorData);
+          
+          // Mostrar mensagem de erro mais amigável
+          if (errorData.timeout) {
+            toast.error('A busca de vendedores está demorando. Tente novamente em alguns instantes.');
+          }
+          
           setVendedores([]);
         }
       } catch (error) {
+        console.error('Erro ao buscar vendedores:', error);
+        toast.error('Erro ao carregar lista de vendedores. Tente recarregar a página.');
         setVendedores([]);
       }
     };
@@ -350,6 +384,8 @@ export default function MetasPage() {
     if (vendedor) {
       const metasVendedores = form.getValues('metasVendedores') || [];
       metasVendedores[index].nome = vendedor.nome;
+      // Garantir que o vendedorId seja normalizado (sem unidade)
+      metasVendedores[index].vendedorId = gerarIdNormalizado(vendedor.nome);
       form.setValue('metasVendedores', [...metasVendedores]);
     }
   };
@@ -436,7 +472,8 @@ export default function MetasPage() {
       
       if (metaAnterior.metasVendedores && metaAnterior.metasVendedores.length > 0) {
         const metasVendedoresParaFormulario = metaAnterior.metasVendedores.map(v => ({
-          vendedorId: v.vendedorId,
+          // Normalizar vendedorId ao aplicar do mês anterior (removendo unidade)
+          vendedorId: gerarIdNormalizado(v.nome),
           nome: v.nome,
           meta: v.meta.toString()
         }));
@@ -518,7 +555,8 @@ export default function MetasPage() {
         metaSalvio: converterParaNumero(data.metaSalvio),
         metaCoordenador: converterParaNumero(data.metaCoordenador),
         metasVendedores: data.metasVendedores?.map(v => ({
-          vendedorId: v.vendedorId,
+          // Normalizar vendedorId ao salvar (removendo unidade)
+          vendedorId: v.nome ? gerarIdNormalizado(v.nome) : v.vendedorId,
           nome: v.nome,
           meta: converterParaNumero(v.meta)
         }))
@@ -555,8 +593,9 @@ export default function MetasPage() {
       : [];
     
     // Mapear vendedores para o formato do formulário
+    // Normalizar vendedorId ao carregar (removendo unidade para compatibilidade)
     const metasVendedoresParaFormulario = metasVendedores.map(v => ({
-      vendedorId: v.vendedorId,
+      vendedorId: gerarIdNormalizado(v.nome), // Normalizar ID ao carregar
       nome: v.nome,
       meta: v.meta.toString()
     }));
@@ -925,7 +964,7 @@ export default function MetasPage() {
                                   
                                   return vendedoresDisponiveis.map((v) => (
                                     <option key={v.id} value={v.id}>
-                                      {v.nome}
+                                      {removerUnidadeDoNome(v.nome)}
                                     </option>
                                   ));
                                 })()}

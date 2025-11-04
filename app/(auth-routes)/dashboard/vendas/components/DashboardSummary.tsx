@@ -107,18 +107,6 @@ export const DashboardSummary = React.memo(({ totais, metas, vendedores }: Dashb
     const descontos = parseValueSafe(totais.descontos || 0);
     const fretes = parseValueSafe(totais.fretes || 0);
     
-    // Log dos valores para debug
-    console.log('🔍 [DashboardSummary] Valores de entrada:', {
-      faturamento,
-      custo,
-      descontos,
-      fretes,
-      lucroOriginal: totais.lucro,
-      calculoManual: faturamento - custo + fretes,
-      diferenca: totais.lucro ? totais.lucro - (faturamento - custo + fretes) : null,
-      dadosCompletos: totais
-    });
-    
     // Se o lucro já está definido nos dados, usar ele
     // Caso contrário, calcular: Faturamento - Custos - Fretes (descontos removidos)
     const lucroCalculado = totais.lucro !== undefined 
@@ -129,15 +117,6 @@ export const DashboardSummary = React.memo(({ totais, metas, vendedores }: Dashb
     const margemLucroCalculada = faturamento > 0 
       ? roundToCents((lucroCalculado / faturamento) * 100)
       : 0;
-    
-    // Log do cálculo final
-    console.log('💰 [DashboardSummary] Cálculo do lucro:', {
-      formula: `${faturamento} - ${custo} - ${fretes}`,
-      calculoManual: faturamento - custo - fretes,
-      lucroCalculado,
-      margemLucroCalculada: `${margemLucroCalculada.toFixed(2)}%`,
-      usandoLucroOriginal: totais.lucro !== undefined
-    });
     
     const infoSecundariaTexto = [
       custo > 0 ? `Custo total: ${formatCurrency(custo)}` : null,

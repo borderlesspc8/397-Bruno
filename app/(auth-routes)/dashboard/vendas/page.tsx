@@ -38,7 +38,6 @@ import {
 import { VendedorDetalhesModal } from "./components/VendedorDetalhesModal";
 import { VendasPorFormaPagamentoChart } from "./components/VendasPorFormaPagamentoChart";
 import { VendasPorDiaCard } from "./components/VendasPorDiaCard";
-import { MobileRankingVendedores } from "./components/MobileRankingVendedores";
 import { LazyFallback } from "@/app/_components/ui/lazy-fallback";
 import { ComoNosConheceuUnidade } from "./components/ComoNosConheceuUnidade";
 import { CanalDeVendasUnidade } from "./components/CanalDeVendasUnidade";
@@ -93,15 +92,6 @@ export default function DashboardVendas() {
   const { user, loading: authLoading } = useAuth();
   const { metas, loading: isLoadingMetas } = useMetas();
   
-  // Logs detalhados para debug - OTIMIZADO
-  useEffect(() => {
-    if (user?.id) { // Só logar quando tiver usuário
-      console.log("=== DASHBOARD VENDAS - DEBUG ===");
-      console.log("User ID:", user.id);
-      console.log("User Email:", user.email);
-      console.log("=================================");
-    }
-  }, [user?.id]); // Só depender do ID para evitar logs desnecessários
 
   const today = new Date();
   const currentMonth = today.getMonth();
@@ -119,11 +109,11 @@ export default function DashboardVendas() {
     }
   }, [currentYear, currentMonth, today, dateRange]);
   
-  // Metas reais do banco de dados
+  // Metas reais do banco de dados - busca meta do mês selecionado no filtro
   const metasAtuais = useMemo(() => {
     if (!metas || metas.length === 0) {
       // Fallback para metas padrão se não houver metas no banco
-      const mesAtual = new Date().getMonth() + 1;
+      const mesSelecionado = dateRange?.from ? dateRange.from.getMonth() + 1 : new Date().getMonth() + 1;
       const metasPadrao = {
         1: { metaMensal: 50000, metaSalvio: 30000, metaCoordenador: 40000 },
         2: { metaMensal: 55000, metaSalvio: 35000, metaCoordenador: 45000 },
@@ -139,42 +129,37 @@ export default function DashboardVendas() {
         12: { metaMensal: 120000, metaSalvio: 100000, metaCoordenador: 110000 },
       };
       
-      return metasPadrao[mesAtual as keyof typeof metasPadrao] || {
+      return metasPadrao[mesSelecionado as keyof typeof metasPadrao] || {
         metaMensal: 50000,
         metaSalvio: 30000,
         metaCoordenador: 40000
       };
     }
     
-    // Encontrar a meta para o mês atual
-    const hoje = new Date();
-    const mesAtual = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+    // Encontrar a meta para o mês selecionado no filtro (dateRange)
+    const mesSelecionado = dateRange?.from 
+      ? new Date(dateRange.from.getFullYear(), dateRange.from.getMonth(), 1)
+      : new Date(new Date().getFullYear(), new Date().getMonth(), 1);
     
-    let metaDoMesAtual = metas.find((meta) => {
+    let metaDoMesSelecionado = metas.find((meta) => {
       const mesRef = new Date(meta.mesReferencia);
-      return mesRef.getMonth() === mesAtual.getMonth() && 
-             mesRef.getFullYear() === mesAtual.getFullYear();
+      const match = mesRef.getMonth() === mesSelecionado.getMonth() && 
+             mesRef.getFullYear() === mesSelecionado.getFullYear();
+      return match;
     });
     
-    // Se não encontrar meta para o mês atual, pega a meta mais recente
-    if (!metaDoMesAtual && metas.length > 0) {
-      metaDoMesAtual = metas.sort((a, b) => 
+    // Se não encontrar meta para o mês selecionado, pega a meta mais recente
+    if (!metaDoMesSelecionado && metas.length > 0) {
+      metaDoMesSelecionado = metas.sort((a, b) => 
         new Date(b.mesReferencia).getTime() - new Date(a.mesReferencia).getTime()
       )[0];
     }
     
-    if (metaDoMesAtual) {
-      console.log('🎯 Meta encontrada:', {
-        mes: metaDoMesAtual.mesReferencia,
-        metaMensal: metaDoMesAtual.metaMensal,
-        metaSalvio: metaDoMesAtual.metaSalvio,
-        metaCoordenador: metaDoMesAtual.metaCoordenador
-      });
-      
+    if (metaDoMesSelecionado) {
       return {
-        metaMensal: metaDoMesAtual.metaMensal,
-        metaSalvio: metaDoMesAtual.metaSalvio,
-        metaCoordenador: metaDoMesAtual.metaCoordenador
+        metaMensal: metaDoMesSelecionado.metaMensal,
+        metaSalvio: metaDoMesSelecionado.metaSalvio,
+        metaCoordenador: metaDoMesSelecionado.metaCoordenador
       };
     }
     
@@ -184,7 +169,7 @@ export default function DashboardVendas() {
       metaSalvio: 30000,
       metaCoordenador: 40000
     };
-  }, [metas]);
+  }, [metas, dateRange?.from]);
 
   // Usar o userId do hook useAuth em vez de buscar separadamente
   const userId = user?.id || null;
@@ -234,8 +219,28 @@ export default function DashboardVendas() {
   const [vendedorSelecionado, setVendedorSelecionado] = useState<any>(null);
   const [vendaSelecionada, setVendaSelecionada] = useState<VendaItem | null>(null);
   
-  // Tab ativa
-  const [activeTab, setActiveTab] = useState("ranking");
+  // Tab ativa - começa com "pagamentos" no mobile, "ranking" no desktop
+  const [activeTab, setActiveTab] = useState(() => {
+    // No servidor, sempre começa com "ranking" (será ajustado no cliente)
+    if (typeof window === 'undefined') return "ranking";
+    // No cliente, verificar se é mobile
+    return window.innerWidth < 1024 ? "pagamentos" : "ranking";
+  });
+  
+  // Detectar mobile e ajustar tab se necessário
+  useEffect(() => {
+    const checkIsMobile = () => {
+      const mobile = window.innerWidth < 1024; // lg breakpoint
+      // Se for mobile e a tab atual for "ranking", mudar para "pagamentos"
+      if (mobile && activeTab === "ranking") {
+        setActiveTab("pagamentos");
+      }
+    };
+    
+    checkIsMobile();
+    window.addEventListener('resize', checkIsMobile);
+    return () => window.removeEventListener('resize', checkIsMobile);
+  }, [activeTab]);
   
   // Estado para filtro de situações - padrão: apenas "Concretizada"
   const [situacoesFiltro, setSituacoesFiltro] = useState<string[]>(["concretizada"]);
@@ -298,29 +303,6 @@ export default function DashboardVendas() {
     }));
   }, [vendedores]);
 
-  // Log para debug das vendas
-  useEffect(() => {
-    if (vendas && vendas.length > 0) {
-      console.log('📦 [page.tsx] Vendas disponíveis para componentes filhos:', {
-        totalVendas: vendas.length,
-        primeirasVendas: vendas.slice(0, 3).map(v => ({
-          id: v.id,
-          canal_venda: v.canal_venda,
-          origem: v.origem,
-          como_nos_conheceu: v.como_nos_conheceu,
-          metadata: v.metadata ? {
-            canal_venda: v.metadata.canal_venda,
-            origem: v.metadata.origem,
-            como_nos_conheceu: v.metadata.como_nos_conheceu,
-          } : null,
-          valor_total: v.valor_total,
-          // Mostrar TODOS os campos disponíveis
-          todosOsCampos: Object.keys(v),
-          metadataCampos: v.metadata ? Object.keys(v.metadata) : null
-        }))
-      });
-    }
-  }, [vendas]);
 
   // Dados do summary calculados
   const dadosSummary = useMemo(() => {
@@ -330,29 +312,10 @@ export default function DashboardVendas() {
     let fretesTotal = 0;
     
     if (vendas && Array.isArray(vendas)) {
-      console.log('🔍 [DashboardVendas] Processando vendas para cálculo financeiro:', {
-        totalVendas: vendas.length,
-        primeirasVendas: vendas.slice(0, 3).map(v => ({
-          id: v.id,
-          valor_total: v.valor_total,
-          valor_custo: v.valor_custo,
-          desconto_valor: v.desconto_valor,
-          valor_frete: v.valor_frete
-        }))
-      });
-      
       vendas.forEach((venda: VendaItem) => {
         custoTotal += parseFloat(String(venda.valor_custo || '0'));
         descontosTotal += parseFloat(String(venda.desconto_valor || '0'));
         fretesTotal += parseFloat(String(venda.valor_frete || '0'));
-      });
-      
-      console.log('💰 [DashboardVendas] Totais calculados:', {
-        custoTotal,
-        descontosTotal,
-        fretesTotal,
-        totalValor,
-        lucroCalculado: totalValor - custoTotal
       });
     }
     
@@ -397,7 +360,6 @@ export default function DashboardVendas() {
   const handleForceSync = useCallback(async () => {
     try {
       await forceSync();
-      console.log('Sincronização forçada concluída');
     } catch (error) {
       console.error('Erro na sincronização forçada:', error);
     }
@@ -406,11 +368,9 @@ export default function DashboardVendas() {
   // Função para refresh dos dados com cache otimizado
   const handleRefreshData = useCallback(async () => {
     try {
-      console.log('🔄 Iniciando refresh dos dados...');
       await forceSync();
-      console.log('✅ Refresh concluído com sucesso');
     } catch (error) {
-      console.error('❌ Erro no refresh:', error);
+      console.error('Erro no refresh:', error);
       throw error; // Re-throw para que o DashboardHeader possa tratar o erro
     }
   }, [forceSync]);
@@ -418,7 +378,6 @@ export default function DashboardVendas() {
   // Atualizar dados quando o período de datas mudar
   useEffect(() => {
     if (dateRange?.from && dateRange?.to) {
-      console.log('🔄 Atualizando dados para novo período...');
       handleForceSync();
     }
   }, [dateRange?.from, dateRange?.to, handleForceSync]);
@@ -505,56 +464,48 @@ export default function DashboardVendas() {
         </div>
 
         <div className="ios26-grid">
-          <div className="hidden lg:block">
-            <VendedoresChartImproved 
-              vendedores={vendedoresMapeados}
-              onVendedorClick={handleOpenVendedorDetails}
-              totalVendas={totalVendas}
-              totalValor={totalValor}
-              ticketMedio={ticketMedio}
-            />
-          </div>
-          
-          <div className="lg:hidden">
-            <MobileRankingVendedores 
-                vendedores={vendedoresMapeados}
-              onVendedorClick={handleOpenVendedorDetails}
-              />
-          </div>
+          <VendedoresChartImproved 
+            vendedores={vendedoresMapeados}
+            onVendedorClick={handleOpenVendedorDetails}
+            totalVendas={totalVendas}
+            totalValor={totalValor}
+            ticketMedio={ticketMedio}
+            mesSelecionado={dateRange?.from}
+          />
         </div>
         
         <div className="ios26-card p-6">
           <Tabs defaultValue={activeTab} onValueChange={setActiveTab} className="w-full">
-            <div className="ios26-tabs overflow-x-auto">
-              <TabsList className="bg-transparent h-12 p-0 w-full justify-start space-x-4 flex-nowrap">
+            <div className="ios26-tabs overflow-x-auto custom-scrollbar -mx-6 px-6 lg:mx-0 lg:px-0">
+              <TabsList className="bg-transparent h-12 p-0 lg:w-full min-w-max lg:min-w-0 justify-start space-x-4 flex-nowrap">
                 <TabsTrigger 
                   value="ranking" 
-                  className="ios26-tab-trigger whitespace-nowrap"
+                  className="ios26-tab-trigger whitespace-nowrap hidden lg:inline-flex flex-shrink-0"
                 >
                   <span className="hidden xs:inline">Ranking e Vendas Diárias</span>
                   <span className="xs:hidden">Ranking</span>
                 </TabsTrigger>
                 <TabsTrigger 
                   value="pagamentos" 
-                  className="ios26-tab-trigger whitespace-nowrap"
+                  className="ios26-tab-trigger whitespace-nowrap flex-shrink-0"
                 >
                   Formas de Pagamento
                 </TabsTrigger>
                 <TabsTrigger 
                   value="produtos" 
-                  className="ios26-tab-trigger whitespace-nowrap"
+                  className="ios26-tab-trigger whitespace-nowrap flex-shrink-0"
                 >
                   Produtos Vendidos
                 </TabsTrigger>
                 <TabsTrigger 
                   value="origem" 
-                  className="ios26-tab-trigger whitespace-nowrap"
+                  className="ios26-tab-trigger whitespace-nowrap flex-shrink-0"
                 >
                   Como nos Conheceu
                 </TabsTrigger>
                 <TabsTrigger 
                   value="canal" 
-                  className="ios26-tab-trigger whitespace-nowrap"
+                  className="ios26-tab-trigger whitespace-nowrap flex-shrink-0"
                 >
                   Canal de Vendas
                 </TabsTrigger>
@@ -562,7 +513,7 @@ export default function DashboardVendas() {
             </div>
             
             <div className="mt-6">
-              <TabsContent value="ranking" className="mt-0">
+              <TabsContent value="ranking" className="mt-0 hidden lg:block">
                 <div className="space-y-6">
                   <RankingVendedoresPodium 
                     vendedores={vendedoresMapeados}

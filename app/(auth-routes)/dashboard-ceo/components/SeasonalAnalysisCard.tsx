@@ -73,24 +73,33 @@ export function SeasonalAnalysisCard({ params, isLoading = false, onRefresh }: S
 
   const getTrendIcon = (direction: string) => {
     switch (direction) {
-      case 'up': return <TrendingUp className="h-4 w-4 text-green-600" />;
-      case 'down': return <TrendingDown className="h-4 w-4 text-red-600" />;
-      default: return <Minus className="h-4 w-4 text-gray-600" />;
+      case 'up': return <TrendingUp className="h-4 w-4 text-green-600 dark:text-green-400" />;
+      case 'down': return <TrendingDown className="h-4 w-4 text-red-600 dark:text-red-400" />;
+      default: return <Minus className="h-4 w-4 text-gray-600 dark:text-gray-400" />;
     }
   };
 
   const getTrendColor = (direction: string) => {
     switch (direction) {
-      case 'up': return 'text-green-600';
-      case 'down': return 'text-red-600';
-      default: return 'text-gray-600';
+      case 'up': return 'text-green-600 dark:text-green-400';
+      case 'down': return 'text-red-600 dark:text-red-400';
+      default: return 'text-gray-600 dark:text-gray-400';
     }
   };
 
   const getSeasonalityLevel = (index: number): { level: string; color: string } => {
-    if (index < 0.1) return { level: 'Baixa', color: 'bg-green-100 text-green-800' };
-    if (index < 0.3) return { level: 'Média', color: 'bg-yellow-100 text-yellow-800' };
-    return { level: 'Alta', color: 'bg-red-100 text-red-800' };
+    if (index < 0.1) return { 
+      level: 'Baixa', 
+      color: 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300' 
+    };
+    if (index < 0.3) return { 
+      level: 'Média', 
+      color: 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300' 
+    };
+    return { 
+      level: 'Alta', 
+      color: 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300' 
+    };
   };
 
   const formatCurrency = (value: number) => {
@@ -135,7 +144,7 @@ export function SeasonalAnalysisCard({ params, isLoading = false, onRefresh }: S
             <h3 className="text-lg font-semibold">Análise Sazonal</h3>
           </div>
         </div>
-        <div className="text-center py-8 text-gray-500">
+        <div className="text-center py-8 text-gray-500 dark:text-gray-400">
           <p>Nenhum dado disponível para o período selecionado</p>
           <Button onClick={handleRefresh} variant="outline" size="sm" className="mt-4 ios26-button">
             <RefreshCw className="h-4 w-4 mr-2" />
@@ -155,7 +164,7 @@ export function SeasonalAnalysisCard({ params, isLoading = false, onRefresh }: S
             <Calendar className="h-5 w-5 text-[#faba33]" />
             <h3 className="text-lg font-semibold">Análise Sazonal</h3>
           </div>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-muted-foreground dark:text-gray-400">
             Análise de padrões sazonais e tendências temporais - Período: {params.startDate.toLocaleDateString('pt-BR')} até {params.endDate.toLocaleDateString('pt-BR')}
           </p>
         </div>
@@ -168,25 +177,25 @@ export function SeasonalAnalysisCard({ params, isLoading = false, onRefresh }: S
       <div className="space-y-6">
         {/* Indicadores Principais */}
         <div className="grid grid-cols-2 gap-4">
-          <div className="text-center p-3 bg-orange-50 rounded-lg">
-            <div className="text-2xl font-bold text-orange-600">
+          <div className="text-center p-3 bg-orange-50 dark:bg-orange-900/30 rounded-lg border border-orange-200 dark:border-orange-800">
+            <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">
               {formatPercentage((seasonalityIndex || 0) * 100)}
             </div>
-            <div className="text-sm text-gray-600">Sazonalidade</div>
+            <div className="text-sm text-gray-600 dark:text-gray-400">Sazonalidade</div>
             <Badge className={`mt-1 ${getSeasonalityLevel(seasonalityIndex || 0).color}`}>
               {getSeasonalityLevel(seasonalityIndex || 0).level}
             </Badge>
           </div>
           
           {trend && (
-            <div className="text-center p-3 bg-green-50 rounded-lg">
+            <div className="text-center p-3 bg-green-50 dark:bg-green-900/30 rounded-lg border border-green-200 dark:border-green-800">
               <div className="flex items-center justify-center space-x-1">
                 {getTrendIcon(trend.direction)}
                 <span className={`text-lg font-bold ${getTrendColor(trend.direction)}`}>
                   {formatPercentage(trend.strength)}
                 </span>
               </div>
-              <div className="text-sm text-gray-600">Tendência</div>
+              <div className="text-sm text-gray-600 dark:text-gray-400">Tendência</div>
               <div className={`text-xs mt-1 ${getTrendColor(trend.direction)}`}>
                 {trend.direction === 'up' ? 'Crescimento' : 
                  trend.direction === 'down' ? 'Declínio' : 'Estável'}
@@ -199,20 +208,20 @@ export function SeasonalAnalysisCard({ params, isLoading = false, onRefresh }: S
         {patterns.length > 0 && (
           <div className="space-y-3">
             <div className="flex items-center space-x-2">
-              <BarChart3 className="h-4 w-4 text-gray-600" />
-              <h4 className="font-semibold text-gray-800">Padrões Identificados</h4>
+              <BarChart3 className="h-4 w-4 text-gray-600 dark:text-gray-400" />
+              <h4 className="font-semibold text-gray-800 dark:text-gray-200">Padrões Identificados</h4>
             </div>
             
             <div className="space-y-2">
               {patterns.map((pattern, index) => (
-                <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                <div key={index} className="flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-700/50 rounded border border-gray-200 dark:border-gray-700">
                   <div className="flex items-center space-x-2">
-                    <span className="font-medium text-sm">{pattern?.pattern || 'Padrão'}</span>
-                    <Badge variant="outline" className="text-xs">
+                    <span className="font-medium text-sm text-gray-900 dark:text-gray-100">{pattern?.pattern || 'Padrão'}</span>
+                    <Badge variant="outline" className="text-xs border-gray-300 dark:border-gray-600">
                       {formatPercentage(pattern?.strength || 0)}
                     </Badge>
                   </div>
-                  <div className="text-xs text-gray-600">
+                  <div className="text-xs text-gray-600 dark:text-gray-400">
                     Pico: {pattern?.peakMonth || 'N/A'} | Baixa: {pattern?.lowMonth || 'N/A'}
                   </div>
                 </div>
@@ -224,16 +233,16 @@ export function SeasonalAnalysisCard({ params, isLoading = false, onRefresh }: S
         {/* Dados Mensais Recentes */}
         {monthlyData.length > 0 && (
           <div className="space-y-3">
-            <h4 className="font-semibold text-gray-800">Últimos Períodos</h4>
+            <h4 className="font-semibold text-gray-800 dark:text-gray-200">Últimos Períodos</h4>
             <div className="space-y-2 max-h-32 overflow-y-auto">
               {monthlyData.slice(-4).map((data, index) => (
-                <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded text-sm">
-                  <div className="font-medium">{data?.month || 'Mês'}</div>
+                <div key={index} className="flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-700/50 rounded border border-gray-200 dark:border-gray-700 text-sm">
+                  <div className="font-medium text-gray-900 dark:text-gray-100">{data?.month || 'Mês'}</div>
                   <div className="flex items-center space-x-4 text-xs">
-                    <span className="text-green-600">
+                    <span className="text-green-600 dark:text-green-400">
                       {formatCurrency(data?.revenue || 0)}
                     </span>
-                    <span className={`${(data?.growth || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    <span className={`${(data?.growth || 0) >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                       {(data?.growth || 0) >= 0 ? '+' : ''}{formatPercentage(data?.growth || 0)}
                     </span>
                   </div>
@@ -245,14 +254,14 @@ export function SeasonalAnalysisCard({ params, isLoading = false, onRefresh }: S
 
         {/* Resumo de Tendência */}
         {trend && (
-          <div className="p-3 bg-gray-50 rounded-lg">
+          <div className="p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-700">
             <div className="flex items-center justify-between text-sm">
-              <span className="text-gray-600">Confiança da Previsão</span>
-              <span className="font-medium">{formatPercentage(trend?.confidence || 0)}</span>
+              <span className="text-gray-600 dark:text-gray-400">Confiança da Previsão</span>
+              <span className="font-medium text-gray-900 dark:text-gray-100">{formatPercentage(trend?.confidence || 0)}</span>
             </div>
             <div className="flex items-center justify-between text-sm mt-1">
-              <span className="text-gray-600">Volatilidade</span>
-              <span className="font-medium">{formatPercentage(trend?.volatility || 0)}</span>
+              <span className="text-gray-600 dark:text-gray-400">Volatilidade</span>
+              <span className="font-medium text-gray-900 dark:text-gray-100">{formatPercentage(trend?.volatility || 0)}</span>
             </div>
           </div>
         )}
