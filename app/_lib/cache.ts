@@ -52,19 +52,16 @@ class CacheService {
       
       // Se o item estiver em cache e não tiver expirado
       if (cachedItem && (now - cachedItem.timestamp < expiry)) {
-        console.log(`[CACHE] Usando dados em cache para: ${key}`);
         return cachedItem.data;
       }
     }
     
     // Verificar se já existe uma busca em andamento para esta chave
     if (this.fetchingPromises.has(key)) {
-      console.log(`[CACHE] Reutilizando promessa existente para: ${key}`);
       return this.fetchingPromises.get(key)!;
     }
     
     // Criar e armazenar a promessa de busca
-    console.log(`[CACHE] Buscando dados para: ${key} (fonte: ${source})`);
     const fetchPromise = fetchFn().then(data => {
       // Armazenar o resultado no cache
       this.cache.set(key, {
@@ -103,13 +100,11 @@ class CacheService {
       const keys = Array.from(this.cache.keys());
       keys.forEach(key => {
         if (key.startsWith(keyOrPrefix)) {
-          console.log(`[CACHE] Invalidando item: ${key}`);
           this.cache.delete(key);
         }
       });
     } else {
       // Invalidar apenas a chave exata
-      console.log(`[CACHE] Invalidando item: ${keyOrPrefix}`);
       this.cache.delete(keyOrPrefix);
     }
   }
@@ -118,7 +113,6 @@ class CacheService {
    * Limpa todo o cache
    */
   clear(): void {
-    console.log(`[CACHE] Limpando todo o cache (${this.cache.size} itens)`);
     this.cache.clear();
   }
   

@@ -130,7 +130,6 @@ export class BetelTecnologiaService {
 
     // Verificar se a URL da API está configurada corretamente
     if (!this.API_URL || this.API_URL === 'https://api.beteltecnologia.com') {
-      console.warn('URL da API externa não configurada ou usando valor padrão');
     }
 
     if (!this.ACCESS_TOKEN) {

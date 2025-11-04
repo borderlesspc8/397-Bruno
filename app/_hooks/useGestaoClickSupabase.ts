@@ -121,22 +121,6 @@ export function useGestaoClickSupabase({
         const totalVendas = vendasDoVendedor.length;
         const valorTotal = vendasDoVendedor.reduce((sum, v) => sum + (v.valor_total || 0), 0);
         
-        // Log para debug dos primeiros vendedores
-        if (dados.vendedores.indexOf(vendedor) < 3) {
-          console.log('🔍 [useGestaoClickSupabase] Processando vendedor:', {
-            vendedorId: vendedor.id,
-            vendedorNome: vendedor.nome,
-            vendasEncontradas: totalVendas,
-            valorTotal,
-            vendasExemplo: vendasDoVendedor.slice(0, 2).map(v => ({
-              id: v.id,
-              vendedor_id: v.vendedor_id,
-              nome_vendedor: v.nome_vendedor,
-              valor_total: v.valor_total
-            }))
-          });
-        }
-        
         return {
           id: vendedor.id,
           nome: vendedor.nome,
@@ -353,7 +337,6 @@ export function useGestaoClickSupabase({
   useEffect(() => {
     // AUTO-REFRESH DESABILITADO PARA EVITAR CONFLITOS E TELA BRANCA
     // O usuário pode usar o botão de refresh manual quando necessário
-    console.log('🔄 [useGestaoClickSupabase] Auto-refresh desabilitado para evitar tela branca')
     return
   }, [autoRefresh, refreshInterval, enabled, userId, fetchData])
 

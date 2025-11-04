@@ -106,7 +106,6 @@ export async function getCachedData<T>(
 ): Promise<T> {
   // Se forceUpdate for true, ignorar o cache e buscar os dados novamente
   if (forceUpdate) {
-    console.log(`[CACHE] Ignorando cache para: ${key} (forceUpdate: true)`);
     updateMetrics(key, false);
     
     // Buscar os dados diretamente
@@ -131,31 +130,32 @@ export async function getCachedData<T>(
   // Verificar se os dados já estão no cache
   const cachedData = dataCache.get(key) as T | undefined;
   if (cachedData) {
-    console.log(`[CACHE] Usando dados em cache para: ${key}`);
     updateMetrics(key, true);
     return cachedData;
   }
 
   // Verificar se já existe uma promessa em andamento para esta chave
   if (promiseCache.has(key)) {
-    console.log(`[CACHE] Reutilizando promessa existente para: ${key}`);
     return promiseCache.get(key) as Promise<T>;
   }
 
   // Registrar o miss de cache para métricas
   updateMetrics(key, false);
-  console.log(`[CACHE] Buscando dados para: ${key} (fonte: api)`);
-
+ 
   // Determinar o TTL adequado para esta chave
   const effectiveTTL = cacheTTLOverride || getTTLByKeyPrefix(key);
 
   // Criar uma nova promessa com timeout para evitar promessas pendentes infinitas
+  // Timeout maior para operações que buscam muitos dados (como "todos" os vendedores)
+  const isLargeOperation = key.includes('todos') || key.includes('all');
+  const timeoutDuration = isLargeOperation ? 60000 : 15000; // 60s para operações grandes, 15s para normais
+  
   let timeoutId: NodeJS.Timeout;
   const timeoutPromise = new Promise<never>((_, reject) => {
     timeoutId = setTimeout(() => {
       promiseCache.delete(key);
-      reject(new Error(`Timeout ao buscar dados para: ${key}`));
-    }, 15000); // 15 segundos de timeout
+      reject(new Error(`Timeout ao buscar dados para: ${key} (${timeoutDuration}ms)`));
+    }, timeoutDuration);
   });
 
   // Criar uma nova promessa e armazená-la no cache de promessas

@@ -150,22 +150,11 @@ export class BetelTecnologiaService {
   private static verificarCredenciais(): { valido: boolean; mensagem?: string } {
     // Verificar se estamos em modo demo
     if (isDemoMode) {
-      console.log('Modo de demonstração ativado. As credenciais não são necessárias.');
       return { valido: true };
     }
-    
-    // Log detalhado do estado das configurações (sem expor tokens completos)
-    console.log('Verificando configurações da API externa:', {
-      apiUrl: this.API_URL,
-      accessTokenConfigured: !!this.ACCESS_TOKEN,
-      secretTokenConfigured: !!this.SECRET_TOKEN,
-      accessTokenLength: this.ACCESS_TOKEN?.length || 0,
-      secretTokenLength: this.SECRET_TOKEN?.length || 0
-    });
 
     // Verificar se a URL da API está configurada corretamente
     if (!this.API_URL || this.API_URL === 'https://api.beteltecnologia.com') {
-      console.warn('URL da API externa não configurada ou usando valor padrão');
     }
 
     if (!this.ACCESS_TOKEN) {
@@ -200,7 +189,6 @@ export class BetelTecnologiaService {
         async () => {
           // Se estamos em modo demo, usar dados mockados
           if (isDemoMode) {
-            console.log(`Modo de demonstração ativado. Retornando dados mockados para: ${url}`);
             return this.getMockData<T>(url);
           }
           
@@ -212,7 +200,6 @@ export class BetelTecnologiaService {
         // Se não for a primeira tentativa, aguardar tempo exponencial
         if (attempt > 0) {
           const delay = Math.pow(2, attempt) * 1000;
-          console.log(`Tentativa ${attempt} falhou, aguardando ${delay}ms antes de tentar novamente...`);
           await new Promise(resolve => setTimeout(resolve, delay));
         }
         
@@ -718,16 +705,10 @@ export class BetelTecnologiaService {
     erro?: string;
   }> {
     try {
-      console.log('Iniciando busca de vendas com parâmetros:', params);
-      
       // Formatar datas para o formato que a API espera
       const dataInicio = format(params.dataInicio, 'yyyy-MM-dd');
       const dataFim = format(params.dataFim, 'yyyy-MM-dd');
-      
-      console.log('Datas formatadas para busca:', { dataInicio, dataFim });
-      
-      // Buscar vendas diretamente sem paginação por lojas (evitar duplicação)
-      console.log('Buscando vendas diretamente...');
+    
       return await this.buscarVendasPadrao(dataInicio, dataFim);
     } catch (error) {
       console.error('Erro na busca de vendas:', error);
@@ -749,23 +730,18 @@ export class BetelTecnologiaService {
     erro?: string;
   }> {
     try {
-      console.log('Buscando vendas pelo método corrigido (loja por loja)...');
-      
-      // Primeiro, buscar a lista de lojas disponíveis
-      const lojasResult = await this.fetchWithRetry<{data: Array<{id: string, nome: string}>}>(`/lojas`);
+       const lojasResult = await this.fetchWithRetry<{data: Array<{id: string, nome: string}>}>(`/lojas`);
       
       if (lojasResult.error) {
         throw new Error(`Erro ao buscar lojas: ${lojasResult.error}`);
       }
 
       const lojas = lojasResult.data?.data || [];
-      console.log(`Encontradas ${lojas.length} lojas:`, lojas.map(l => `${l.nome} (${l.id})`));
       
       // Buscar vendas de todas as lojas individualmente
       let todasVendas: BetelVenda[] = [];
       
       for (const loja of lojas) {
-        console.log(`Buscando vendas da loja ${loja.nome} (${loja.id})...`);
         
         let paginaAtual = 1;
         let temMaisPaginas = true;
@@ -787,8 +763,6 @@ export class BetelTecnologiaService {
             break;
           }
 
-          console.log(`Loja ${loja.nome} - Página ${paginaAtual}: ${vendasData.data.length} vendas`);
-          
           // Adicionar vendas da página atual
           vendasDaLoja = [...vendasDaLoja, ...vendasData.data];
           
@@ -807,25 +781,16 @@ export class BetelTecnologiaService {
           
           // Proteção contra loop infinito
           if (paginaAtual > 20) {
-            console.warn(`Proteção contra loop infinito ativada para loja ${loja.nome}. Parando na página ${paginaAtual}`);
             break;
           }
         }
         
-        console.log(`Total de vendas da loja ${loja.nome}: ${vendasDaLoja.length}`);
         todasVendas = [...todasVendas, ...vendasDaLoja];
       }
-      
-      console.log(`Total de vendas obtidas de todas as lojas: ${todasVendas.length}`);
-      
-      // Processamento das vendas - Considerar apenas vendas "Concretizada" e "Em andamento"
       const vendasFiltradas = todasVendas.filter((venda: BetelVenda) => 
         venda.nome_situacao === "Concretizada" || venda.nome_situacao === "Em andamento"
       );
 
-      console.log(`Vendas filtradas (apenas Concretizada e Em andamento): ${vendasFiltradas.length}`);
-      console.log(`Iniciando processamento de descontos para ${vendasFiltradas.length} vendas...`);
-      
       const totalVendas = vendasFiltradas.length;
       
       // Calcular o valor total a partir das vendas filtradas
@@ -834,11 +799,8 @@ export class BetelTecnologiaService {
         return acc + valorVenda;
       }, 0).toFixed(2));
 
-      // Garantir que todas as vendas tenham valor_custo definido e calcular descontos corretamente
-      console.log(`Processando ${vendasFiltradas.length} vendas para calcular descontos...`);
       let vendasProcessadas = vendasFiltradas.map((venda: BetelVenda, index: number) => {
         if (index < 3) { // Log apenas das primeiras 3 vendas
-          console.log(`Processando venda ${index + 1}/${vendasFiltradas.length}: ${venda.id}`);
         }
         // Se já tem valor_custo definido, manter
         if (venda.valor_custo) {
@@ -864,20 +826,14 @@ export class BetelTecnologiaService {
         const descontoValor = parseFloat(venda.desconto_valor || '0');
         const descontoPercentual = parseFloat(venda.desconto_porcentagem || '0');
         const valorProdutos = parseFloat(venda.valor_produtos || venda.valor_total || '0');
-        
-        console.log(`Processando venda ${venda.id}: desconto_valor=${descontoValor}, desconto_porcentagem=${descontoPercentual}, valor_produtos=${valorProdutos}`);
-        
-        // Desconto em valor fixo
         if (descontoValor > 0) {
           descontoReal += descontoValor;
-          console.log(`Desconto em valor fixo: ${descontoValor}`);
         }
         
         // Desconto em porcentagem
         if (descontoPercentual > 0) {
           const descontoPorcentagem = (valorProdutos * descontoPercentual) / 100;
           descontoReal += descontoPorcentagem;
-          console.log(`Desconto em porcentagem: ${descontoPorcentagem} (${descontoPercentual}% de ${valorProdutos})`);
         }
         
         // Se não há desconto explícito, calcular pela diferença entre valor_produtos e valor_total
@@ -885,11 +841,8 @@ export class BetelTecnologiaService {
           const valorTotal = parseFloat(venda.valor_total || '0');
           if (valorProdutos > valorTotal) {
             descontoReal = valorProdutos - valorTotal;
-            console.log(`Desconto calculado pela diferença: ${descontoReal} (${valorProdutos} - ${valorTotal})`);
           }
         }
-        
-        console.log(`Desconto final para venda ${venda.id}: ${descontoReal}`);
         
         // Preparar objeto de retorno
         const vendaProcessada = {
@@ -950,9 +903,6 @@ export class BetelTecnologiaService {
     detalhes?: any 
   }> {
     try {
-      console.log('Testando conexão com a API externa...');
-      
-      // Verificar credenciais antes de fazer qualquer chamada
       const credenciais = this.verificarCredenciais();
       if (!credenciais.valido) {
         return { 

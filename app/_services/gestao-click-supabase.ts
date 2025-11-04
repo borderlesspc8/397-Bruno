@@ -73,7 +73,6 @@ export class GestaoClickSupabaseService {
     }
   }> {
     try {
-      console.log('Iniciando sincronização Gestão Click + Supabase:', params)
 
       // Verificar cache em memória primeiro - ESTRATÉGIA OTIMIZADA
       const cacheKey = `sync-${params.userId}-${params.dataInicio.toISOString()}-${params.dataFim.toISOString()}-${params.forceUpdate}`
@@ -86,7 +85,6 @@ export class GestaoClickSupabaseService {
       if (cachedRequest && !shouldForceRefresh) {
         const now = Date.now()
         if (now - cachedRequest.timestamp < this.CACHE_TTL) {
-          console.log('📦 [GestaoClickSupabase] Usando cache em memória (dados frescos)')
           return {
             ...cachedRequest.data,
             syncInfo: {
@@ -105,7 +103,6 @@ export class GestaoClickSupabaseService {
       if (!shouldForceRefresh) {
         const cachedData = await this.buscarCacheVendas(params)
         if (cachedData) {
-          console.log('📦 [GestaoClickSupabase] Usando cache do Supabase')
           return {
             ...cachedData,
             syncInfo: {
@@ -115,16 +112,9 @@ export class GestaoClickSupabaseService {
             }
           }
         }
-      } else {
-        console.log('🔄 [GestaoClickSupabase] Forçando busca de dados frescos (sem cache)')
       }
 
       // 2. Buscar dados do Gestão Click via API route
-      console.log('Buscando dados do Gestão Click via API...', {
-        dataInicio: params.dataInicio.toISOString(),
-        dataFim: params.dataFim.toISOString(),
-        userId: params.userId
-      })
       
       // Usar URL absoluta para evitar problemas de roteamento
       const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.VERCEL_URL || 'http://localhost:3000'
@@ -166,7 +156,6 @@ export class GestaoClickSupabaseService {
 
       // 4. SINCRONIZAÇÃO COM SUPABASE DESABILITADA TEMPORARIAMENTE
       // Buscando dados diretamente do Gestão Click sem armazenar no Supabase
-      console.log('⚠️ SINCRONIZAÇÃO COM SUPABASE SUSPENSA - Dados em tempo real do Gestão Click')
       // await this.sincronizarVendasComSupabase(vendasIntegradas)
       // await this.sincronizarVendedoresComSupabase(vendedoresIntegrados)
 
@@ -184,16 +173,7 @@ export class GestaoClickSupabaseService {
           vendedores: vendedoresIntegrados,
           produtosMaisVendidos: gestaoClickData.produtos || []
         })
-      } else {
-        console.log('🚫 [GestaoClickSupabase] Pulando cache do Supabase (refresh forçado)')
       }
-
-      console.log('Sincronização concluída com sucesso:', {
-        totalVendas,
-        totalValor,
-        vendedoresCount: vendedoresIntegrados.length,
-        produtosCount: gestaoClickData.produtos?.length || 0
-      })
 
       const result = {
         vendas: vendasIntegradas,
@@ -235,28 +215,6 @@ export class GestaoClickSupabaseService {
     vendas: any[],
     userId: string
   ): Promise<VendaIntegrada[]> {
-    console.log('🔍 [GestaoClickSupabase] Transformando vendas do Gestão Click:', {
-      totalVendas: vendas.length,
-      primeirasVendas: vendas.slice(0, 3).map(v => ({
-        id: v.id,
-        valor_total: v.valor_total,
-        valor_custo: v.valor_custo,
-        desconto_valor: v.desconto_valor,
-        valor_frete: v.valor_frete,
-        canal_venda: v.canal_venda,
-        origem: v.origem,
-        como_nos_conheceu: v.como_nos_conheceu,
-        // Verificar campos relacionados a canal/origem
-        canal: v.canal,
-        origem_venda: v.origem_venda,
-        origem_lead: v.origem_lead,
-        como_conheceu: v.como_conheceu,
-        fonte: v.fonte,
-        meio: v.meio,
-        camposDisponiveis: Object.keys(v)
-      }))
-    });
-
     return vendas.map(venda => {
       const vendaTransformada = {
         id: `gc-${venda.id || Math.random().toString(36).substr(2, 9)}`,
@@ -323,41 +281,68 @@ export class GestaoClickSupabaseService {
         }
       };
 
-      // Log das primeiras vendas transformadas
-      if (venda.id && vendas.indexOf(venda) < 3) {
-        console.log(`💰 [GestaoClickSupabase] Venda ${venda.id} transformada:`, {
-          original: {
-            valor_total: venda.valor_total,
-            valor_custo: venda.valor_custo,
-            desconto_valor: venda.desconto_valor,
-            valor_frete: venda.valor_frete,
-            pagamentos: venda.pagamentos?.length || 0,
-            forma_pagamento: venda.forma_pagamento,
-            metodo_pagamento: venda.metodo_pagamento,
-            produtos: venda.produtos?.length || 0,
-            itens: venda.itens?.length || 0,
-            canal_venda: venda.canal_venda,
-            origem: venda.origem,
-            como_nos_conheceu: venda.como_nos_conheceu
-          },
-          transformada: {
-            valor_total: vendaTransformada.valor_total,
-            valor_custo: vendaTransformada.valor_custo,
-            desconto_valor: vendaTransformada.desconto_valor,
-            valor_frete: vendaTransformada.valor_frete,
-            pagamentos: vendaTransformada.pagamentos?.length || 0,
-            forma_pagamento: vendaTransformada.forma_pagamento,
-            metodo_pagamento: vendaTransformada.metodo_pagamento,
-            produtos: vendaTransformada.produtos?.length || 0,
-            canal_venda: vendaTransformada.canal_venda,
-            origem: vendaTransformada.origem,
-            como_nos_conheceu: vendaTransformada.como_nos_conheceu
-          }
-        });
+      // Retornar venda transformada
+      return vendaTransformada;
+    });
+  }
+
+  private async buscarCacheVendas(params: {
+    userId: string;
+    dataInicio: Date;
+    dataFim: Date;
+  }): Promise<any> {
+    try {
+      const cacheKey = `vendas-cache-${params.userId}-${format(params.dataInicio, 'yyyy-MM-dd')}-${format(params.dataFim, 'yyyy-MM-dd')}`
+      
+      // Buscar cache no Supabase
+      const { data: cacheData, error } = await this.supabase
+        .from('vendas_cache')
+        .select('*')
+        .eq('cache_key', cacheKey)
+        .single()
+
+      if (error || !cacheData) {
+        return null
       }
 
-      return vendaTransformada;
-    })
+      // Verificar se o cache ainda é válido (menos de 5 minutos)
+      const cacheAge = Date.now() - new Date(cacheData.created_at).getTime()
+      const CACHE_TTL = 5 * 60 * 1000 // 5 minutos
+
+      if (cacheAge > CACHE_TTL) {
+        return null
+      }
+
+      return JSON.parse(cacheData.cache_data)
+    } catch (error) {
+      console.error('Erro ao buscar cache:', error)
+      return null
+    }
+  }
+
+  private async salvarCacheVendas(params: {
+    userId: string;
+    dataInicio: Date;
+    dataFim: Date;
+  }, data: any): Promise<void> {
+    try {
+      const cacheKey = `vendas-cache-${params.userId}-${format(params.dataInicio, 'yyyy-MM-dd')}-${format(params.dataFim, 'yyyy-MM-dd')}`
+      
+      const { error } = await this.supabase
+        .from('vendas_cache')
+        .upsert({
+          cache_key: cacheKey,
+          cache_data: JSON.stringify(data),
+          user_id: params.userId,
+          created_at: new Date().toISOString()
+        })
+
+      if (error) {
+        console.error('Erro ao salvar cache:', error)
+          }
+    } catch (error) {
+      console.error('Erro ao salvar cache:', error)
+    }
   }
 
   /**
@@ -584,8 +569,6 @@ export class GestaoClickSupabaseService {
     try {
       const cacheKey = `vendas-cache-${params.userId}-${params.dataInicio.toISOString().split('T')[0]}-${params.dataFim.toISOString().split('T')[0]}`
       
-      console.log('Buscando cache com chave:', cacheKey)
-      
       const { data, error } = await supabase
         .from('system_settings')
         .select('value')
@@ -598,7 +581,6 @@ export class GestaoClickSupabaseService {
       }
 
       if (!data || !data.value) {
-        console.log('Cache não encontrado')
         return null
       }
 
@@ -607,11 +589,9 @@ export class GestaoClickSupabaseService {
       // Verificar se o cache não expirou (2 minutos para dados mais frescos)
       const cacheAge = Date.now() - new Date(cachedData.timestamp).getTime()
       if (cacheAge > 2 * 60 * 1000) {
-        console.log('Cache expirado, buscando dados frescos')
         return null
       }
 
-      console.log('Cache encontrado e válido')
       return cachedData
     } catch (error) {
       console.error('Erro ao buscar cache:', error)
@@ -648,8 +628,6 @@ export class GestaoClickSupabaseService {
 
       if (error) {
         console.error('Erro ao salvar cache:', error)
-      } else {
-        console.log('Cache salvo com sucesso')
       }
     } catch (error) {
       console.error('Erro ao salvar cache:', error)
@@ -750,7 +728,6 @@ export class GestaoClickSupabaseService {
       cacheHit: boolean
     }
   }> {
-    console.log('🔄 [GestaoClickSupabase] Sincronização forçada (sem cache)')
     return this.sincronizarVendas({
       ...params,
       forceUpdate: true

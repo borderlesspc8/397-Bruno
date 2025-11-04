@@ -65,16 +65,6 @@ export function processarDatasURL(
       };
     }
     
-    // Log para debug
-    console.log('🔍 [processarDatasURL] Datas processadas:', {
-      dataInicioOriginal: dataInicioStr,
-      dataFimOriginal: dataFimStr,
-      dataInicioProcessada: dataInicioObj.toISOString(),
-      dataFimProcessada: dataFimObj.toISOString(),
-      dataInicioFormatada: dataInicioObj.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }),
-      dataFimFormatada: dataFimObj.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })
-    });
-    
     return {
       success: true,
       dataInicio: dataInicioObj,

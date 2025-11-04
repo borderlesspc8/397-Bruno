@@ -8,13 +8,17 @@ export interface FormaPagamentoItem {
   percentual: number;
 }
 
-// Mapeamento para categorias específicas de forma de pagamento (mesmo da API)
+// Mapeamento para categorias específicas de forma de pagamento
+// Prioriza manter os nomes originais do Gestão Click quando possível
 const CATEGORIAS_PAGAMENTO: Record<string, string> = {
+  // PIX - C6 (mantém variações do Gestão Click)
   'PIX - C6': 'PIX - C6',
   'PIX C6': 'PIX - C6',
+  'PIX C6 IMPORTS': 'PIX C6 IMPORTS', // Mantém nome original do Gestão Click
   'PIX - BB': 'PIX - BB',
   'PIX - STONE': 'PIX - STONE',
   'PIX': 'PIX',
+  // CRÉDITO - STONE (mantém variações do Gestão Click)
   'ELO CRÉDITO STONE': 'CRÉDITO - STONE',
   'MASTERCARD CRÉDITO STONE': 'CRÉDITO - STONE',
   'MASTER CRÉDITO': 'CRÉDITO - STONE',
@@ -28,6 +32,10 @@ const CATEGORIAS_PAGAMENTO: Record<string, string> = {
   'CRÉDITO - SLIPAY': 'CRÉDITO - STONE',
   'Cartão de Crédito': 'CRÉDITO - STONE',
   'Crédito': 'CRÉDITO - STONE',
+  // LINK DE PAGAMENTO (mantém nome original do Gestão Click)
+  'LINK DE PAGAMENTO - STONE': 'LINK DE PAGAMENTO - STONE', // Mantém nome original do Gestão Click
+  'LINK DE PAGAMENTO STONE': 'LINK DE PAGAMENTO - STONE',
+  // DÉBITO - STONE
   'DÉBITO - Slipay': 'DÉBITO - STONE',
   'DÉBITO - SLIPAY': 'DÉBITO - STONE',
   'DEBITO - Slipay': 'DÉBITO - STONE',
@@ -39,15 +47,18 @@ const CATEGORIAS_PAGAMENTO: Record<string, string> = {
   'DÉBITO - C6': 'DÉBITO - STONE',
   'Cartão de Débito': 'DÉBITO - STONE',
   'Débito': 'DÉBITO - STONE',
+  // ESPÉCIE
   'Dinheiro à Vista': 'ESPÉCIE - BB',
   'Dinheiro': 'ESPÉCIE - BB',
   'Especie': 'ESPÉCIE - BB',
   'ESPÉCIE - BB': 'ESPÉCIE - BB',
   'Moeda': 'ESPÉCIE - BB',
+  // BOLETO
   'BOLETO': 'BOLETO - BB',
   'Boleto Bancário': 'BOLETO - BB',
   'Boleto': 'BOLETO - BB',
   'BOLETO - BB': 'BOLETO - BB',
+  // OUTROS
   'A COMBINAR': 'A COMBINAR',
   'A Combinar': 'A COMBINAR',
   'A combinar': 'A COMBINAR'
@@ -70,8 +81,20 @@ const normalizarFormaPagamento = (forma: string): string => {
   const formaNormalizada = forma.trim();
   console.log(`Forma normalizada: "${formaNormalizada}"`);
   
+  // Verificar LINK DE PAGAMENTO primeiro (mantém nome original do Gestão Click)
+  if (formaNormalizada.toUpperCase().includes('LINK DE PAGAMENTO')) {
+    if (formaNormalizada.includes('STONE')) {
+      console.log('Detectado LINK DE PAGAMENTO - STONE');
+      return 'LINK DE PAGAMENTO - STONE';
+    }
+  }
+  
   if (formaNormalizada.includes('PIX')) {
-    if (formaNormalizada.includes('C6')) {
+    // PIX C6 IMPORTS - mantém nome original do Gestão Click
+    if (formaNormalizada.toUpperCase().includes('PIX C6 IMPORTS') || formaNormalizada.includes('PIX C6 IMPORTS')) {
+      console.log('Detectado PIX C6 IMPORTS (mantendo nome original)');
+      return 'PIX C6 IMPORTS';
+    } else if (formaNormalizada.includes('C6')) {
       console.log('Detectado PIX - C6');
       return 'PIX - C6';
     } else if (formaNormalizada.includes('BB')) {
