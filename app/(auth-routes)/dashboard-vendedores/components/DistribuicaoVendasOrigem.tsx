@@ -280,11 +280,13 @@ export function DistribuicaoVendasOrigem({ dataInicio, dataFim }: DistribuicaoVe
         </div>
         
         <Tabs defaultValue="bar">
-          <TabsList className="mb-4">
-            <TabsTrigger value="bar">Gráfico de Barras</TabsTrigger>
-            <TabsTrigger value="pie">Gráfico de Pizza</TabsTrigger>
-            <TabsTrigger value="table">Tabela</TabsTrigger>
-          </TabsList>
+          <div className="overflow-x-auto custom-scrollbar -mx-6 px-6 sm:mx-0 sm:px-0 mb-4">
+            <TabsList className="min-w-max sm:min-w-0">
+              <TabsTrigger value="bar" className="flex-shrink-0">Gráfico de Barras</TabsTrigger>
+              <TabsTrigger value="pie" className="flex-shrink-0">Gráfico de Pizza</TabsTrigger>
+              <TabsTrigger value="table" className="flex-shrink-0">Tabela</TabsTrigger>
+            </TabsList>
+          </div>
           
           <TabsContent value="bar">
             {renderBarChart()}

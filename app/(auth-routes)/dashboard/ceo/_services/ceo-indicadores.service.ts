@@ -768,8 +768,84 @@ class CEOIndicadoresService {
    */
   private static parseNumber(value: string | number | undefined | null): number {
     if (value === undefined || value === null || value === '') return 0;
-    if (typeof value === 'number') return value;
-    const parsed = parseFloat(value);
+    
+    // Se já é número
+    if (typeof value === 'number') {
+      // Verificar se parece estar em centavos (inteiro muito grande)
+      if (Number.isInteger(value)) {
+        const valorAbs = Math.abs(value);
+        // Se é inteiro e muito grande (> 10000), provavelmente está em centavos
+        if (valorAbs > 10000) {
+          return value / 100;
+        }
+      }
+      return value;
+    }
+    
+    // Se é string, tratar formatos brasileiro/americano e centavos
+    const valorStr = String(value).trim();
+    
+    // Remover caracteres não numéricos exceto vírgula, ponto e menos
+    let valorLimpo = valorStr.replace(/[^\d,.-]/g, '');
+    
+    // Detectar formato: brasileiro "1.234,56" ou americano "1234.56"
+    const temVirgula = valorLimpo.includes(',');
+    const temPonto = valorLimpo.includes('.');
+    
+    if (temVirgula && temPonto) {
+      // Tem ambos: determinar qual é decimal
+      const ultimaVirgula = valorLimpo.lastIndexOf(',');
+      const ultimoPonto = valorLimpo.lastIndexOf('.');
+      
+      if (ultimaVirgula > ultimoPonto) {
+        // Vírgula vem depois = formato brasileiro "1.234,56"
+        valorLimpo = valorLimpo.replace(/\./g, '').replace(',', '.');
+      } else {
+        // Ponto vem depois = formato americano "1,234.56"
+        valorLimpo = valorLimpo.replace(/,/g, '');
+      }
+    } else if (temVirgula) {
+      // Só tem vírgula = formato brasileiro sem milhar "1234,56"
+      valorLimpo = valorLimpo.replace(',', '.');
+    } else if (temPonto) {
+      // Só tem ponto - pode ser decimal ou milhar
+      const partes = valorLimpo.split('.');
+      
+      if (partes.length === 2) {
+        // Tem exatamente 2 partes: "1234.56" ou "1.234"
+        const parteDepois = partes[1];
+        
+        if (parteDepois.length <= 2) {
+          // Última parte tem 1-2 dígitos = formato decimal "10836.30"
+          // Manter como está (já está correto para parseFloat)
+        } else {
+          // Última parte tem mais de 2 dígitos = provavelmente separador de milhar "1.2345"
+          valorLimpo = partes.join('');
+        }
+      } else if (partes.length > 2) {
+        // Múltiplos pontos = separadores de milhar "1.234.567"
+        const ultimaParte = partes[partes.length - 1];
+        if (ultimaParte.length <= 2) {
+          // Última parte tem 1-2 dígitos = decimal
+          valorLimpo = partes.slice(0, -1).join('') + '.' + ultimaParte;
+        } else {
+          // Sem decimais, remover todos os pontos
+          valorLimpo = partes.join('');
+        }
+      }
+    }
+    
+    // Converter para número
+    const parsed = parseFloat(valorLimpo);
+    
+    // Se o valor resultante é muito grande (inteiro > 100000) e não tinha separador decimal claro, pode estar em centavos
+    if (!temVirgula && !temPonto && !isNaN(parsed)) {
+      const valorAbs = Math.abs(parsed);
+      if (valorAbs > 100000 && Number.isInteger(valorAbs)) {
+        return parsed / 100;
+      }
+    }
+    
     return isNaN(parsed) ? 0 : parsed;
   }
 }

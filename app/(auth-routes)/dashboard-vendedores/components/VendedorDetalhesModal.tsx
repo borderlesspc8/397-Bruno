@@ -342,22 +342,6 @@ export function VendedorDetalhesModal({
       return matchById || matchByNomeExato || matchByInclusao || matchSemAcentos;
     });
 
-    console.log('🔍 [VendedorDetalhesModal] Vendas filtradas pelo vendedor:', {
-      vendedorId: vendedor.id,
-      vendedorNome: vendedor.nome,
-      totalVendasExternas: vendasExternas.length,
-      vendasFiltradas: vendasFiltradas.length,
-      primeirasVendasFiltradas: vendasFiltradas.slice(0, 3).map(v => ({
-        id: v.id,
-        vendedor_id: v.vendedor_id,
-        nome_vendedor: v.nome_vendedor,
-        forma_pagamento: v.forma_pagamento,
-        canal_venda: v.canal_venda,
-        origem: v.origem,
-        como_nos_conheceu: v.como_nos_conheceu
-      }))
-    });
-
     return vendasFiltradas;
   }, [vendedor, vendasExternas]);
 
@@ -370,27 +354,7 @@ export function VendedorDetalhesModal({
   useEffect(() => {
     if (vendasParaProcessar.length > 0) {
       const vendasOrdenadas = ordenarVendasPorValor(vendasParaProcessar);
-      console.log('🔍 [VendedorDetalhesModal] Debug ordenação:', {
-        ordenacaoAtual: ordenacaoValor,
-        totalVendas: vendasParaProcessar.length,
-        fonteDados: vendasVendedorExternas.length > 0 ? 'vendasExternas' : 'buscaPropria',
-        primeirosValores: vendasOrdenadas.slice(0, 3).map(v => {
-          const { nomeCliente, valorTotal } = extrairDadosVenda(v);
-          return {
-            cliente: nomeCliente,
-            valor: parseFloat(valorTotal) || 0,
-            valorFormatado: new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(parseFloat(valorTotal) || 0)
-          };
-        }),
-        ultimosValores: vendasOrdenadas.slice(-3).map(v => {
-          const { nomeCliente, valorTotal } = extrairDadosVenda(v);
-          return {
-            cliente: nomeCliente,
-            valor: parseFloat(valorTotal) || 0,
-            valorFormatado: new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(parseFloat(valorTotal) || 0)
-          };
-        })
-      });
+      
     }
   }, [ordenacaoValor, vendasParaProcessar]);
   
@@ -405,10 +369,7 @@ export function VendedorDetalhesModal({
       return;
     }
 
-    console.log('🔄 [VendedorDetalhesModal] Configurando auto-refresh para tabs...', {
-      vendedorId: vendedor.id,
-      refreshInterval: 60000 // 1 minuto
-    });
+
 
     // Configurar polling a cada 1 minuto apenas como fallback
     updateIntervalRef.current = setInterval(async () => {
@@ -714,27 +675,29 @@ export function VendedorDetalhesModal({
           </div>
 
           <Tabs value={tabAtiva} onValueChange={setTabAtiva} className="w-full">
-            <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4">
-              <TabsTrigger value="resumo" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
-                <User className="h-3 w-3 sm:h-4 sm:w-4" />
-                <span>Resumo</span>
-              </TabsTrigger>
-              <TabsTrigger value="formas-pagamento" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
-                <CreditCard className="h-3 w-3 sm:h-4 sm:w-4" />
-                <span className="hidden xs:inline">Pagamentos</span>
-                <span className="xs:hidden">Pag.</span>
-              </TabsTrigger>
-              <TabsTrigger value="origens" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
-                <Users className="h-3 w-3 sm:h-4 sm:w-4" />
-                <span className="hidden xs:inline">Origens</span>
-                <span className="xs:hidden">Orig.</span>
-              </TabsTrigger>
-              <TabsTrigger value="canais" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
-                <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4" />
-                <span className="hidden xs:inline">Canais</span>
-                <span className="xs:hidden">Canal</span>
-              </TabsTrigger>
-            </TabsList>
+            <div className="overflow-x-auto custom-scrollbar -mx-6 px-6 sm:mx-0 sm:px-0">
+              <TabsList className="grid w-full min-w-max sm:min-w-0 grid-cols-2 sm:grid-cols-4">
+                <TabsTrigger value="resumo" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm flex-shrink-0">
+                  <User className="h-3 w-3 sm:h-4 sm:w-4" />
+                  <span>Resumo</span>
+                </TabsTrigger>
+                <TabsTrigger value="formas-pagamento" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm flex-shrink-0">
+                  <CreditCard className="h-3 w-3 sm:h-4 sm:w-4" />
+                  <span className="hidden xs:inline">Pagamentos</span>
+                  <span className="xs:hidden">Pag.</span>
+                </TabsTrigger>
+                <TabsTrigger value="origens" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm flex-shrink-0">
+                  <Users className="h-3 w-3 sm:h-4 sm:w-4" />
+                  <span className="hidden xs:inline">Origens</span>
+                  <span className="xs:hidden">Orig.</span>
+                </TabsTrigger>
+                <TabsTrigger value="canais" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm flex-shrink-0">
+                  <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4" />
+                  <span className="hidden xs:inline">Canais</span>
+                  <span className="xs:hidden">Canal</span>
+                </TabsTrigger>
+              </TabsList>
+            </div>
 
             <TabsContent value="resumo" className="space-y-4">
               <div className="grid grid-cols-2 gap-4">

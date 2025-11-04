@@ -38,7 +38,6 @@ import {
 // Componentes específicos do dashboard de vendedores
 import { VendedorDetalhesModal } from "./components/VendedorDetalhesModal";
 import { VendasPorDiaCard } from "./components/VendasPorDiaCard";
-import { MobileRankingVendedores } from "./components/MobileRankingVendedores";
 import { ApiErrorAlert } from "./components/ApiErrorAlert";
 
 
@@ -67,15 +66,6 @@ export default function DashboardVendedores() {
   const { user, loading: authLoading } = useAuth();
   const { metas, loading: isLoadingMetas } = useMetas();
   
-  // Logs detalhados para debug - OTIMIZADO
-  useEffect(() => {
-    if (user?.id) { // Só logar quando tiver usuário
-      console.log("=== DASHBOARD VENDEDORES - DEBUG ===");
-      console.log("User ID:", user.id);
-      console.log("User Email:", user.email);
-      console.log("=================================");
-    }
-  }, [user?.id]); // Só depender do ID para evitar logs desnecessários
 
   const today = new Date();
   const currentMonth = today.getMonth();
@@ -133,13 +123,6 @@ export default function DashboardVendedores() {
     }
     
     if (metaDoMesAtual) {
-      console.log('🎯 Meta encontrada:', {
-        mes: metaDoMesAtual.mesReferencia,
-        metaMensal: metaDoMesAtual.metaMensal,
-        metaSalvio: metaDoMesAtual.metaSalvio,
-        metaCoordenador: metaDoMesAtual.metaCoordenador
-      });
-      
       return {
         metaMensal: metaDoMesAtual.metaMensal,
         metaSalvio: metaDoMesAtual.metaSalvio,
@@ -248,10 +231,6 @@ export default function DashboardVendedores() {
           nomeVendedor.includes(oculto.toUpperCase())
         );
         
-        if (deveOcultar) {
-          console.log(`🚫 [DashboardVendedores] Vendedor oculto: ${vendedor.nome}`);
-        }
-        
         return !deveOcultar;
       })
       .map(vendedor => ({
@@ -260,29 +239,6 @@ export default function DashboardVendedores() {
       }));
   }, [vendedores]);
 
-  // Log para debug das vendas
-  useEffect(() => {
-    if (vendas && vendas.length > 0) {
-      console.log('📦 [page.tsx] Vendas disponíveis para componentes filhos:', {
-        totalVendas: vendas.length,
-        primeirasVendas: vendas.slice(0, 3).map(v => ({
-          id: v.id,
-          canal_venda: v.canal_venda,
-          origem: v.origem,
-          como_nos_conheceu: v.como_nos_conheceu,
-          metadata: v.metadata ? {
-            canal_venda: v.metadata.canal_venda,
-            origem: v.metadata.origem,
-            como_nos_conheceu: v.metadata.como_nos_conheceu,
-          } : null,
-          valor_total: v.valor_total,
-          // Mostrar TODOS os campos disponíveis
-          todosOsCampos: Object.keys(v),
-          metadataCampos: v.metadata ? Object.keys(v.metadata) : null
-        }))
-      });
-    }
-  }, [vendas]);
 
   // Dados do summary calculados
   const dadosSummary = useMemo(() => {
@@ -292,16 +248,6 @@ export default function DashboardVendedores() {
     let fretesTotal = 0;
     
     if (vendas && Array.isArray(vendas)) {
-      console.log('🔍 [DashboardVendedores] Processando vendas para cálculo financeiro:', {
-        totalVendas: vendas.length,
-        primeirasVendas: vendas.slice(0, 3).map(v => ({
-          id: v.id,
-          valor_total: v.valor_total,
-          valor_custo: v.valor_custo,
-          desconto_valor: v.desconto_valor,
-          valor_frete: v.valor_frete
-        }))
-      });
       
       vendas.forEach((venda: VendaItem) => {
         custoTotal += parseFloat(String(venda.valor_custo || '0'));
@@ -309,13 +255,6 @@ export default function DashboardVendedores() {
         fretesTotal += parseFloat(String(venda.valor_frete || '0'));
       });
       
-      console.log('💰 [DashboardVendedores] Totais calculados:', {
-        custoTotal,
-        descontosTotal,
-        fretesTotal,
-        totalValor,
-        lucroCalculado: totalValor - custoTotal
-      });
     }
     
     // Lucro = Faturamento - Custo - Fretes (descontos removidos)
@@ -359,7 +298,6 @@ export default function DashboardVendedores() {
   const handleForceSync = useCallback(async () => {
     try {
       await forceSync();
-      console.log('Sincronização forçada concluída');
     } catch (error) {
       console.error('Erro na sincronização forçada:', error);
     }
@@ -368,9 +306,7 @@ export default function DashboardVendedores() {
   // Função para refresh dos dados sem cache
   const handleRefreshData = useCallback(async () => {
     try {
-      console.log('🔄 Iniciando refresh dos dados sem cache...');
       await forceSync();
-      console.log('✅ Refresh concluído com sucesso');
     } catch (error) {
       console.error('❌ Erro no refresh:', error);
       throw error; // Re-throw para que o DashboardHeader possa tratar o erro
@@ -380,7 +316,6 @@ export default function DashboardVendedores() {
   // Forçar atualização dos dados para resolver problema do cache
   useEffect(() => {
     if (dateRange.from && dateRange.to) {
-      console.log('🔄 Forçando atualização dos dados para resolver cache antigo...');
       handleForceSync();
     }
   }, [dateRange.from, dateRange.to, handleForceSync]);
@@ -464,27 +399,14 @@ export default function DashboardVendedores() {
         </div>
 
          <div className="ios26-grid">
-           <div className="hidden lg:block">
-             <VendedoresChartImproved 
-               vendedores={vendedoresMapeados}
-               onVendedorClick={handleOpenVendedorDetails}
-               vendas={vendas}
-               totalVendas={totalVendas}
-               totalValor={totalValor}
-               ticketMedio={ticketMedio}
-             />
-           </div>
-           
-           <div className="lg:hidden">
-             <MobileRankingVendedores 
-                 vendedores={vendedoresMapeados}
-               onVendedorClick={handleOpenVendedorDetails}
-               vendas={vendas}
-               totalVendas={totalVendas}
-               totalValor={totalValor}
-               ticketMedio={ticketMedio}
-               />
-           </div>
+           <VendedoresChartImproved 
+             vendedores={vendedoresMapeados}
+             onVendedorClick={handleOpenVendedorDetails}
+             vendas={vendas}
+             totalVendas={totalVendas}
+             totalValor={totalValor}
+             ticketMedio={ticketMedio}
+           />
          </div>
         
         <div className="ios26-card p-6">
