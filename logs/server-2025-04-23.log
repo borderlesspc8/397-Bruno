@@ -1,1 +1,0 @@
-[2025-04-23T19:58:18.073Z] [ERRO] [APP] Erro ao processar dashboard de atendimentos: {"description":"Route /api/dashboard/atendimentos couldn't be rendered statically because it used `request.url`. See more info here: https://nextjs.org/docs/messages/dynamic-server-error","digest":"DYNAMIC_SERVER_USAGE"}

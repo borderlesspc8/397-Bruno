@@ -10,4 +10,6 @@ export { DateRangeSelector } from './DateRangeSelector';
 export { VendedoresChartImproved } from './VendedoresChartImproved';
 export { default as RankingVendedores } from './RankingVendedores';
 export { default as PodiumRanking } from './PodiumRanking';
+export { VendedorDetalhesModal } from './VendedorDetalhesModal';
+export type { VendedorDetalhesModalProps } from './VendedorDetalhesModal';
 

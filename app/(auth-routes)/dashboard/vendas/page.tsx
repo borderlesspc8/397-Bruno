@@ -31,11 +31,9 @@ import { VendaItem, Meta, RespostaAPI } from './types';
 // Componentes compartilhados (consolidados)
 import { 
   VendaDetalheModal,
-  VendedoresChartImproved 
+  VendedoresChartImproved,
+  VendedorDetalhesModal
 } from "@/app/_components/dashboard-shared/components";
-
-// Componentes específicos do dashboard de vendas
-import { VendedorDetalhesModal } from "./components/VendedorDetalhesModal";
 import { VendasPorFormaPagamentoChart } from "./components/VendasPorFormaPagamentoChart";
 import { VendasPorDiaCard } from "./components/VendasPorDiaCard";
 import { LazyFallback } from "@/app/_components/ui/lazy-fallback";

@@ -32,11 +32,9 @@ import { VendaItem, Meta, RespostaAPI } from './types';
 // Componentes compartilhados (consolidados)
 import { 
   VendaDetalheModal,
-  VendedoresChartImproved 
+  VendedoresChartImproved,
+  VendedorDetalhesModal
 } from "@/app/_components/dashboard-shared/components";
-
-// Componentes específicos do dashboard de vendedores
-import { VendedorDetalhesModal } from "./components/VendedorDetalhesModal";
 import { VendasPorDiaCard } from "./components/VendasPorDiaCard";
 import { ApiErrorAlert } from "./components/ApiErrorAlert";
 
