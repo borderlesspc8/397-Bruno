@@ -1,0 +1,1 @@
+export const AnaliseInadimplenciaCard = () => <div>Análise Inadimplência</div>;

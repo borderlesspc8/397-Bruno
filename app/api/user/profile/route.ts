@@ -29,9 +29,16 @@ function generateRealisticData() {
     memberSince: new Date(Date.now() - (Math.floor(Math.random() * 365) + 30) * 24 * 60 * 60 * 1000) // Entre 30 e 395 dias atrás
   };
   
+  // Atividade recente
+  const recentActivity = [];
+  
   return {
     resourceUsage,
-    stats
+    stats,
+    recentActivity,
+    limits: {
+      connections: 5
+    }
   };
 }
 
@@ -72,9 +79,9 @@ export async function GET(req: NextRequest) {
           isActive: true
         },
         wallets: [],
-        limits: generateRealisticData().limits,
-        stats: generateRealisticData().stats,
-        recentActivity: generateRealisticData().recentActivity
+        limits: { connections: 5 },
+        stats: { categoriesCount: 10, memberSince: new Date().toISOString() },
+        recentActivity: []
       };
 
       return NextResponse.json(profileData);

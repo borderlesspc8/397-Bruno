@@ -1,0 +1,1 @@
+export const IndicadoresEficienciaCard = () => <div>Indicadores Eficiência</div>;

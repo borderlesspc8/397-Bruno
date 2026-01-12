@@ -110,6 +110,27 @@ global.window.matchMedia = jest.fn().mockImplementation(query => ({
   dispatchEvent: jest.fn(),
 }));
 
+// Mock para Supabase
+jest.mock('@/app/_lib/supabase-server', () => ({
+  createClient: jest.fn(() => ({
+    from: jest.fn((table) => ({
+      select: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockReturnThis(),
+      single: jest.fn().mockResolvedValue({ data: null, error: null }),
+      update: jest.fn().mockReturnThis(),
+    })),
+  })),
+}));
+
+// Mock para cookies (Next.js)
+jest.mock('next/headers', () => ({
+  cookies: jest.fn(() => ({
+    get: jest.fn(),
+    set: jest.fn(),
+    delete: jest.fn(),
+  })),
+}));
+
 // Suprimir logs durante testes
 // global.console = {
 //   ...console,

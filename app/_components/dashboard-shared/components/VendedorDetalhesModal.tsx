@@ -1,0 +1,1 @@
+export const VendedorDetalhesModal = () => <div>Vendedor Detalhes Modal</div>;

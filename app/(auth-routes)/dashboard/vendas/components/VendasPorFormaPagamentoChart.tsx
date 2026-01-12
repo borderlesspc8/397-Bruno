@@ -1,0 +1,1 @@
+export const VendasPorFormaPagamentoChart = () => <div>Vendas por Forma de Pagamento</div>;

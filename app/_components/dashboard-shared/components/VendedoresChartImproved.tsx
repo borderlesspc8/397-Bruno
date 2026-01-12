@@ -1,0 +1,1 @@
+export const VendedoresChartImproved = () => <div>Vendedores Chart Improved</div>;

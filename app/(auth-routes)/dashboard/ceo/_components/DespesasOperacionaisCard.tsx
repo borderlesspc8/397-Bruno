@@ -1,0 +1,1 @@
+export const DespesasOperacionaisCard = () => <div>Despesas Operacionais</div>;

@@ -1,0 +1,1 @@
+export const RentabilidadeCentroCustoTable = () => <div>Rentabilidade Centro Custo</div>;

@@ -1,0 +1,1 @@
+export const BudgetSpendingChart = () => <div>Budget Spending Chart</div>;

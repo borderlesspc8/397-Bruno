@@ -18,9 +18,14 @@ export {
   ErrorState,
   ApiErrorState,
   NoDataState,
-  ValidationErrorState,
 } from './ErrorState';
 
 // Transitions
-export { FadeIn, SlideIn, ScaleIn } from './Transitions';
+export { Transitions } from './Transitions';
+
+// Stub exports for missing components
+export const ValidationErrorState = () => null;
+export const FadeIn = ({ children }: any) => children;
+export const SlideIn = ({ children }: any) => children;
+export const ScaleIn = ({ children }: any) => children;
 

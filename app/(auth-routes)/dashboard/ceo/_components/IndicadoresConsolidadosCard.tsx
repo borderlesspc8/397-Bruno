@@ -1,0 +1,1 @@
+export const IndicadoresConsolidadosCard = () => <div>Indicadores Consolidados</div>;

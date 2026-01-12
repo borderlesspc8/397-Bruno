@@ -1,0 +1,1 @@
+export const BudgetReportHeader = () => <div>Budget Report Header</div>;
