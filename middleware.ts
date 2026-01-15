@@ -4,6 +4,9 @@ import { createServerClient } from '@supabase/ssr';
 import { SystemRoles, SystemPermissions } from '@/app/_types/rbac';
 import { getRequiredPermissionForRoute } from '@/app/_lib/route-permissions';
 
+// Check if we're in test mode
+const TEST_MODE = process.env.NEXT_PUBLIC_TEST_MODE === 'true';
+
 /**
  * Função auxiliar para verificar role no contexto do middleware
  */
@@ -185,64 +188,86 @@ export async function middleware(request: NextRequest) {
   
         // Redirecionar a rota raiz para o dashboard apropriado baseado no usuário
         if (pathname === "/") {
-          const supabase = createServerClient(
-            process.env.NEXT_PUBLIC_SUPABASE_URL!,
-            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-            {
-              cookies: {
-                getAll() {
-                  return request.cookies.getAll()
-                },
-                setAll(cookiesToSet) {
-                  cookiesToSet.forEach(({ name, value, options }) => request.cookies.set(name, value))
-                },
-              },
-            }
-          );
-          
-          const { data: { user } } = await supabase.auth.getUser();
-          
-          if (user) {
-            // Verificar role no banco de dados
-            const isVendor = await checkUserRole(supabase, user.id, SystemRoles.VENDEDOR);
-            const isAdmin = await checkUserRole(supabase, user.id, SystemRoles.ADMIN);
-          
-            if (isVendor && !isAdmin) {
-            return NextResponse.redirect(getSafeRedirectUrl(request.url, "/dashboard-vendedores"));
-          } else {
+          if (TEST_MODE) {
             return NextResponse.redirect(getSafeRedirectUrl(request.url, "/dashboard/vendas"));
+          }
+          
+          try {
+            const supabase = createServerClient(
+              process.env.NEXT_PUBLIC_SUPABASE_URL!,
+              process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+              {
+                cookies: {
+                  getAll() {
+                    return request.cookies.getAll()
+                  },
+                  setAll(cookiesToSet) {
+                    cookiesToSet.forEach(({ name, value, options }) => request.cookies.set(name, value))
+                  },
+                },
+              }
+            );
+            
+            const { data: { user } } = await supabase.auth.getUser();
+            
+            if (user) {
+              // Verificar role no banco de dados
+              const isVendor = await checkUserRole(supabase, user.id, SystemRoles.VENDEDOR);
+              const isAdmin = await checkUserRole(supabase, user.id, SystemRoles.ADMIN);
+            
+              if (isVendor && !isAdmin) {
+              return NextResponse.redirect(getSafeRedirectUrl(request.url, "/dashboard-vendedores"));
+            } else {
+              return NextResponse.redirect(getSafeRedirectUrl(request.url, "/dashboard/vendas"));
+              }
+            }
+          } catch (error) {
+            console.error("Erro no middleware para rota /:", error);
+            if (TEST_MODE) {
+              return NextResponse.redirect(getSafeRedirectUrl(request.url, "/dashboard/vendas"));
             }
           }
         }
 
         // Redirecionar a rota /dashboard para o dashboard apropriado
         if (pathname === "/dashboard" || pathname === "/dashboard/") {
-          const supabase = createServerClient(
-            process.env.NEXT_PUBLIC_SUPABASE_URL!,
-            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-            {
-              cookies: {
-                getAll() {
-                  return request.cookies.getAll()
-                },
-                setAll(cookiesToSet) {
-                  cookiesToSet.forEach(({ name, value, options }) => request.cookies.set(name, value))
-                },
-              },
-            }
-          );
-          
-          const { data: { user } } = await supabase.auth.getUser();
-          
-          if (user) {
-            // Verificar role no banco de dados
-            const isVendor = await checkUserRole(supabase, user.id, SystemRoles.VENDEDOR);
-            const isAdmin = await checkUserRole(supabase, user.id, SystemRoles.ADMIN);
-          
-            if (isVendor && !isAdmin) {
-            return NextResponse.redirect(getSafeRedirectUrl(request.url, "/dashboard-vendedores"));
-          } else {
+          if (TEST_MODE) {
             return NextResponse.redirect(getSafeRedirectUrl(request.url, "/dashboard/vendas"));
+          }
+          
+          try {
+            const supabase = createServerClient(
+              process.env.NEXT_PUBLIC_SUPABASE_URL!,
+              process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+              {
+                cookies: {
+                  getAll() {
+                    return request.cookies.getAll()
+                  },
+                  setAll(cookiesToSet) {
+                    cookiesToSet.forEach(({ name, value, options }) => request.cookies.set(name, value))
+                  },
+                },
+              }
+            );
+            
+            const { data: { user } } = await supabase.auth.getUser();
+            
+            if (user) {
+              // Verificar role no banco de dados
+              const isVendor = await checkUserRole(supabase, user.id, SystemRoles.VENDEDOR);
+              const isAdmin = await checkUserRole(supabase, user.id, SystemRoles.ADMIN);
+            
+              if (isVendor && !isAdmin) {
+              return NextResponse.redirect(getSafeRedirectUrl(request.url, "/dashboard-vendedores"));
+            } else {
+              return NextResponse.redirect(getSafeRedirectUrl(request.url, "/dashboard/vendas"));
+              }
+            }
+          } catch (error) {
+            console.error("Erro no middleware para rota /dashboard:", error);
+            if (TEST_MODE) {
+              return NextResponse.redirect(getSafeRedirectUrl(request.url, "/dashboard/vendas"));
             }
           }
         }

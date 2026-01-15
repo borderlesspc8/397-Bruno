@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/app/_components/ui/card";
 import { Button } from "@/app/_components/ui/button";
-import { BarChart, Users, LineChart, MousePointerClick, ArrowRight } from "lucide-react";
+import { BarChart, Users, LineChart, MousePointerClick, ArrowRight, DollarSign } from "lucide-react";
 import { DashboardHeader } from "./_components/DashboardHeader";
 import { useAuth } from "@/app/_hooks/useAuth";
 
@@ -49,6 +49,34 @@ export default function DashboardPage() {
           <CardFooter>
             <Link href="/dashboard/vendas">
               <Button variant="default">
+                Ver Dashboard
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            </Link>
+          </CardFooter>
+        </Card>
+
+        <Card className="border-2 border-emerald-600/20 hover:border-emerald-600/50 transition-colors">
+          <CardHeader className="pb-2">
+            <div className="bg-emerald-100 dark:bg-emerald-900/20 w-10 h-10 rounded-full flex items-center justify-center mb-2">
+              <DollarSign className="h-5 w-5 text-emerald-600 dark:text-emerald-500" />
+            </div>
+            <CardTitle>Dashboard Financeiro</CardTitle>
+            <CardDescription>
+              Controle completo das suas finanças com gráficos e análises detalhadas.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ul className="space-y-2 list-disc list-inside text-sm text-muted-foreground">
+              <li>Saldo, receitas e despesas</li>
+              <li>Fluxo de caixa detalhado</li>
+              <li>Categorização de gastos</li>
+              <li>Tendências e insights</li>
+            </ul>
+          </CardContent>
+          <CardFooter>
+            <Link href="/dashboard/financeiro">
+              <Button variant="default" className="bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-600 dark:hover:bg-emerald-700">
                 Ver Dashboard
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>

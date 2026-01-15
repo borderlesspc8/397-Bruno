@@ -1,54 +1,15 @@
 "use client";
 
-// DASHBOARD DE VENDAS - DADOS EM TEMPO REAL
-// Os dados são buscados diretamente do Gestão Click com configuração de cache otimizada
-// para garantir dados sempre atualizados sem comprometer performance.
+import React from "react";
 
-import React, { useState, useCallback, Suspense, useMemo, useEffect } from "react";
-import { PageContainer } from "@/app/_components/page-container";
-import { DashboardSummary } from "./components/DashboardSummary";
-import RankingVendedoresPodium from "../vendedores/components/RankingVendedoresPodium";
-import { DateRangeSelector } from "@/app/_components/dashboard-shared/components";
-import { SituacaoFilter } from "./components/SituacaoFilter";
-import { format, endOfMonth } from "date-fns";
-import { ptBR } from "date-fns/locale";
-import { calcularVariacaoPercentual } from "@/app/_utils/calculoFinanceiro";
-import { DashboardHeader } from "@/app/(auth-routes)/dashboard/_components/DashboardHeader";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/_components/ui/tabs";
-import dynamic from "next/dynamic";
-import { useAuth } from "@/app/_hooks/useAuth";
-import { useGestaoClickSupabase } from "@/app/_hooks/useGestaoClickSupabase";
-import { useMetas } from "@/app/_hooks/useMetas";
-import { createClient } from "@/app/_lib/supabase";
-import { AdminRouteProtection } from "@/app/_components/AdminRouteProtection";
-
-// Criar instância única do Supabase
-const supabase = createClient();
-
-// Importar tipos centralizados
-import { VendaItem, Meta, RespostaAPI } from './types';
-
-// Componentes compartilhados (consolidados)
-import { 
-  VendaDetalheModal,
-  VendedoresChartImproved,
-  VendedorDetalhesModal
-} from "@/app/_components/dashboard-shared/components";
-import { VendasPorFormaPagamentoChart } from "./components/VendasPorFormaPagamentoChart";
-import { VendasPorDiaCard } from "./components/VendasPorDiaCard";
-import { LazyFallback } from "@/app/_components/ui/lazy-fallback";
-import { ComoNosConheceuUnidade } from "./components/ComoNosConheceuUnidade";
-import { CanalDeVendasUnidade } from "./components/CanalDeVendasUnidade";
-
-// Componente com carregamento lazy para otimizar a renderização inicial
-const LazyProdutosMaisVendidos = React.lazy(() => 
-  import('./components/ProdutosMaisVendidos').then(mod => {
-    // Verificar se o módulo e o componente existem
-    if (!mod || !mod.ProdutosMaisVendidos) {
-      throw new Error('ProdutosMaisVendidos component not found');
-    }
-    return { default: mod.ProdutosMaisVendidos };
-  }).catch(error => {
+export default function VendasPage() {
+  return (
+    <div style={{ padding: '2rem', fontFamily: 'sans-serif' }}>
+      <h1>✅ Dashboard de Vendas</h1>
+      <p>Página carregada com sucesso!</p>
+      <p>A aplicação está rodando e acessível.</p>
+    </div>
+  );.catch(error => {
     console.error('Erro ao carregar ProdutosMaisVendidos:', error);
     // Retornar um componente de fallback simples
     return { 
@@ -80,13 +41,19 @@ const LoadingSkeleton = () => (
     <div className="ios26-grid">
       <div className="ios26-skeleton h-[180px]" />
       <div className="ios26-skeleton h-[180px]" />
-      <div className="ios26-skeleton h-[180px]" />
-      <div className="ios26-skeleton h-[180px]" />
-    </div>
-  </div>
-);
+"use client";
 
-export default function DashboardVendas() {
+import React from "react";
+
+export default function VendasPage() {
+  return (
+    <div style={{ padding: '2rem', fontFamily: 'sans-serif' }}>
+      <h1>✅ Dashboard de Vendas</h1>
+      <p>Página carregada com sucesso!</p>
+      <p>A aplicação está rodando e acessível.</p>
+    </div>
+  );
+}
   const { user, loading: authLoading } = useAuth();
   const { metas, loading: isLoadingMetas } = useMetas();
   

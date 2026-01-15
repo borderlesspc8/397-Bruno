@@ -1,11 +1,6 @@
 'use client';
 
 import { useEffect } from 'react';
-import Link from 'next/link';
-import { Button } from '@/app/_components/ui/button';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/app/_components/ui/card';
-import { Alert, AlertDescription, AlertTitle } from '@/app/_components/ui/alert';
-import { AlertTriangle } from 'lucide-react';
 
 export default function GlobalError({
   error,
@@ -15,47 +10,45 @@ export default function GlobalError({
   reset: () => void;
 }) {
   useEffect(() => {
-    // Registrar o erro em serviço de monitoramento
     console.error('Erro global na aplicação:', error);
   }, [error]);
 
   return (
     <html lang="pt-BR">
       <body>
-        <div className="flex items-center justify-center min-h-screen bg-gray-100">
-          <Card className="w-full max-w-2xl">
-            <CardHeader>
-              <CardTitle className="text-2xl font-bold">Erro Fatal</CardTitle>
-              <CardDescription>
-                A aplicação encontrou um erro crítico.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Alert variant="destructive" className="my-4">
-                <AlertTriangle className="h-5 w-5" />
-                <AlertTitle>Erro Crítico</AlertTitle>
-                <AlertDescription>
-                  {error.message || 'Ocorreu um erro fatal. Por favor, tente reiniciar a aplicação.'}
-                </AlertDescription>
-              </Alert>
-              
-              {error.digest && (
-                <p className="text-xs text-gray-500 mt-2">
-                  Código de referência: {error.digest}
-                </p>
-              )}
-            </CardContent>
-            <CardFooter className="flex justify-between">
-              <Button variant="outline" onClick={reset}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', backgroundColor: '#f3f4f6' }}>
+          <div style={{ width: '100%', maxWidth: '42rem', border: '1px solid #e5e7eb', borderRadius: '0.5rem', backgroundColor: 'white', padding: '2rem' }}>
+            <h1 style={{ fontSize: '1.875rem', fontWeight: 'bold', marginBottom: '0.5rem' }}>Erro Fatal</h1>
+            <p style={{ color: '#6b7280', marginBottom: '1rem' }}>A aplicação encontrou um erro crítico.</p>
+            
+            <div style={{ backgroundColor: '#fee2e2', border: '1px solid #fecaca', borderRadius: '0.5rem', padding: '1rem', marginBottom: '1rem' }}>
+              <p style={{ fontWeight: 'bold', color: '#991b1b', marginBottom: '0.5rem' }}>Erro Crítico</p>
+              <p style={{ color: '#7c2d12' }}>
+                {error.message || 'Ocorreu um erro fatal. Por favor, tente reiniciar a aplicação.'}
+              </p>
+            </div>
+            
+            {error.digest && (
+              <p style={{ fontSize: '0.75rem', color: '#9ca3af', marginBottom: '1rem' }}>
+                Código de referência: {error.digest}
+              </p>
+            )}
+            
+            <div style={{ display: 'flex', gap: '1rem' }}>
+              <button 
+                onClick={reset}
+                style={{ padding: '0.5rem 1rem', backgroundColor: 'white', border: '1px solid #d1d5db', borderRadius: '0.375rem', cursor: 'pointer' }}
+              >
                 Tentar reiniciar
-              </Button>
-              <Button asChild>
-                <Link href="/">
-                  Voltar para página inicial
-                </Link>
-              </Button>
-            </CardFooter>
-          </Card>
+              </button>
+              <a 
+                href="/"
+                style={{ padding: '0.5rem 1rem', backgroundColor: '#3b82f6', color: 'white', borderRadius: '0.375rem', textDecoration: 'none' }}
+              >
+                Voltar para página inicial
+              </a>
+            </div>
+          </div>
         </div>
       </body>
     </html>
