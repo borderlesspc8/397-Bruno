@@ -154,6 +154,7 @@ export default function MetasPage() {
   const [currentStep, setCurrentStep] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [repetirMesAnterior, setRepetirMesAnterior] = useState(false);
+  const [isSyncingGestaoClick, setIsSyncingGestaoClick] = useState(false);
   
   // Definição das etapas do formulário
   const steps = [
@@ -638,29 +639,84 @@ export default function MetasPage() {
           </p>
         </div>
         
-        <Dialog 
-          open={isDialogOpen} 
-          onOpenChange={(open) => {
-            // Cancelar fechamento do modal durante carregamento ou quando o usuário tenta fechar
-            if (!open && isLoading) {
-              return; // Não permite fechar quando está carregando
-            }
-            
-            // Permitir fechamento apenas quando explicitamente requisitado
-          if (!open) {
-            resetForm();
-          }
-            setIsDialogOpen(open);
-          }}
-        >
-          <DialogTrigger asChild>
-            <Button onClick={() => {
+        <div className="flex gap-2">
+          <Button 
+            onClick={async () => {
+              setIsSyncingGestaoClick(true);
+              try {
+                const response = await fetch('/api/metas/sync-gestao-click', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                  },
+                });
+
+                if (!response.ok) {
+                  throw new Error('Erro ao sincronizar');
+                }
+
+                const result = await response.json();
+                
+                if (result.success) {
+                  toast.success('Metas sincronizadas com sucesso!', {
+                    description: `${result.data.vendedoresSincronizados} vendedores importados`
+                  });
+                  
+                  // Recarregar metas
+                  await loadMetas();
+                } else {
+                  toast.error('Erro ao sincronizar', {
+                    description: result.error || 'Tente novamente'
+                  });
+                }
+              } catch (error) {
+                console.error('Erro na sincronização:', error);
+                toast.error('Erro ao sincronizar com Gestão Click', {
+                  description: error instanceof Error ? error.message : 'Tente novamente'
+                });
+              } finally {
+                setIsSyncingGestaoClick(false);
+              }
+            }}
+            disabled={isSyncingGestaoClick}
+            variant="outline"
+          >
+            {isSyncingGestaoClick ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Sincronizando...
+              </>
+            ) : (
+              <>
+                <Plus className="mr-2 h-4 w-4" />
+                Sincronizar com Gestão Click
+              </>
+            )}
+          </Button>
+          
+          <Dialog 
+            open={isDialogOpen} 
+            onOpenChange={(open) => {
+              // Cancelar fechamento do modal durante carregamento ou quando o usuário tenta fechar
+              if (!open && isLoading) {
+                return; // Não permite fechar quando está carregando
+              }
+              
+              // Permitir fechamento apenas quando explicitamente requisitado
+            if (!open) {
               resetForm();
-            }}>
-              <Plus className="mr-2 h-4 w-4" />
-              Nova Meta
-            </Button>
-          </DialogTrigger>
+            }
+              setIsDialogOpen(open);
+            }}
+          >
+            <DialogTrigger asChild>
+              <Button onClick={() => {
+                resetForm();
+              }}>
+                <Plus className="mr-2 h-4 w-4" />
+                Nova Meta
+              </Button>
+            </DialogTrigger>
           
           <DialogContent 
             className="sm:max-w-[500px]"
@@ -1072,6 +1128,7 @@ export default function MetasPage() {
             </Form>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
       
       <Separator />
