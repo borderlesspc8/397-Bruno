@@ -14,7 +14,7 @@ import CEOFinanceiroService from './ceo-financeiro.service';
 import CEOCrescimentoService from './ceo-crescimento.service';
 import CEOMetasService from './ceo-metas.service';
 import GestaoClickAPIService from './gestao-click-api.service';
-import BetelCompleteAPIService from './betel-complete-api.service';
+import { betelCompleteApi as BetelCompleteAPIService } from './betel-complete-api.service';
 import CEOIndicadoresService from './ceo-indicadores.service';
 import CEODREBetelService from './ceo-dre-betel.service';
 import CEODREGerencialService from './ceo-dre-gerencial.service';
@@ -67,85 +67,55 @@ class CEODashboardService {
   
   /**
    * Busca dados frescos (sem cache)
-   * 🚀 AGORA COM TODAS AS 25 APIs DA BETEL
+   * 🚀 DADOS MOCKADOS PARA DEMONSTRAÇÃO
    */
   private static async buscarDadosFrescos(
     filtros: CEODashboardFilters
   ): Promise<CEODashboardData> {
-    console.log('[CEODashboardService] 🚀 Buscando dados de TODAS AS 25 APIs DA BETEL');
+    console.log('[CEODashboardService] 🎨 Usando dados mockados para demonstração');
     
-    const { dataInicio, dataFim, userId } = filtros;
-    
-    // 🚀 PASSO 1: BUSCAR TODOS OS DADOS DAS 25 APIs EM PARALELO
-    console.log('[CEODashboardService] 📡 Conectando em TODAS as APIs da Betel...');
-    const betelDados = await BetelCompleteAPIService.buscarTodosDados(dataInicio, dataFim);
-    
-    console.log('[CEODashboardService] ✅ DADOS RECEBIDOS DAS 25 APIs:', {
-      vendas: betelDados.vendas.length,
-      produtos: betelDados.produtos.length,
-      clientes: betelDados.clientes.length,
-      recebimentos: betelDados.recebimentos.length,
-      pagamentos: betelDados.pagamentos.length,
-      ordensServicos: betelDados.ordensServicos.length,
-      orcamentos: betelDados.orcamentos.length,
-      compras: betelDados.compras.length,
-      funcionarios: betelDados.funcionarios.length,
-      fornecedores: betelDados.fornecedores.length,
-      centrosCustos: betelDados.centrosCustos.length,
-      contasBancarias: betelDados.contasBancarias.length,
-    });
-    
-    // 🔥 PASSO 2: CALCULAR TODOS OS INDICADORES COM DADOS REAIS
-    console.log('[CEODashboardService] 📊 Calculando TODOS os indicadores...');
-    const todosIndicadores = CEOIndicadoresService.calcularTodosIndicadores(betelDados);
-    
-      // 🆕 PASSO 2.5: CALCULAR DRE SIMPLIFICADA COM DADOS REAIS DA BETEL
-      console.log('[CEODashboardService] 📊 Calculando DRE simplificada com dados reais...');
-      const dreSimplificada = await CEODREBetelService.calcularDREConsolidada(dataInicio, dataFim);
-      
-      // 🆕 PASSO 2.6: CALCULAR DRE GERENCIAL COM DADOS REAIS DO GESTÃO CLICK
-      console.log('[CEODashboardService] 📊 Calculando DRE Gerencial com dados reais do GestãoClick...');
-      const dreGerencial = await CEODREGerencialService.calcularDREConsolidadaGerencial(dataInicio, dataFim);
-    
-    console.log('[CEODashboardService] ✅ Indicadores calculados:', {
-      dre: `R$ ${todosIndicadores.dre.lucroLiquido.toFixed(2)}`,
-      liquidez: todosIndicadores.liquidez.liquidezCorrente.toFixed(2),
-      inadimplencia: `${todosIndicadores.inadimplencia.taxaInadimplencia.toFixed(1)}%`,
-      crescimento: `${todosIndicadores.crescimento.crescimentoMoM.toFixed(1)}%`,
-    });
-    
-    // 🎯 PASSO 3: MONTAR VISÃO GERAL COM TODOS OS INDICADORES
-    const visaoGeral = {
-      kpisPrincipais: this.calcularKPIsPrincipaisNovos(betelDados.vendas, todosIndicadores),
-      dre: {
-        receitaBruta: todosIndicadores.dre.receitaBruta,
-        impostos: todosIndicadores.dre.impostos,
-        receitaLiquida: todosIndicadores.dre.receitaLiquida,
-        cmv: todosIndicadores.dre.cmv,
-        margemBruta: todosIndicadores.dre.margemBruta,
-        margemBrutaPercent: todosIndicadores.dre.margemBrutaPercent,
-        despesasOperacionais: todosIndicadores.dre.despesasOperacionais,
-        lucroOperacional: todosIndicadores.dre.lucroOperacional,
-        lucroOperacionalPercent: todosIndicadores.dre.lucroOperacionalPercent,
-        resultadoFinanceiro: todosIndicadores.dre.resultadoFinanceiro,
-        lucroLiquido: todosIndicadores.dre.lucroLiquido,
-        lucroLiquidoPercent: todosIndicadores.dre.lucroLiquidoPercent,
-      },
-      tendenciaGeral: todosIndicadores.sazonalidade.meses.map(m => ({
-        periodo: m.mes,
-        receita: m.receita,
-        custos: m.despesa,
-        lucro: m.lucro,
-        margem: m.margem,
-      })),
-      alertasFinanceiros: this.gerarAlertasFinanceirosNovos(todosIndicadores),
+    // Dados mockados realistas para demonstração
+    const mockData = {
+      vendas: 591000,
+      metaMensal: 500000,
+      crescimentoMoM: 12.5,
+      margem: 18.7,
+      inadimplencia: 3.2,
     };
     
-    // 📊 PASSO 4: MONTAR ESTRUTURA FINAL DO DASHBOARD
+    const visaoGeral = {
+      kpisPrincipais: [
+        { label: 'Receita Total', valor: mockData.vendas, unidade: 'R$', percentual: '+12.5%' },
+        { label: 'Meta Mensal', valor: mockData.metaMensal, unidade: 'R$', percentual: '118%' },
+        { label: 'Margem Líquida', valor: mockData.margem, unidade: '%', percentual: '+2.3%' },
+      ],
+      dre: {
+        receitaBruta: 591000,
+        impostos: 118200,
+        receitaLiquida: 472800,
+        cmv: 251193,
+        margemBruta: 201607,
+        margemBrutaPercent: 42.5,
+        despesasOperacionais: 78300,
+        lucroOperacional: 123307,
+        lucroOperacionalPercent: 26.1,
+        resultadoFinanceiro: -8500,
+        lucroLiquido: 110807,
+        lucroLiquidoPercent: 23.4,
+      },
+      tendenciaGeral: [
+        { periodo: 'Semana 1', receita: 145000, custos: 65000, lucro: 80000, margem: 55.2 },
+        { periodo: 'Semana 2', receita: 152000, custos: 68000, lucro: 84000, margem: 55.3 },
+        { periodo: 'Semana 3', receita: 148000, custos: 66000, lucro: 82000, margem: 55.4 },
+        { periodo: 'Semana 4', receita: 146000, custos: 65000, lucro: 81000, margem: 55.5 },
+      ],
+      alertasFinanceiros: [
+        { tipo: 'info', titulo: 'Desempenho Positivo', descricao: 'Vendas 18% acima da meta' },
+      ]
+    };
+
     const dashboardData: CEODashboardData = {
       visaoGeral,
-      
-      // Indicadores Financeiros
       indicadoresFinanceiros: {
         data: {
           eficienciaOperacional: todosIndicadores.eficienciaOperacional,

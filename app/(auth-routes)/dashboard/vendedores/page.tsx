@@ -10,7 +10,7 @@ import { UploadFotoModal } from "./components/UploadFotoModal";
 import { AlertCircle } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/app/_components/ui/alert";
 import { toast } from "@/app/_components/ui/use-toast";
-import RankingVendedoresPodium from "./components/RankingVendedoresPodium";
+import { RankingVendedoresPodium } from "./components/RankingVendedoresPodium";
 
 export default function GerenciamentoVendedores() {
   // Estados para gerenciar vendedores e período

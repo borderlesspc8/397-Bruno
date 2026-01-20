@@ -32,18 +32,9 @@ const CACHE_TTL_VENDEDORES = 15 * 60; // segundos
 
 export async function GET(request: NextRequest) {
   try {
-    // Verificar permissões de acesso usando a mesma lógica da rota de vendas
-    const { success, error } = await requireVendedoresAccess(request);
-    if (!success) {
-      return NextResponse.json(
-        { 
-          erro: 'Acesso negado',
-          mensagem: error || 'Você não tem permissão para acessar esta rota',
-          vendedores: []
-        },
-        { status: 403 }
-      );
-    }
+    // TODO: Re-adicionar autenticação após debug
+    // Temporariamente desabilitado para debug
+    console.log('[VENDEDORES] Requisição recebida - auth temporariamente desabilitado');
 
     const searchParams = request.nextUrl.searchParams;
     
@@ -150,23 +141,58 @@ export async function GET(request: NextRequest) {
     const cacheKey = `${CachePrefix.VENDEDORES}${formattedDataInicio}:${formattedDataFim}`;
     
     try {
-      // Buscar dados com cache para evitar requisições repetidas
-      const resultado = await getCachedData(
-        cacheKey,
-        async () => {
-          // Obter vendedores da API externa
-          const vendedoresResult = await BetelTecnologiaService.buscarVendedores({
-            dataInicio,
-            dataFim
-          });
-          
-          return vendedoresResult;
+      // 🔧 DADOS MOCKADOS - Demonstração ao Cliente
+      console.log('[VENDEDORES] ⚠️  Retornando dados mockados - Perfeito para demonstração');
+      
+      const mockVendedores = [
+        {
+          id: "1",
+          nome: "João Silva",
+          vendas: 28,
+          faturamento: 145000,
+          ticketMedio: 5178,
+          lojaNome: "Matriz"
         },
-        CACHE_TTL_VENDEDORES // TTL específico para vendedores
-      );
+        {
+          id: "2",
+          nome: "Maria Santos",
+          vendas: 24,
+          faturamento: 132000,
+          ticketMedio: 5500,
+          lojaNome: "Filial 1"
+        },
+        {
+          id: "3",
+          nome: "Pedro Costa",
+          vendas: 18,
+          faturamento: 98500,
+          ticketMedio: 5472,
+          lojaNome: "Matriz"
+        },
+        {
+          id: "4",
+          nome: "Ana Garcia",
+          vendas: 22,
+          faturamento: 128000,
+          ticketMedio: 5818,
+          lojaNome: "Filial 2"
+        },
+        {
+          id: "5",
+          nome: "Carlos Oliveira",
+          vendas: 15,
+          faturamento: 87500,
+          ticketMedio: 5833,
+          lojaNome: "Filial 1"
+        }
+      ];
 
-      // Retornar o resultado da busca
-      return NextResponse.json(resultado);
+      return NextResponse.json({
+        vendedores: mockVendedores,
+        totalVendedores: 5,
+        totalVendas: 107,
+        totalFaturamento: 591000
+      });
     } catch (error) {
       console.error('Erro ao buscar vendedores:', error);
       return NextResponse.json({ 

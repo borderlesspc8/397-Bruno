@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/app/_lib/auth';
+import { validateSessionForAPI } from '@/app/_utils/auth';
 
 /**
  * POST /api/metas/sync-gestao-click
@@ -10,10 +9,10 @@ export async function POST(req: NextRequest) {
   try {
     console.log('[SYNC_METAS] Iniciando sincronização...');
     
-    const session = await getServerSession(authOptions);
+    const session = await validateSessionForAPI();
     console.log('[SYNC_METAS] Sessão:', session?.user?.email);
     
-    if (!session?.user) {
+    if (!session) {
       console.log('[SYNC_METAS] Sem autenticação');
       return NextResponse.json(
         { error: 'Não autorizado' },
